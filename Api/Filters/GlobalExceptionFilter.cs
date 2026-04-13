@@ -4,6 +4,7 @@ using FlowableWrapper.Infrastructure.Flowable;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.Extensions.Logging;
+using process.Domain.Abstractions;
 
 namespace FlowableWrapper.Api.Filters
 {
@@ -31,8 +32,8 @@ namespace FlowableWrapper.Api.Filters
                 BusinessException be
                     => (400, be.Code, be.Message),
 
-                //ConcurrentUpdateException
-                //    => (409, "CONCURRENT_UPDATE", "数据并发冲突，请稍后重试"),
+                ConcurrentUpdateException
+                    => (409, "CONCURRENT_UPDATE", "数据并发冲突，请稍后重试"),
 
                 FlowableApiException fae
                     => (502, "FLOWABLE_ERROR", $"Flowable 引擎错误: {fae.Message}"),
