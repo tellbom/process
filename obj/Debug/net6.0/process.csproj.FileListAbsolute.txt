@@ -32,3 +32,6 @@ E:\process\process\obj\Debug\net6.0\refint\process.dll
 E:\process\process\obj\Debug\net6.0\process.pdb
 E:\process\process\obj\Debug\net6.0\process.genruntimeconfig.cache
 E:\process\process\obj\Debug\net6.0\ref\process.dll
+E:\process\process\bin\Debug\net6.0\Pipelines.Sockets.Unofficial.dll
+E:\process\process\bin\Debug\net6.0\StackExchange.Redis.dll
+E:\process\process\bin\Debug\net6.0\System.IO.Hashing.dll

@@ -283,7 +283,9 @@ namespace FlowableWrapper.Infrastructure.ElasticSearch
                         var must = new List<Func<
                             QueryContainerDescriptor<ProcessMetadataDocument>,
                             QueryContainer>>();
-
+                        if (!string.IsNullOrWhiteSpace(request.BusinessId))
+                            must.Add(m => m.Term(t =>
+                                t.Field("businessId.keyword").Value(request.BusinessId)));
                         if (!string.IsNullOrWhiteSpace(request.BusinessType))
                             must.Add(m => m.Term(t =>
                                 t.Field("businessType.keyword").Value(request.BusinessType)));

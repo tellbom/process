@@ -193,6 +193,7 @@ namespace FlowableWrapper.Application.Services
                 var (items, _) = await _esService.QueryProcessListAsync(
                     new ProcessListRequest
                     {
+                        BusinessId = businessId,
                         PageIndex = 1,
                         PageSize  = 1
                     });
@@ -236,7 +237,7 @@ namespace FlowableWrapper.Application.Services
 
             // 未找到 running → 流程可能已结束，通过列表查询找到
             var (items, _) = await _esService.QueryProcessListAsync(
-                new ProcessListRequest { PageIndex = 1, PageSize = 1 });
+                new ProcessListRequest { PageIndex = 1, PageSize = 1, BusinessId = businessId, });
 
             metadata = items.FirstOrDefault(m =>
                 string.Equals(m.BusinessId, businessId, StringComparison.OrdinalIgnoreCase));

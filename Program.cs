@@ -10,6 +10,10 @@ using FlowableWrapper.Infrastructure.CurrentUser;
 using FlowableWrapper.Infrastructure.ElasticSearch;
 using FlowableWrapper.Infrastructure.Flowable;
 using FlowableWrapper.Infrastructure.Slots;
+using Microsoft.Extensions.Options;
+using process.Domain.DistributedLock;
+using process.Infrastructure.DistributedLock;
+using StackExchange.Redis;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -24,6 +28,15 @@ builder.Services.Configure<FlowableOptions>(
 
 builder.Services.Configure<BusinessTypeProcessMapping>(
     builder.Configuration.GetSection("BusinessTypeProcessMapping"));
+
+builder.Services.Configure<RedisOptions>(
+    builder.Configuration.GetSection("Redis"));
+
+builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
+{
+    var options = sp.GetRequiredService<IOptions<RedisOptions>>().Value;
+    return ConnectionMultiplexer.Connect(options.ConnectionString);
+});
 
 // ═══════════════════════════════════════════════════════════════
 // 基础设施：当前用户
@@ -94,6 +107,9 @@ builder.Services.AddScoped<ProcessQueryAppService>();
 
 // Phase 10 — 流程图渲染
 builder.Services.AddScoped<ProcessFlowRenderAppService>();
+
+// 开启redis注册
+builder.Services.AddSingleton<IDistributedLockService, RedisDistributedLockService>();
 
 // ═══════════════════════════════════════════════════════════════
 // MVC + 全局异常过滤器

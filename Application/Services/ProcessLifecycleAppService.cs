@@ -12,6 +12,7 @@ using FlowableWrapper.Domain.Services;
 using FlowableWrapper.Infrastructure.Flowable;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using process.Domain.DistributedLock;
 
 namespace FlowableWrapper.Application.Services
 {
@@ -43,6 +44,7 @@ namespace FlowableWrapper.Application.Services
         private readonly BusinessTypeProcessMapping _businessTypeMapping;
         private readonly FlowableOptions _flowableOptions;
         private readonly ILogger<ProcessLifecycleAppService> _logger;
+        private readonly IDistributedLockService _distributedLockService;
 
         public ProcessLifecycleAppService(
             IFlowableRuntimeService runtimeService,
@@ -53,7 +55,8 @@ namespace FlowableWrapper.Application.Services
             ICurrentUser currentUser,
             IOptions<BusinessTypeProcessMapping> businessTypeMapping,
             IOptions<FlowableOptions> flowableOptions,
-            ILogger<ProcessLifecycleAppService> logger)
+            ILogger<ProcessLifecycleAppService> logger,
+            IDistributedLockService distributedLockService)
         {
             _runtimeService       = runtimeService;
             _taskService          = taskService;
@@ -64,6 +67,7 @@ namespace FlowableWrapper.Application.Services
             _businessTypeMapping  = businessTypeMapping.Value;
             _flowableOptions      = flowableOptions.Value;
             _logger               = logger;
+            _distributedLockService = distributedLockService;
         }
 
         // ═══════════════════════════════════════════════════════════
@@ -85,132 +89,229 @@ namespace FlowableWrapper.Application.Services
         /// </summary>
         public async Task<StartProcessResponse> StartProcessAsync(StartProcessRequest request)
         {
-            // ── Step 1: 参数校验 ───────────────────────────────────
-            if (request == null) throw new ArgumentNullException(nameof(request));
+            if (request == null)
+                throw new ArgumentNullException(nameof(request));
+
             if (string.IsNullOrWhiteSpace(request.BusinessType))
                 throw new BusinessException("businessType 不能为空");
+
             if (string.IsNullOrWhiteSpace(request.BusinessId))
                 throw new BusinessException("businessId 不能为空");
-            //if (request.InitialSlotSelections == null || !request.InitialSlotSelections.Any())
-            //    throw new BusinessException("initialSlotSelections 不能为空，首节点必须指定处理人");
 
             var createdBy = _currentUser.UserId;
             if (string.IsNullOrWhiteSpace(createdBy))
-                throw new BusinessException("无法确定发起人，请在 Header 中携带 X-User-Id");
+                throw new BusinessException("无法确定当前操作人，请先完成登录");
 
-            // ── Step 2: businessType → processDefinitionKey ────────
-            var processDefinitionKey = _businessTypeMapping.GetProcessDefinitionKey(
-                request.BusinessType);
+            var lockKey = $"flow:start:{request.BusinessId}";
+            var lockValue = Guid.NewGuid().ToString("N");
+            var lockAcquired = await _distributedLockService.TryAcquireAsync(
+                lockKey,
+                lockValue,
+                TimeSpan.FromSeconds(30));
 
-            _logger.LogInformation(
-                "启动流程: BusinessType={BusinessType} → ProcessDefinitionKey={Key}, " +
-                "BusinessId={BusinessId}, CreatedBy={CreatedBy}",
-                request.BusinessType, processDefinitionKey,
-                request.BusinessId, createdBy);
+            if (!lockAcquired)
+            {
+                _logger.LogWarning(
+                    "获取流程启动锁失败，疑似重复提交: BusinessId={BusinessId}, CreatedBy={CreatedBy}",
+                    request.BusinessId,
+                    createdBy);
 
-            // ── Step 3: 首节点 Slot → 变量转换 ────────────────────
-            // 查询首节点的 Slot 定义
-            // 注意：此时还不知道首节点的 taskDefinitionKey，
-            // 但 Slot 配置是按 processDefinitionKey 整体存储的，
-            // 需要先找到首节点 key 才能读 Slot 定义
-            // 解决方案：从 nodeSemanticMap 中找排序最前的节点作为首节点
-            // 更可靠方案：在 StartProcessRequest 中要求调用方传入 initialNodeKey
-            // 当前实现：不依赖顺序，直接把 InitialSlotSelections 的所有 slotKey
-            //           与整个流程的所有 Slot 定义做匹配，找到对应的 variableName
-            // 新：启动时不做 slotDefs 校验，只做 slotKey → variableName 查找转换
-            var initConversionResult = await ConvertInitialSlotsAsync(
-                request.InitialSlotSelections, processDefinitionKey); ;
+                throw new BusinessException(
+                    $"业务 [{request.BusinessId}] 正在启动流程中，请勿重复提交");
+            }
 
-            // ── Step 4: 构建启动变量 ───────────────────────────────
-            var variables = BuildStartVariables(
-                request, processDefinitionKey, initConversionResult.Variables);
-
-            // ── Step 5: 调 Flowable 启动流程 ──────────────────────
-            // Flowable 同步推进到第一个 userTask
-            // 由于变量中已含 ${groupLeaderAssignee} 等，首任务创建时 assignee 自动绑定
-            // 框架不再做任何 SetAssigneeAsync 补偿
-            FlowableProcessInstance processInstance;
             try
             {
-                processInstance = await _runtimeService.StartProcessInstanceByKeyAsync(
+                // 1. 校验是否已存在运行中的流程实例
+                var existingRunning = await _esService.GetProcessMetadataByBusinessIdAsync(
+                    request.BusinessId);
+
+                if (existingRunning != null)
+                {
+                    _logger.LogWarning(
+                        "拒绝重复启动流程: BusinessId={BusinessId}, ExistingProcessInstanceId={ProcessInstanceId}, CreatedBy={CreatedBy}",
+                        request.BusinessId,
+                        existingRunning.ProcessInstanceId,
+                        createdBy);
+
+                    throw new BusinessException(
+                        $"业务 [{request.BusinessId}] 已存在运行中流程，不能重复启动");
+                }
+
+                // 2. businessType -> processDefinitionKey
+                var processDefinitionKey = _businessTypeMapping.GetProcessDefinitionKey(
+                    request.BusinessType);
+
+                if (string.IsNullOrWhiteSpace(processDefinitionKey))
+                    throw new BusinessException(
+                        $"businessType [{request.BusinessType}] 未配置对应的流程定义");
+
+                _logger.LogInformation(
+                    "开始启动流程: BusinessType={BusinessType}, ProcessDefinitionKey={ProcessDefinitionKey}, BusinessId={BusinessId}, CreatedBy={CreatedBy}",
+                    request.BusinessType,
                     processDefinitionKey,
                     request.BusinessId,
-                    variables);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex,
-                    "Flowable 启动流程失败: ProcessDefinitionKey={Key}, BusinessId={BusinessId}",
-                    processDefinitionKey, request.BusinessId);
-                throw new BusinessException($"启动流程失败: {ex.Message}", "FLOWABLE_START_FAILED");
-            }
+                    createdBy);
 
-            _logger.LogInformation(
-                "Flowable 流程启动成功: ProcessInstanceId={ProcessInstanceId}",
-                processInstance.Id);
+                // 3. 转换初始 slot 变量
+                var initConversionResult = await ConvertInitialSlotsAsync(
+                    request.InitialSlotSelections,
+                    processDefinitionKey);
 
-            // ── Step 6: 写 ES 元数据 ───────────────────────────────
-            // Flowable 启动成功后立即写 ES，若 ES 失败抛异常（不回滚 Flowable）
-            var esDocument = BuildProcessMetadataDocument(
-                processInstance, request, processDefinitionKey, createdBy);
+                // 4. 构建启动变量
+                var variables = BuildStartVariables(
+                    request,
+                    processDefinitionKey,
+                    initConversionResult.Variables);
 
-            await _esService.IndexProcessMetadataAsync(esDocument);
-
-            _logger.LogInformation(
-                "ES 元数据写入成功: ProcessInstanceId={ProcessInstanceId}",
-                processInstance.Id);
-
-            // ── Step 7: 查首任务 ───────────────────────────────────
-            // Flowable StartProcessInstance 同步返回时，首任务已创建
-            var firstTasks = await _taskService.QueryTasksAsync(new FlowableTaskQuery
-            {
-                ProcessInstanceId = processInstance.Id
-            });
-
-            var firstTask = firstTasks.FirstOrDefault();
-
-            if (firstTask == null)
-            {
-                // 启动后无任务：流程可能直接走到了 endEvent（如全自动流程）
-                // 或流程定义有问题，记录警告
-                _logger.LogWarning(
-                    "流程启动后未找到首任务，流程可能已自动完成: ProcessInstanceId={ProcessInstanceId}",
-                    processInstance.Id);
-            }
-
-            // ── Step 8: 补充首任务语义信息 ──────────────────────
-            string firstNodeSemantic = null;
-            string firstPageCode     = null;
-
-            if (firstTask != null)
-            {
+                // 5. 调用 Flowable 启动流程
+                FlowableProcessInstance processInstance;
                 try
                 {
-                    var semanticMap = await _slotConfigProvider
-                        .GetNodeSemanticMapAsync(processDefinitionKey);
-                    semanticMap.TryGetValue(firstTask.TaskDefinitionKey, out var nodeInfo);
-                    firstNodeSemantic = nodeInfo?.NodeSemantic;
-                    firstPageCode     = nodeInfo?.PageCode;
+                    processInstance = await _runtimeService.StartProcessInstanceByKeyAsync(
+                        processDefinitionKey,
+                        request.BusinessId,
+                        variables);
                 }
                 catch (Exception ex)
                 {
-                    // 语义查询失败不影响启动流程的成功响应
-                    _logger.LogWarning(ex,
-                        "查询首节点语义信息失败（不影响启动结果）: {Key}",
-                        firstTask?.TaskDefinitionKey);
+                    _logger.LogError(
+                        ex,
+                        "Flowable 启动流程失败: ProcessDefinitionKey={ProcessDefinitionKey}, BusinessId={BusinessId}",
+                        processDefinitionKey,
+                        request.BusinessId);
+
+                    throw new BusinessException(
+                        $"启动流程失败: {ex.Message}",
+                        "FLOWABLE_START_FAILED");
+                }
+
+                if (processInstance == null || string.IsNullOrWhiteSpace(processInstance.Id))
+                {
+                    _logger.LogError(
+                        "Flowable 启动流程返回空实例: ProcessDefinitionKey={ProcessDefinitionKey}, BusinessId={BusinessId}",
+                        processDefinitionKey,
+                        request.BusinessId);
+
+                    throw new BusinessException("启动流程失败：未获取到流程实例 ID");
+                }
+
+                _logger.LogInformation(
+                    "Flowable 流程启动成功: ProcessInstanceId={ProcessInstanceId}, BusinessId={BusinessId}",
+                    processInstance.Id,
+                    request.BusinessId);
+
+                // 6. 写入 ES 元数据
+                var esDocument = BuildProcessMetadataDocument(
+                    processInstance,
+                    request,
+                    processDefinitionKey,
+                    createdBy);
+
+                try
+                {
+                    await _esService.IndexProcessMetadataAsync(esDocument);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(
+                        ex,
+                        "流程启动成功但 ES 元数据写入失败: ProcessInstanceId={ProcessInstanceId}, BusinessId={BusinessId}",
+                        processInstance.Id,
+                        request.BusinessId);
+
+                    // 当前先直接抛错
+                    // 更高级的做法：这里可以考虑补偿终止 Flowable 实例，避免出现“流程已启动但 ES 无记录”的悬空状态
+                    throw new BusinessException(
+                        $"流程已启动，但写入流程元数据失败: {ex.Message}",
+                        "PROCESS_METADATA_INDEX_FAILED");
+                }
+
+                _logger.LogInformation(
+                    "ES 元数据写入成功: ProcessInstanceId={ProcessInstanceId}",
+                    processInstance.Id);
+
+                // 7. 查询首任务
+                FlowableTask firstTask = null;
+                try
+                {
+                    var firstTasks = await _taskService.QueryTasksAsync(new FlowableTaskQuery
+                    {
+                        ProcessInstanceId = processInstance.Id
+                    });
+
+                    firstTask = firstTasks?.FirstOrDefault();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(
+                        ex,
+                        "查询首任务失败（不影响启动结果）: ProcessInstanceId={ProcessInstanceId}",
+                        processInstance.Id);
+                }
+
+                if (firstTask == null)
+                {
+                    _logger.LogWarning(
+                        "流程启动后未找到首任务，流程可能已自动完成: ProcessInstanceId={ProcessInstanceId}",
+                        processInstance.Id);
+                }
+
+                // 8. 查询首节点语义
+                string firstNodeSemantic = null;
+                string firstPageCode = null;
+
+                if (firstTask != null && !string.IsNullOrWhiteSpace(firstTask.TaskDefinitionKey))
+                {
+                    try
+                    {
+                        var semanticMap = await _slotConfigProvider
+                            .GetNodeSemanticMapAsync(processDefinitionKey);
+
+                        if (semanticMap != null &&
+                            semanticMap.TryGetValue(firstTask.TaskDefinitionKey, out var nodeInfo) &&
+                            nodeInfo != null)
+                        {
+                            firstNodeSemantic = nodeInfo.NodeSemantic;
+                            firstPageCode = nodeInfo.PageCode;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(
+                            ex,
+                            "查询首节点语义信息失败（不影响启动结果）: ProcessDefinitionKey={ProcessDefinitionKey}, TaskDefinitionKey={TaskDefinitionKey}",
+                            processDefinitionKey,
+                            firstTask.TaskDefinitionKey);
+                    }
+                }
+
+                // 9. 返回启动结果
+                return new StartProcessResponse
+                {
+                    ProcessInstanceId = processInstance.Id,
+                    BusinessId = request.BusinessId,
+                    FirstTaskId = firstTask?.Id,
+                    FirstNodeSemantic = firstNodeSemantic,
+                    FirstPageCode = firstPageCode
+                };
+            }
+            finally
+            {
+                try
+                {
+                    await _distributedLockService.ReleaseAsync(lockKey, lockValue);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(
+                        ex,
+                        "释放流程启动锁失败: LockKey={LockKey}, BusinessId={BusinessId}",
+                        lockKey,
+                        request.BusinessId);
                 }
             }
-
-            return new StartProcessResponse
-            {
-                ProcessInstanceId = processInstance.Id,
-                BusinessId        = request.BusinessId,
-                FirstTaskId       = firstTask?.Id,
-                FirstNodeSemantic = firstNodeSemantic,
-                FirstPageCode     = firstPageCode
-            };
         }
-
         // ═══════════════════════════════════════════════════════════
         // TerminateProcessAsync
         // ═══════════════════════════════════════════════════════════

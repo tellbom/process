@@ -126,27 +126,13 @@ namespace FlowableWrapper.Application.Services
                 };
             }
 
-            // ── Step 4: 更新 ES status = completed ────────────────
-            // 回调触发的唯一含义是：流程走到了 endEvent，即 completed
-            // 不区分"正常完成"还是"驳回终止"——那是业务语义，不是框架关心的
-            // 业务系统如需判断审批结果，查 ProcessAuditRecord 的 action 字段
-            await _esService.UpdateProcessStatusAsync(
-                request.ProcessInstanceId,
-                "completed",
-                DateTime.UtcNow);
-
-            _logger.LogInformation(
-                "ES 流程状态更新为 completed: ProcessInstanceId={ProcessInstanceId}",
-                request.ProcessInstanceId);
-
-            // ── Step 5: 转发通知业务系统 ───────────────────────────
+            // ── Step 4: 先转发通知业务系统 ───────────────────────
+            // 只有业务系统通知成功后，才允许将 ES 状态更新为 completed。
+            // 否则一旦先写 completed，后续 Flowable 重试会被幂等直接拦截，
+            // 导致业务系统永远收不到成功通知。
             if (metadata.Callback != null
                 && !string.IsNullOrWhiteSpace(metadata.Callback.Url))
             {
-                // 失败时抛异常 → Controller 返回 500 → Flowable 重试
-                // 下次重试时幂等校验拦截（status 已是 completed），直接返回 200
-                // 但业务系统通知尚未成功，需运维介入
-                // TODO: 可考虑引入独立重试队列处理业务系统通知，与 Flowable 重试解耦
                 await CallBusinessSystemAsync(metadata);
             }
             else
@@ -155,6 +141,19 @@ namespace FlowableWrapper.Application.Services
                     "未配置业务系统回调 URL，跳过转发: BusinessId={BusinessId}",
                     metadata.BusinessId);
             }
+
+            // ── Step 5: 业务系统通知成功后，再更新 ES status = completed ──
+            // 回调触发的唯一含义是：流程走到了 endEvent，即 completed。
+            // 不区分"正常完成"还是"驳回终止"——那是业务语义，不是框架关心的。
+            // 业务系统如需判断审批结果，查 ProcessAuditRecord 的 action 字段。
+            await _esService.UpdateProcessStatusAsync(
+                request.ProcessInstanceId,
+                "completed",
+                DateTime.UtcNow);
+
+            _logger.LogInformation(
+                "回调处理完成，ES 流程状态更新为 completed: ProcessInstanceId={ProcessInstanceId}",
+                request.ProcessInstanceId);
 
             return new FlowableCallbackResponse
             {

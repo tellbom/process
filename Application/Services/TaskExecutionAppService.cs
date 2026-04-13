@@ -500,10 +500,16 @@ namespace FlowableWrapper.Application.Services
                     $"操作人 [{operatorId}] 在此流程下没有待办任务");
 
             if (matchedTasks.Count > 1)
-                _logger.LogWarning(
+            {
+                _logger.LogError(
                     "操作人 [{OperatorId}] 在流程 [{ProcessInstanceId}] 下找到 {Count} 个候选任务，" +
                     "取第一个处理。建议并行场景下前端传入 taskId 明确指定",
                     operatorId, processInstanceId, matchedTasks.Count);
+                throw new BusinessException(
+                       $"操作人 [{operatorId}] 在流程 [{processInstanceId}] 下找到 {matchedTasks.Count} 个候选任务，" +
+                    "取第一个处理。并行场景下前端传入 taskId 必须明确指定");
+            }
+            
 
             return matchedTasks.First();
         }
