@@ -56,11 +56,18 @@ namespace FlowableWrapper.Infrastructure.Flowable
             return new FlowableProcessInstance
             {
                 Id = result.GetProperty("id").GetString(),
-                ProcessDefinitionId = result.GetProperty("processDefinitionId").GetString(),
-                ProcessDefinitionKey = result.GetProperty("processDefinitionKey").GetString(),
+                ProcessDefinitionId = result.TryGetProperty("processDefinitionId", out var pdId)
+                    ? pdId.GetString() : null,
+                // Flowable REST 的启动流程响应不含顶层 processDefinitionKey 字段
+                // 优先读 processDefinitionKey；若无，从 processDefinitionId（key:version:uuid）中解析
+                ProcessDefinitionKey = result.TryGetProperty("processDefinitionKey", out var pdKey)
+                    ? pdKey.GetString()
+                    : ParseKeyFromDefinitionId(
+                        result.TryGetProperty("processDefinitionId", out var pdId2)
+                            ? pdId2.GetString() : null),
                 BusinessKey = result.TryGetProperty("businessKey", out var bk)
-                                        ? bk.GetString() : null,
-                IsEnded = result.GetProperty("ended").GetBoolean()
+                    ? bk.GetString() : null,
+                IsEnded = result.TryGetProperty("ended", out var ended) && ended.GetBoolean()
             };
         }
 
@@ -71,16 +78,21 @@ namespace FlowableWrapper.Infrastructure.Flowable
             var response = await _httpClient.GetAsync(url);
             await EnsureSuccessAsync(response, $"runtime/process-instances/{processInstanceId}");
 
-            var result = await response.Content.ReadFromJsonAsync<JsonElement>();
+            var result2 = await response.Content.ReadFromJsonAsync<JsonElement>();
 
             return new FlowableProcessInstance
             {
-                Id = result.GetProperty("id").GetString(),
-                ProcessDefinitionId = result.GetProperty("processDefinitionId").GetString(),
-                ProcessDefinitionKey = result.GetProperty("processDefinitionKey").GetString(),
-                BusinessKey = result.TryGetProperty("businessKey", out var bk)
-                                        ? bk.GetString() : null,
-                IsEnded = result.GetProperty("ended").GetBoolean()
+                Id = result2.GetProperty("id").GetString(),
+                ProcessDefinitionId = result2.TryGetProperty("processDefinitionId", out var pdId3)
+                    ? pdId3.GetString() : null,
+                ProcessDefinitionKey = result2.TryGetProperty("processDefinitionKey", out var pdKey2)
+                    ? pdKey2.GetString()
+                    : ParseKeyFromDefinitionId(
+                        result2.TryGetProperty("processDefinitionId", out var pdId4)
+                            ? pdId4.GetString() : null),
+                BusinessKey = result2.TryGetProperty("businessKey", out var bk2)
+                    ? bk2.GetString() : null,
+                IsEnded = result2.TryGetProperty("ended", out var ended2) && ended2.GetBoolean()
             };
         }
 
@@ -189,6 +201,20 @@ namespace FlowableWrapper.Infrastructure.Flowable
             var body = await response.Content.ReadAsStringAsync();
             throw new FlowableApiException(
                 $"Flowable API 调用失败: {(int)response.StatusCode} {path} — {body}", (int)response.StatusCode);
+        }
+
+        /// <summary>
+        /// 从 processDefinitionId（格式：key:version:uuid）中解析出 key
+        /// Flowable REST 启动流程响应不含顶层 processDefinitionKey 字段，需从 ID 中提取
+        /// 示例：personnel_selection_collection:1:abc123 → personnel_selection_collection
+        /// </summary>
+        private static string ParseKeyFromDefinitionId(string processDefinitionId)
+        {
+            if (string.IsNullOrWhiteSpace(processDefinitionId)) return null;
+            var colonIndex = processDefinitionId.IndexOf(':');
+            return colonIndex > 0
+                ? processDefinitionId.Substring(0, colonIndex)
+                : processDefinitionId;
         }
     }
 }

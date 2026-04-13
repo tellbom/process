@@ -198,9 +198,7 @@ namespace FlowableWrapper.Application.Services
                     BusinessType = meta.BusinessType,
                     NodeSemantic = nodeInfo?.NodeSemantic,
                     PageCode = nodeInfo?.PageCode,
-                    // RequiredSlots 已移除：Slot 是流程中心内部契约，不对前端暴露
-                    // 前端通过 pageCode → COMPONENT_REGISTRY 找到表单组件，
-                    // 表单组件自己知道要选哪些人
+                    RequiredSlots = nodeInfo?.Slots ?? new List<SlotDefinition>(),
                     IsAfterConvergencePoint = nodeInfo?.IsConvergencePoint ?? false,
                     CreateTime = task.CreateTime,
                     Priority = task.Priority

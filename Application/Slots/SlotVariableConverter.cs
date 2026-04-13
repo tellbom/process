@@ -139,9 +139,13 @@ namespace FlowableWrapper.Application.Slots
         /// <summary>
         /// 评估条件表达式
         /// 支持格式：
-        ///   "variableName=value"       → 精确匹配
+        ///   "variableName=value"       → 精确匹配（单等号）
+        ///   "variableName==value"      → 精确匹配（双等号，与单等号等价）
         ///   "variableName=true/false"  → 布尔匹配
         ///   "!variableName=value"      → 取反匹配（前缀 ! 表示不等于）
+        ///
+        /// 注意：businessVariables 中的值可能是 JsonElement（来自 HTTP 请求体反序列化），
+        ///       需主动解包后再做比较，不能直接依赖 ToString()
         /// </summary>
         private bool EvaluateCondition(
             string condition,
@@ -154,18 +158,33 @@ namespace FlowableWrapper.Application.Slots
                 bool negate = condition.StartsWith("!");
                 var expr = negate ? condition.Substring(1) : condition;
 
-                var eqIdx = expr.IndexOf('=');
+                // 同时支持 == 和 = 作为比较运算符
+                // 优先匹配 ==，避免 IndexOf('=') 把 == 拆成 varName="" 和 "=value"
+                int eqIdx;
+                int eqLen;
+                var doubleEq = expr.IndexOf("==", StringComparison.Ordinal);
+                if (doubleEq >= 0)
+                {
+                    eqIdx = doubleEq;
+                    eqLen = 2;
+                }
+                else
+                {
+                    eqIdx = expr.IndexOf('=');
+                    eqLen = 1;
+                }
+
                 if (eqIdx < 0)
                 {
                     // 仅变量名：判断是否存在且非空
                     var exists = variables.TryGetValue(expr.Trim(), out var v)
                                  && v != null
-                                 && !string.IsNullOrWhiteSpace(v.ToString());
+                                 && !string.IsNullOrWhiteSpace(UnwrapValue(v));
                     return negate ? !exists : exists;
                 }
 
                 var varName = expr.Substring(0, eqIdx).Trim();
-                var expectedRaw = expr.Substring(eqIdx + 1).Trim();
+                var expectedRaw = expr.Substring(eqIdx + eqLen).Trim();
 
                 if (!variables.TryGetValue(varName, out var actual))
                 {
@@ -173,7 +192,7 @@ namespace FlowableWrapper.Application.Slots
                     return negate;
                 }
 
-                var actualStr = actual?.ToString() ?? "";
+                var actualStr = UnwrapValue(actual);
                 bool matched;
 
                 // 布尔比较（不区分大小写）
@@ -189,6 +208,10 @@ namespace FlowableWrapper.Application.Slots
                         StringComparison.OrdinalIgnoreCase);
                 }
 
+                _logger.LogDebug(
+                    "条件求值: [{Condition}] varName={VarName} actual={Actual} expected={Expected} matched={Matched}",
+                    condition, varName, actualStr, expectedRaw, negate ? !matched : matched);
+
                 return negate ? !matched : matched;
             }
             catch (Exception ex)
@@ -196,6 +219,35 @@ namespace FlowableWrapper.Application.Slots
                 _logger.LogWarning(ex, "条件表达式解析失败: {Condition}，默认视为条件满足", condition);
                 return true;
             }
+        }
+
+        /// <summary>
+        /// 将变量值解包为字符串，正确处理 JsonElement 类型
+        /// businessVariables 经过 HTTP 请求体反序列化后，所有值均为 JsonElement，
+        /// 直接调用 ToString() 对布尔值返回 "True"/"False"（System 格式），
+        /// 而 JsonElement.GetBoolean().ToString() 返回 "True"，bool.TryParse 虽不区分大小写
+        /// 但 GetRawText() 返回 "true"/"false"（JSON 格式），更接近预期
+        /// </summary>
+        private static string UnwrapValue(object value)
+        {
+            if (value == null) return "";
+
+            if (value is System.Text.Json.JsonElement je)
+            {
+                return je.ValueKind switch
+                {
+                    System.Text.Json.JsonValueKind.True => "true",
+                    System.Text.Json.JsonValueKind.False => "false",
+                    System.Text.Json.JsonValueKind.Null => "",
+                    System.Text.Json.JsonValueKind.String => je.GetString() ?? "",
+                    _ => je.GetRawText()
+                };
+            }
+
+            // 原生 bool 也统一转为小写，与 JSON 格式保持一致
+            if (value is bool b) return b ? "true" : "false";
+
+            return value.ToString() ?? "";
         }
     }
 }

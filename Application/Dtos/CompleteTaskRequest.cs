@@ -27,7 +27,7 @@ namespace FlowableWrapper.Application.Dtos
         /// 指定任务 ID（可选）
         /// 并行场景同一用户有多个任务时必填，从待办列表的 taskId 字段取值
         /// </summary>
-        public string TaskId { get; set; }
+        public string? TaskId { get; set; }
 
         /// <summary>操作人工号，不传则读 Header X-User-Id</summary>
         public string EmployeeId { get; set; }
@@ -41,13 +41,13 @@ namespace FlowableWrapper.Application.Dtos
         /// 必须是当前节点 CanReject=true 且 RejectOptions 中存在的 rejectCode
         /// 示例：TO_STARTER / TO_DEPT_HEAD / TO_DEPT_APPROVE
         /// </summary>
-        public string RejectCode { get; set; }
+        public string? RejectCode { get; set; }
 
         /// <summary>驳回原因（Action=Reject 时必填）</summary>
-        public string RejectReason { get; set; }
+        public string? RejectReason { get; set; }
 
         /// <summary>审批意见（可选，写入审计记录）</summary>
-        public string Comment { get; set; }
+        public string? Comment { get; set; }
 
         /// <summary>
         /// 下一节点选人（Action=Approve 且下一节点有 Slot 时填写）
