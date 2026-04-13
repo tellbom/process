@@ -181,6 +181,13 @@ namespace FlowableWrapper.Domain.ElasticSearch
         /// <summary>驳回模式代码，action=reject 时有值</summary>
         public string RejectCode { get; set; }
 
+        /// <summary>
+        /// 驳回目标节点 Key，action=reject 时写入
+        /// 对应目标节点的 TaskDefinitionKey（BPMN userTask id）
+        /// ES 索引为动态映射，存量文档该字段为 null，由 BuildRejectHistory 兼容处理
+        /// </summary>
+        public string RejectTargetNodeKey { get; set; }
+
         public DateTime OperatedAt { get; set; }
 
         public List<SlotSelectionRecord> SlotSelections { get; set; } = new();

@@ -28,10 +28,10 @@ namespace FlowableWrapper.Application.Services
     /// </summary>
     public class ProcessFlowRenderAppService
     {
-        private static readonly XNamespace BpmnNs    = "http://www.omg.org/spec/BPMN/20100524/MODEL";
-        private static readonly XNamespace BpmnDiNs  = "http://www.omg.org/spec/BPMN/20100524/DI";
-        private static readonly XNamespace DcNs      = "http://www.omg.org/spec/DD/20100524/DC";
-        private static readonly XNamespace DiNs      = "http://www.omg.org/spec/DD/20100524/DI";
+        private static readonly XNamespace BpmnNs = "http://www.omg.org/spec/BPMN/20100524/MODEL";
+        private static readonly XNamespace BpmnDiNs = "http://www.omg.org/spec/BPMN/20100524/DI";
+        private static readonly XNamespace DcNs = "http://www.omg.org/spec/DD/20100524/DC";
+        private static readonly XNamespace DiNs = "http://www.omg.org/spec/DD/20100524/DI";
         private static readonly XNamespace FlowableNs = "http://flowable.org/bpmn";
 
         private readonly IElasticSearchService _esService;
@@ -49,12 +49,12 @@ namespace FlowableWrapper.Application.Services
             IProcessSlotConfigProvider slotConfigProvider,
             ILogger<ProcessFlowRenderAppService> logger)
         {
-            _esService          = esService;
-            _taskService        = taskService;
-            _historyService     = historyService;
-            _repositoryService  = repositoryService;
+            _esService = esService;
+            _taskService = taskService;
+            _historyService = historyService;
+            _repositoryService = repositoryService;
             _slotConfigProvider = slotConfigProvider;
-            _logger             = logger;
+            _logger = logger;
         }
 
         // ═══════════════════════════════════════════════════════════
@@ -89,8 +89,8 @@ namespace FlowableWrapper.Application.Services
 
             await Task.WhenAll(activeTasksTask, auditRecordsTask, historicTasksTask);
 
-            var activeTasks   = activeTasksTask.Result;
-            var auditRecords  = auditRecordsTask.Result;
+            var activeTasks = activeTasksTask.Result;
+            var auditRecords = auditRecordsTask.Result;
             var historicTasks = historicTasksTask.Result;
 
             // ── 获取 BPMN XML ──────────────────────────────────────
@@ -142,21 +142,21 @@ namespace FlowableWrapper.Application.Services
 
             return new ProcessFlowRenderDto
             {
-                BusinessId           = metadata.BusinessId,
-                ProcessInstanceId    = metadata.ProcessInstanceId,
+                BusinessId = metadata.BusinessId,
+                ProcessInstanceId = metadata.ProcessInstanceId,
                 ProcessDefinitionKey = metadata.ProcessDefinitionKey,
-                BusinessType         = metadata.BusinessType,
-                Status               = metadata.Status,
-                CreatedBy            = metadata.CreatedBy,
-                CreatedTime          = metadata.CreatedTime,
-                CompletedTime        = metadata.CompletedTime,
-                HasRejectHistory     = hasRejectHistory,
-                WalkedNodeIds        = walkedNodeIds,
-                Nodes                = nodes,
-                Edges                = edges,
-                ActiveTasks          = activeTaskRenders,
-                CompletedRecords     = completedRecords,
-                RejectHistory        = rejectHistory
+                BusinessType = metadata.BusinessType,
+                Status = metadata.Status,
+                CreatedBy = metadata.CreatedBy,
+                CreatedTime = metadata.CreatedTime,
+                CompletedTime = metadata.CompletedTime,
+                HasRejectHistory = hasRejectHistory,
+                WalkedNodeIds = walkedNodeIds,
+                Nodes = nodes,
+                Edges = edges,
+                ActiveTasks = activeTaskRenders,
+                CompletedRecords = completedRecords,
+                RejectHistory = rejectHistory
             };
         }
 
@@ -223,8 +223,8 @@ namespace FlowableWrapper.Application.Services
 
             foreach (var element in process.Elements())
             {
-                var id       = element.Attribute("id")?.Value;
-                var name     = element.Attribute("name")?.Value ?? "";
+                var id = element.Attribute("id")?.Value;
+                var name = element.Attribute("name")?.Value ?? "";
                 var nodeType = element.Name.LocalName;
 
                 if (string.IsNullOrWhiteSpace(id)) continue;
@@ -232,7 +232,7 @@ namespace FlowableWrapper.Application.Services
                 // 只处理可渲染的节点类型
                 if (!IsRenderableNode(nodeType)) continue;
 
-                var state    = DetermineNodeState(id, nodeType,
+                var state = DetermineNodeState(id, nodeType,
                     completedNodeIds, activeNodeIds, rejectedNodeIds);
 
                 // Assignees
@@ -249,17 +249,17 @@ namespace FlowableWrapper.Application.Services
 
                 result.Add(new FlowNodeDto
                 {
-                    Id              = id,
-                    Label           = name,
-                    NodeType        = nodeType,
-                    State           = state,
-                    Assignees       = assignees,
-                    CompletedAt     = completedAtMap.GetValueOrDefault(id),
+                    Id = id,
+                    Label = name,
+                    NodeType = nodeType,
+                    State = state,
+                    Assignees = assignees,
+                    CompletedAt = completedAtMap.GetValueOrDefault(id),
                     IsMultiInstance = isMultiInstance,
-                    X               = coord?.X,
-                    Y               = coord?.Y,
-                    Width           = coord?.Width,
-                    Height          = coord?.Height
+                    X = coord?.X,
+                    Y = coord?.Y,
+                    Width = coord?.Width,
+                    Height = coord?.Height
                 });
             }
 
@@ -285,7 +285,7 @@ namespace FlowableWrapper.Application.Services
             }
 
             // userTask 节点
-            if (activeNodeIds.Contains(nodeId))   return "active";
+            if (activeNodeIds.Contains(nodeId)) return "active";
             if (rejectedNodeIds.Contains(nodeId)) return "rejected";
             if (completedNodeIds.Contains(nodeId)) return "completed";
             return "pending";
@@ -326,9 +326,9 @@ namespace FlowableWrapper.Application.Services
 
             foreach (var sf in process.Elements(BpmnNs + "sequenceFlow"))
             {
-                var id        = sf.Attribute("id")?.Value    ?? Guid.NewGuid().ToString();
-                var source    = sf.Attribute("sourceRef")?.Value;
-                var target    = sf.Attribute("targetRef")?.Value;
+                var id = sf.Attribute("id")?.Value ?? Guid.NewGuid().ToString();
+                var source = sf.Attribute("sourceRef")?.Value;
+                var target = sf.Attribute("targetRef")?.Value;
                 var branchLabel = GetFlowableField(sf, "branchLabel");
 
                 if (string.IsNullOrWhiteSpace(source) || string.IsNullOrWhiteSpace(target))
@@ -339,11 +339,11 @@ namespace FlowableWrapper.Application.Services
 
                 result.Add(new FlowEdgeDto
                 {
-                    Id     = id,
+                    Id = id,
                     Source = source,
                     Target = target,
-                    State  = state,
-                    Label  = branchLabel
+                    State = state,
+                    Label = branchLabel
                 });
             }
 
@@ -363,7 +363,7 @@ namespace FlowableWrapper.Application.Services
                 return "rejected";
 
             if (completedNodeIds.Contains(source)) return "walked";
-            if (activeNodeIds.Contains(source))    return "active";
+            if (activeNodeIds.Contains(source)) return "active";
             return "pending";
         }
 
@@ -398,12 +398,12 @@ namespace FlowableWrapper.Application.Services
                 var waitingSeconds = (long)(DateTime.UtcNow - task.CreateTime).TotalSeconds;
                 result.Add(new ActiveTaskRenderDto
                 {
-                    TaskId         = task.Id,
-                    NodeId         = task.TaskDefinitionKey,
-                    NodeName       = task.Name,
-                    Assignee       = task.Assignee,
+                    TaskId = task.Id,
+                    NodeId = task.TaskDefinitionKey,
+                    NodeName = task.Name,
+                    Assignee = task.Assignee,
                     CandidateUsers = candidates,
-                    CreatedAt      = task.CreateTime,
+                    CreatedAt = task.CreateTime,
                     WaitingSeconds = Math.Max(0, waitingSeconds)
                 });
             }
@@ -439,8 +439,8 @@ namespace FlowableWrapper.Application.Services
 
                 // 从历史任务找时间
                 DateTime startTime = record.OperatedAt;
-                DateTime endTime   = record.OperatedAt;
-                long duration      = 0;
+                DateTime endTime = record.OperatedAt;
+                long duration = 0;
 
                 if (historicMap.TryGetValue(record.TaskDefinitionKey, out var hList))
                 {
@@ -449,8 +449,8 @@ namespace FlowableWrapper.Application.Services
                     if (matched != null)
                     {
                         startTime = matched.StartTime;
-                        endTime   = matched.EndTime!.Value;
-                        duration  = matched.DurationInMillis.HasValue
+                        endTime = matched.EndTime!.Value;
+                        duration = matched.DurationInMillis.HasValue
                             ? matched.DurationInMillis.Value / 1000
                             : (long)(endTime - startTime).TotalSeconds;
                     }
@@ -465,17 +465,17 @@ namespace FlowableWrapper.Application.Services
 
                 result.Add(new CompletedRecordRenderDto
                 {
-                    TaskId          = record.TaskId,
-                    NodeId          = record.TaskDefinitionKey,
-                    NodeName        = record.NodeSemantic ?? record.TaskDefinitionKey,
-                    OperatorId      = record.OperatorId,
-                    StartTime       = startTime,
-                    EndTime         = endTime,
+                    TaskId = record.TaskId,
+                    NodeId = record.TaskDefinitionKey,
+                    NodeName = record.NodeSemantic ?? record.TaskDefinitionKey,
+                    OperatorId = record.OperatorId,
+                    StartTime = startTime,
+                    EndTime = endTime,
                     DurationSeconds = duration,
-                    Outcome         = outcome,
-                    RejectReason    = record.RejectReason,
-                    Comment         = record.Comment,
-                    Round           = round
+                    Outcome = outcome,
+                    RejectReason = record.RejectReason,
+                    Comment = record.Comment,
+                    Round = round
                 });
             }
 
@@ -493,7 +493,8 @@ namespace FlowableWrapper.Application.Services
             var nodeNameMap = nodes.ToDictionary(n => n.Id, n => n.Label);
 
             // 驳回记录：取 action=reject 的审计记录
-            // targetNode 通过相邻记录推断（驳回后下一条记录的节点即为回退目标）
+            // targetNode 优先从审计记录的 RejectTargetNodeKey 字段直接读取（P2 新增）
+            // 兜底兼容：旧记录无此字段时通过时序推断（存量数据不受影响）
             var rejectRecords = auditRecords
                 .Where(r => r.Action == "reject")
                 .OrderBy(r => r.OperatedAt)
@@ -503,27 +504,39 @@ namespace FlowableWrapper.Application.Services
 
             foreach (var rr in rejectRecords)
             {
-                // 找驳回后的下一条审计记录，其节点即为回退目标
-                var nextRecord = auditRecords
-                    .Where(r => r.OperatedAt > rr.OperatedAt)
-                    .OrderBy(r => r.OperatedAt)
-                    .FirstOrDefault();
+                // 优先读审计记录中直接存储的目标节点 Key（新字段，P2 写入）
+                // 兼容兜底：旧记录 RejectTargetNodeKey 为 null 时，回退到时序推断，存量数据不受影响
+                string targetNodeId;
+                if (!string.IsNullOrWhiteSpace(rr.RejectTargetNodeKey))
+                {
+                    targetNodeId = rr.RejectTargetNodeKey;
+                }
+                else
+                {
+                    // 旧逻辑：找驳回后的下一条审计记录，其节点即为回退目标
+                    // 缺陷：驳回后流程立即终止、或同毫秒并发时可能取到错误记录
+                    // 仅作存量数据兜底，新记录不走此分支
+                    var nextRecord = auditRecords
+                        .Where(r => r.OperatedAt > rr.OperatedAt)
+                        .OrderBy(r => r.OperatedAt)
+                        .FirstOrDefault();
+                    targetNodeId = nextRecord?.TaskDefinitionKey ?? "";
+                }
 
-                var targetNodeId   = nextRecord?.TaskDefinitionKey ?? "";
                 var targetNodeName = nodeNameMap.GetValueOrDefault(targetNodeId, targetNodeId);
 
                 nodeNameMap.TryGetValue(rr.TaskDefinitionKey, out var rejectNodeName);
 
                 result.Add(new RejectHistoryRenderDto
                 {
-                    RejectId       = rr.Id,
-                    RejectBy       = rr.OperatorId,
-                    RejectNodeId   = rr.TaskDefinitionKey,
+                    RejectId = rr.Id,
+                    RejectBy = rr.OperatorId,
+                    RejectNodeId = rr.TaskDefinitionKey,
                     RejectNodeName = rejectNodeName ?? rr.TaskDefinitionKey,
-                    TargetNodeId   = targetNodeId,
+                    TargetNodeId = targetNodeId,
                     TargetNodeName = targetNodeName,
-                    RejectReason   = rr.RejectReason,
-                    RejectTime     = rr.OperatedAt
+                    RejectReason = rr.RejectReason,
+                    RejectTime = rr.OperatedAt
                 });
             }
 
@@ -553,9 +566,9 @@ namespace FlowableWrapper.Application.Services
                 var bounds = shape.Element(DcNs + "Bounds");
                 if (bounds == null) continue;
 
-                if (double.TryParse(bounds.Attribute("x")?.Value,      out var x) &&
-                    double.TryParse(bounds.Attribute("y")?.Value,      out var y) &&
-                    double.TryParse(bounds.Attribute("width")?.Value,  out var w) &&
+                if (double.TryParse(bounds.Attribute("x")?.Value, out var x) &&
+                    double.TryParse(bounds.Attribute("y")?.Value, out var y) &&
+                    double.TryParse(bounds.Attribute("width")?.Value, out var w) &&
                     double.TryParse(bounds.Attribute("height")?.Value, out var h))
                 {
                     result[bpmnElement] = new DiCoord(x, y, w, h);

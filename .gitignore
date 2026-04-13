@@ -1,5 +1,5 @@
 ﻿# VSCode
-.vscode/
+.vs/
 
 # Build 输出
 bin/

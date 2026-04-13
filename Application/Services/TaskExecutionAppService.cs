@@ -332,12 +332,29 @@ namespace FlowableWrapper.Application.Services
                     $"未找到 rejectCode [{request.RejectCode}] 对应的目标节点",
                     "REJECT_TARGET_NOT_FOUND");
 
-            // 补强3：查所有活动任务，检查多实例并收集取消列表
+            // Step 3: 查当前流程实例所有活动任务，整轮撤销后跳转目标节点
+            //
+            // 设计说明：
+            //   驳回语义 = 本轮审批整体作废，所有在途节点全部取消，回到目标节点重新开始。
+            //   cancelActivityIds 传 TaskDefinitionKey（activityId 维度，非 task instance id）：
+            //     · 普通节点  → 一 key 对应一 task，正常取消
+            //     · 多实例节点（会签/或签）→ 一 key 对应多 task instance，Flowable 统一取消所有实例
+            //     · 并行分支  → 多个不同 key，全部收入，整轮清除
+            //   Flowable 7.2 已验证：cancelActivityIds 传 activityId 可取消多实例节点所有实例。
             var allActiveTasks = await _taskService.QueryTasksAsync(new FlowableTaskQuery
             {
                 ProcessInstanceId = metadata.ProcessInstanceId
             });
 
+            if (!allActiveTasks.Any())
+                throw new BusinessException("当前流程下无活动任务，流程可能已结束");
+
+            var cancelActivityIds = allActiveTasks
+                .Select(t => t.TaskDefinitionKey)
+                .Distinct()
+                .ToList();
+
+            // 诊断日志：区分多实例 / 并行 / 普通场景，便于排查
             var multiInstanceKeys = allActiveTasks
                 .GroupBy(t => t.TaskDefinitionKey)
                 .Where(g => g.Count() > 1)
@@ -345,18 +362,14 @@ namespace FlowableWrapper.Application.Services
                 .ToList();
 
             if (multiInstanceKeys.Any())
-                throw new BusinessException(
-                    $"当前流程存在多实例节点 [{string.Join("、", multiInstanceKeys)}]，禁止驳回跳转",
-                    "REJECT_MULTI_INSTANCE_FORBIDDEN");
-
-            var cancelActivityIds = allActiveTasks
-                .Select(t => t.TaskDefinitionKey)
-                .Distinct()
-                .ToList();
-
-            if (cancelActivityIds.Count > 1)
                 _logger.LogInformation(
-                    "并行场景驳回，取消 {Count} 个节点: [{Nodes}]",
+                    "驳回整轮撤销，包含多实例节点 [{MultiNodes}]，共取消 {Count} 个 activityId: [{AllNodes}]",
+                    string.Join("、", multiInstanceKeys),
+                    cancelActivityIds.Count,
+                    string.Join("、", cancelActivityIds));
+            else if (cancelActivityIds.Count > 1)
+                _logger.LogInformation(
+                    "驳回整轮撤销（并行分支），共取消 {Count} 个节点: [{Nodes}]",
                     cancelActivityIds.Count, string.Join("、", cancelActivityIds));
 
             _logger.LogInformation(
@@ -375,7 +388,8 @@ namespace FlowableWrapper.Application.Services
 
             await WriteAuditRecordSafeAsync(
                 metadata, currentTask, request, operatorId,
-                new List<SlotSelectionSnapshot>());
+                new List<SlotSelectionSnapshot>(),
+                targetNode.TaskDefinitionKey);
 
             return new CompleteTaskResponse
             {
@@ -509,7 +523,7 @@ namespace FlowableWrapper.Application.Services
                        $"操作人 [{operatorId}] 在流程 [{processInstanceId}] 下找到 {matchedTasks.Count} 个候选任务，" +
                     "取第一个处理。并行场景下前端传入 taskId 必须明确指定");
             }
-            
+
 
             return matchedTasks.First();
         }
@@ -519,7 +533,8 @@ namespace FlowableWrapper.Application.Services
             FlowableTask task,
             CompleteTaskRequest request,
             string operatorId,
-            List<SlotSelectionSnapshot> slotSnapshots)
+            List<SlotSelectionSnapshot> slotSnapshots,
+            string rejectTargetNodeKey = null)
         {
             try
             {
@@ -548,6 +563,7 @@ namespace FlowableWrapper.Application.Services
                     Comment = request.Comment,
                     RejectReason = request.RejectReason,
                     RejectCode = request.RejectCode,
+                    RejectTargetNodeKey = rejectTargetNodeKey,
                     OperatedAt = DateTime.UtcNow,
                     SlotSelections = slotSnapshots.Select(s => new SlotSelectionRecord
                     {
