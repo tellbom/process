@@ -172,6 +172,12 @@ namespace FlowableWrapper.Domain.ElasticSearch
         public string TaskDefinitionKey { get; set; }
         public string NodeSemantic { get; set; }
 
+        /// <summary>
+        /// 节点页面编码快照，写入时从 NodeSemanticInfo.PageCode 取值固化
+        /// 记录操作发生时的表单组件路径，不随后续部署变更而改变
+        /// </summary>
+        public string PageCode { get; set; }
+
         /// <summary>approve / reject</summary>
         public string Action { get; set; }
         public string OperatorId { get; set; }

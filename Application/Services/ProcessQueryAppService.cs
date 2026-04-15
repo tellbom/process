@@ -44,10 +44,10 @@ namespace FlowableWrapper.Application.Services
             IProcessSlotConfigProvider slotConfigProvider,
             ILogger<ProcessQueryAppService> logger)
         {
-            _taskService         = taskService;
-            _esService           = esService;
-            _slotConfigProvider  = slotConfigProvider;
-            _logger              = logger;
+            _taskService = taskService;
+            _esService = esService;
+            _slotConfigProvider = slotConfigProvider;
+            _logger = logger;
         }
 
         // ═══════════════════════════════════════════════════════════
@@ -84,8 +84,8 @@ namespace FlowableWrapper.Application.Services
 
             await Task.WhenAll(currentTasksTask, auditRecordsTask);
 
-            var currentTasks  = currentTasksTask.Result;
-            var auditRecords  = auditRecordsTask.Result;
+            var currentTasks = currentTasksTask.Result;
+            var auditRecords = auditRecordsTask.Result;
 
             // ── 当前节点：补充 nodeSemantic / pageCode / candidateUsers ──
             var currentNodes = await BuildCurrentNodesAsync(
@@ -96,16 +96,16 @@ namespace FlowableWrapper.Application.Services
 
             return new ProcessProgressDto
             {
-                BusinessId           = metadata.BusinessId,
-                ProcessInstanceId    = metadata.ProcessInstanceId,
+                BusinessId = metadata.BusinessId,
+                ProcessInstanceId = metadata.ProcessInstanceId,
                 ProcessDefinitionKey = metadata.ProcessDefinitionKey,
-                BusinessType         = metadata.BusinessType,
-                Status               = metadata.Status,
-                CreatedBy            = metadata.CreatedBy,
-                CreatedTime          = metadata.CreatedTime,
-                CompletedTime        = metadata.CompletedTime,
-                CurrentNodes         = currentNodes,
-                AuditHistory         = auditHistory
+                BusinessType = metadata.BusinessType,
+                Status = metadata.Status,
+                CreatedBy = metadata.CreatedBy,
+                CreatedTime = metadata.CreatedTime,
+                CompletedTime = metadata.CompletedTime,
+                CurrentNodes = currentNodes,
+                AuditHistory = auditHistory
             };
         }
 
@@ -145,7 +145,7 @@ namespace FlowableWrapper.Application.Services
 
             // PageSize 上限保护
             if (request.PageSize > 100) request.PageSize = 100;
-            if (request.PageSize < 1)  request.PageSize = 20;
+            if (request.PageSize < 1) request.PageSize = 20;
             if (request.PageIndex < 1) request.PageIndex = 1;
 
             var (items, total) = await _esService.QueryProcessListAsync(request);
@@ -154,18 +154,18 @@ namespace FlowableWrapper.Application.Services
             {
                 Items = items.Select(m => new ProcessListItemDto
                 {
-                    ProcessInstanceId    = m.ProcessInstanceId,
-                    BusinessId           = m.BusinessId,
-                    BusinessType         = m.BusinessType,
+                    ProcessInstanceId = m.ProcessInstanceId,
+                    BusinessId = m.BusinessId,
+                    BusinessType = m.BusinessType,
                     ProcessDefinitionKey = m.ProcessDefinitionKey,
-                    Status               = m.Status,
-                    CreatedBy            = m.CreatedBy,
-                    CreatedTime          = m.CreatedTime,
-                    CompletedTime        = m.CompletedTime
+                    Status = m.Status,
+                    CreatedBy = m.CreatedBy,
+                    CreatedTime = m.CreatedTime,
+                    CompletedTime = m.CompletedTime
                 }).ToList(),
-                Total     = total,
+                Total = total,
                 PageIndex = request.PageIndex,
-                PageSize  = request.PageSize
+                PageSize = request.PageSize
             };
         }
 
@@ -195,7 +195,7 @@ namespace FlowableWrapper.Application.Services
                     {
                         BusinessId = businessId,
                         PageIndex = 1,
-                        PageSize  = 1
+                        PageSize = 1
                     });
 
                 // 按 businessId 精确匹配
@@ -209,14 +209,14 @@ namespace FlowableWrapper.Application.Services
 
             return new ProcessListItemDto
             {
-                ProcessInstanceId    = metadata.ProcessInstanceId,
-                BusinessId           = metadata.BusinessId,
-                BusinessType         = metadata.BusinessType,
+                ProcessInstanceId = metadata.ProcessInstanceId,
+                BusinessId = metadata.BusinessId,
+                BusinessType = metadata.BusinessType,
                 ProcessDefinitionKey = metadata.ProcessDefinitionKey,
-                Status               = metadata.Status,
-                CreatedBy            = metadata.CreatedBy,
-                CreatedTime          = metadata.CreatedTime,
-                CompletedTime        = metadata.CompletedTime
+                Status = metadata.Status,
+                CreatedBy = metadata.CreatedBy,
+                CreatedTime = metadata.CreatedTime,
+                CompletedTime = metadata.CompletedTime
             };
         }
 
@@ -302,14 +302,14 @@ namespace FlowableWrapper.Application.Services
 
                 return new CurrentNodeDto
                 {
-                    TaskId         = task.Id,
-                    NodeId         = task.TaskDefinitionKey,
-                    NodeName       = task.Name,
-                    NodeSemantic   = nodeInfo?.NodeSemantic,
-                    PageCode       = nodeInfo?.PageCode,
-                    Assignee       = task.Assignee,
+                    TaskId = task.Id,
+                    NodeId = task.TaskDefinitionKey,
+                    NodeName = task.Name,
+                    NodeSemantic = nodeInfo?.NodeSemantic,
+                    PageCode = nodeInfo?.PageCode,
+                    Assignee = task.Assignee,
                     CandidateUsers = candidates,
-                    CreateTime     = task.CreateTime
+                    CreateTime = task.CreateTime
                 };
             }).ToList();
         }
@@ -322,18 +322,19 @@ namespace FlowableWrapper.Application.Services
             return new AuditRecordDto
             {
                 TaskDefinitionKey = record.TaskDefinitionKey,
-                NodeSemantic      = record.NodeSemantic,
-                Action            = record.Action,
-                OperatorId        = record.OperatorId,
-                Comment           = record.Comment,
-                RejectReason      = record.RejectReason,
-                OperatedAt        = record.OperatedAt,
-                SlotSelections    = record.SlotSelections?.Select(s =>
+                NodeSemantic = record.NodeSemantic,
+                PageCode = record.PageCode,
+                Action = record.Action,
+                OperatorId = record.OperatorId,
+                Comment = record.Comment,
+                RejectReason = record.RejectReason,
+                OperatedAt = record.OperatedAt,
+                SlotSelections = record.SlotSelections?.Select(s =>
                     new SlotSelectionRecordDto
                     {
                         SlotKey = s.SlotKey,
-                        Label   = s.Label,
-                        Users   = s.Users
+                        Label = s.Label,
+                        Users = s.Users
                     }).ToList() ?? new List<SlotSelectionRecordDto>()
             };
         }

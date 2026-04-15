@@ -132,6 +132,12 @@ namespace FlowableWrapper.Application.Dtos
         public string NodeSemantic { get; set; }
 
         /// <summary>
+        /// 节点页面编码（写入时快照，不随后续部署变更）
+        /// 前端据此渲染该节点历史表单的只读视图
+        /// </summary>
+        public string PageCode { get; set; }
+
+        /// <summary>
         /// 审批动作：approve / reject
         /// </summary>
         public string Action { get; set; }
