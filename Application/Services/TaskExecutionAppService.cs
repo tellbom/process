@@ -198,6 +198,8 @@ namespace FlowableWrapper.Application.Services
                     BusinessType = meta.BusinessType,
                     NodeSemantic = nodeInfo?.NodeSemantic,
                     PageCode = nodeInfo?.PageCode,
+                    CanReject = nodeInfo.CanReject,
+                    RejectOptions = nodeInfo.RejectOptions,
                     RequiredSlots = nodeInfo?.Slots ?? new List<SlotDefinition>(),
                     // 前端通过 pageCode → COMPONENT_REGISTRY 找到表单组件，
                     // 表单组件自己知道要选哪些人

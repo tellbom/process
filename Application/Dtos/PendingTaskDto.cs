@@ -100,6 +100,18 @@ namespace FlowableWrapper.Application.Dtos
 
         // 前端可以忽略此字段
         public List<SlotDefinition> RequiredSlots { get; set; }
+
+        
+        /// <summary>
+        /// 当前节点是否可以被驳回
+        /// </summary>
+        public bool CanReject { get; set; }
+
+
+        /// <summary>
+        /// 当前节点驳回配置
+        /// </summary>
+        public List<RejectOption> RejectOptions { get; set; }
     }
 
     /// <summary>
