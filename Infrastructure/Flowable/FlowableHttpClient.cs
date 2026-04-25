@@ -46,6 +46,16 @@ namespace FlowableWrapper.Infrastructure.Flowable
                 .Add(new MediaTypeWithQualityHeaderValue("application/json"));
         }
 
+        public async Task<string> GetStringAsync(string path)
+        {
+            _logger.LogDebug("Flowable GET (raw) {Path}", path);
+
+            var response = await _http.GetAsync(path);
+            await EnsureSuccessAsync(response, path);
+
+            return await response.Content.ReadAsStringAsync();
+        }
+
         public async Task<T> GetAsync<T>(string path)
         {
             _logger.LogDebug("Flowable GET {Path}", path);

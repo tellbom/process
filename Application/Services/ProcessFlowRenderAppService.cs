@@ -635,8 +635,9 @@ namespace FlowableWrapper.Application.Services
                 // TODO: IFlowableRepositoryService 需要补充 GetBpmnXmlAsync 方法
                 // 当前先返回 null，前端走 dagre 布局
                 // Phase 10 后续扩展：在 IFlowableRepositoryService 中增加
+                return await _repositoryService.GetBpmnXmlByDefinitionIdAsync(definition.Id);
                 // Task<string> GetBpmnXmlByDefinitionIdAsync(string processDefinitionId)
-                return null;
+                // return null;
             }
             catch (Exception ex)
             {

@@ -75,10 +75,8 @@ namespace FlowableWrapper.Infrastructure.Flowable
         {
             try
             {
-                // Flowable REST API 返回原始 XML 字节流
-                var response = await _http.GetAsync<string>(
+                return await _http.GetStringAsync(
                     $"repository/process-definitions/{processDefinitionId}/resourcedata");
-                return response;
             }
             catch (Exception ex)
             {
