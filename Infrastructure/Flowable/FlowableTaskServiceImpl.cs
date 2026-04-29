@@ -98,12 +98,13 @@ namespace FlowableWrapper.Infrastructure.Flowable
 
         public async Task<List<string>> GetCandidateUsersAsync(string taskId)
         {
-            var result = await _http.GetAsync<FlowableIdentityLinkListResponse>(
+            var result = await _http.GetAsync<List<FlowableIdentityLink>>(
                 $"runtime/tasks/{taskId}/identitylinks");
 
-            return result?.Data?
-                .Where(l => l.Type == "candidate" && !string.IsNullOrWhiteSpace(l.UserId))
-                .Select(l => l.UserId)
+            return result?
+                .Where(l => l.Type == "candidate" && !string.IsNullOrWhiteSpace(l.EffectiveUserId))
+                .Select(l => l.EffectiveUserId)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToList()
                 ?? new List<string>();
         }
@@ -202,16 +203,15 @@ namespace FlowableWrapper.Infrastructure.Flowable
             [JsonPropertyName("priority")] public int Priority { get; set; }
         }
 
-        private class FlowableIdentityLinkListResponse
-        {
-            [JsonPropertyName("data")]
-            public List<FlowableIdentityLink> Data { get; set; }
-        }
-
         private class FlowableIdentityLink
         {
+            [JsonPropertyName("user")] public string FlowableUser { get; set; }
             [JsonPropertyName("userId")] public string UserId { get; set; }
             [JsonPropertyName("type")] public string Type { get; set; }
+
+            [JsonIgnore]
+            public string EffectiveUserId =>
+                !string.IsNullOrWhiteSpace(UserId) ? UserId : FlowableUser;
         }
     }
 }
