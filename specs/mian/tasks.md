@@ -48,7 +48,7 @@
 - [ ] T008 [P] [US1] Create `AssigneeContractConverter` class skeleton with constructor dependencies in `Application/Slots/AssigneeContractConverter.cs`
 - [ ] T009 [US1] Implement role assignment lookup and validation by `RoleKey` and `AssigneeMode` in `Application/Slots/AssigneeContractConverter.cs`
 - [ ] T010 [US1] Expand `AssigneeContract` roles into existing `SlotSelection` objects without modifying `SlotVariableConverter` in `Application/Slots/AssigneeContractConverter.cs`
-- [ ] T011 [US1] Convert expanded role selections through `SlotVariableConverter.Convert` and return variables plus snapshots in `Application/Slots/AssigneeContractConverter.cs`
+- [ ] T011 [US1] Convert expanded role selections through `SlotVariableConverter.Convert(selections, slotDefs, businessVariables)`, passing `StartProcessRequest.BusinessVariables` for conditional slot evaluation, and return variables plus snapshots in `Application/Slots/AssigneeContractConverter.cs`
 - [ ] T012 [US1] Add conflict handling so duplicate `RoleKey` assignments or missing required role users raise `BusinessException` in `Application/Slots/AssigneeContractConverter.cs`
 - [ ] T013 [US1] Inject `AssigneeContractConverter` into `ProcessLifecycleAppService` constructor in `Application/Services/ProcessLifecycleAppService.cs`
 - [ ] T014 [US1] Add Step 3 branching in `StartProcessAsync` so `AssigneeContract` is preferred and legacy `InitialSlotSelections` is used only when the new contract is absent in `Application/Services/ProcessLifecycleAppService.cs`
@@ -199,6 +199,7 @@ Task: "Add IsNodeCompletedAsync in Application/Services/ProcessQueryAppService.c
 ## Notes
 
 - `SlotVariableConverter` must remain unchanged for V1.1.
+- `AssigneeContractConverter` must call `SlotVariableConverter.Convert` with the optional `businessVariables` argument from `StartProcessRequest.BusinessVariables` so existing `ConditionalOn` slot behavior remains intact.
 - `NextSlotSelections` remains compatible for old flows and should not be marked obsolete in this patch.
 - `AssigneeContractSnapshot` is intentionally not persisted because assignees are injected into Flowable variables.
 - ES metadata write failure behavior is limited to one synchronous retry plus CRITICAL log and `PROCESS_METADATA_INDEX_ORPHAN`; full Outbox is explicitly out of scope.
