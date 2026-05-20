@@ -114,6 +114,18 @@ namespace FlowableWrapper.Application.Dtos
         /// 任务创建时间
         /// </summary>
         public DateTime CreateTime { get; set; }
+
+        /// <summary>
+        /// Recommended users for the current node, keyed by slotKey.
+        /// </summary>
+        public Dictionary<string, List<string>> RecommendedUsers { get; set; }
+            = new Dictionary<string, List<string>>();
+
+        /// <summary>
+        /// Restrict-to-recommended flags for the current node, keyed by slotKey.
+        /// </summary>
+        public Dictionary<string, bool> RestrictToRecommended { get; set; }
+            = new Dictionary<string, bool>();
     }
 
     /// <summary>
