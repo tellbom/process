@@ -69,6 +69,12 @@ builder.Services.AddSingleton<IElasticSearchService, ElasticSearchServiceImpl>()
 builder.Services.AddScoped<SlotVariableConverter>();
 builder.Services.AddScoped<IProcessSlotConfigProvider, ElasticSearchSlotConfigProvider>();
 
+// Phase 3 (Patch Plan V1.2) - assignee contract services
+// AssigneeContractConverter: role contract -> SlotSelection -> Flowable variables
+// LoopAssignmentProjector: loop assignments -> Flowable collection variables
+builder.Services.AddScoped<AssigneeContractConverter>();
+builder.Services.AddScoped<LoopAssignmentProjector>();
+
 // Phase 5 — 任务执行
 builder.Services.AddScoped<TaskExecutionAppService>();
 
