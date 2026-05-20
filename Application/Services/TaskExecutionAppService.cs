@@ -403,7 +403,10 @@ namespace FlowableWrapper.Application.Services
         // ═══════════════════════════════════════════════════════════
         // BuildCompletionVariablesAsync（仅通过路径使用）
         // ═══════════════════════════════════════════════════════════
-
+        /// <summary>
+        /// Builds completion variables. NextSlotSelections is retained because it is the effective
+        /// next-assignee source for Flowable variables and audit snapshots.
+        /// </summary>
         private async Task<(Dictionary<string, object> variables,
             List<SlotSelectionSnapshot> snapshots)>
             BuildCompletionVariablesAsync(
@@ -542,6 +545,7 @@ namespace FlowableWrapper.Application.Services
             {
                 string nodeSemantic = null;
                 string pageCode = null;
+                List<SlotDefinition> currentSlotDefs = new List<SlotDefinition>();
                 try
                 {
                     var semanticMap = await _slotConfigProvider
@@ -549,8 +553,15 @@ namespace FlowableWrapper.Application.Services
                     semanticMap.TryGetValue(task.TaskDefinitionKey, out var nodeInfo);
                     nodeSemantic = nodeInfo?.NodeSemantic;
                     pageCode = nodeInfo?.PageCode;
+                    currentSlotDefs = nodeInfo?.Slots ?? new List<SlotDefinition>();
                 }
                 catch { }
+
+                var (hasOutOfRange, recommendedSnapshot, restrictSnapshot) =
+                    EvaluateRecommendedRange(
+                        request.NextSlotSelections,
+                        currentSlotDefs,
+                        metadata.RecommendedAssigneesSnapshot);
 
                 var auditRecord = new ProcessAuditRecord
                 {
@@ -575,7 +586,10 @@ namespace FlowableWrapper.Application.Services
                         SlotKey = s.SlotKey,
                         Label = s.Label,
                         Users = s.Users
-                    }).ToList()
+                    }).ToList(),
+                    HasOutOfRecommendedRange = hasOutOfRange,
+                    RecommendedUsersSnapshot = recommendedSnapshot,
+                    RestrictToRecommendedSnapshot = restrictSnapshot
                 };
 
                 await _esService.IndexAuditRecordAsync(auditRecord);
@@ -590,6 +604,62 @@ namespace FlowableWrapper.Application.Services
                     "审计记录写入失败（不影响流程）: TaskId={TaskId}, BusinessId={BusinessId}",
                     task.Id, metadata.BusinessId);
             }
+        }
+
+        private (bool? hasOutOfRange,
+                 Dictionary<string, List<string>> recommendedSnapshot,
+                 Dictionary<string, bool> restrictSnapshot)
+            EvaluateRecommendedRange(
+                List<SlotSelection> nextSlotSelections,
+                List<SlotDefinition> slotDefs,
+                Dictionary<string, List<string>> recommendedSnapshot)
+        {
+            if (recommendedSnapshot == null || !recommendedSnapshot.Any())
+                return (null, new Dictionary<string, List<string>>(), new Dictionary<string, bool>());
+
+            if (slotDefs == null || !slotDefs.Any())
+                return (null, new Dictionary<string, List<string>>(), new Dictionary<string, bool>());
+
+            var restrictSnapshot = slotDefs
+                .Where(d => recommendedSnapshot.ContainsKey(d.SlotKey))
+                .ToDictionary(d => d.SlotKey, d => d.RestrictToRecommended);
+
+            var restrictedSlots = slotDefs
+                .Where(d => d.RestrictToRecommended
+                            && recommendedSnapshot.ContainsKey(d.SlotKey))
+                .ToList();
+
+            if (!restrictedSlots.Any())
+                return (null, recommendedSnapshot, restrictSnapshot);
+
+            var selectionDict = (nextSlotSelections ?? new List<SlotSelection>())
+                .GroupBy(s => s.SlotKey, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+
+            var hasOutOfRange = false;
+
+            foreach (var slot in restrictedSlots)
+            {
+                if (!selectionDict.TryGetValue(slot.SlotKey, out var selection)) continue;
+                if (selection.Users == null || !selection.Users.Any()) continue;
+                if (!recommendedSnapshot.TryGetValue(slot.SlotKey, out var recommended)) continue;
+
+                var outOfRangeUsers = selection.Users
+                    .Where(u => !recommended.Contains(u, StringComparer.OrdinalIgnoreCase))
+                    .ToList();
+
+                if (outOfRangeUsers.Any())
+                {
+                    hasOutOfRange = true;
+                    _logger.LogWarning(
+                        "[RECOMMEND_RANGE_EXCEEDED] SlotKey={SlotKey} submitted users outside recommended range. OutOfRange=[{OutOfRange}], Recommended=[{Recommended}]",
+                        slot.SlotKey,
+                        string.Join(",", outOfRangeUsers),
+                        string.Join(",", recommended));
+                }
+            }
+
+            return (hasOutOfRange, recommendedSnapshot, restrictSnapshot);
         }
 
         private string ResolveOperatorId(string requestEmployeeId)
