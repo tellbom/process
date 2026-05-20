@@ -138,7 +138,10 @@ namespace FlowableWrapper.Application.Services
                     IsRejectTarget = n.IsRejectTarget,
                     RejectCode = n.RejectCode,
                     SlotCount = n.Slots?.Count ?? 0,
-                    RejectOptionCount = n.RejectOptions?.Count ?? 0
+                    RejectOptionCount = n.RejectOptions?.Count ?? 0,
+                    RoleKey = n.RoleKey,
+                    AssigneeMode = n.AssigneeMode,
+                    CallbackTiming = n.CallbackTiming
                 }).ToList()
             };
         }
@@ -166,7 +169,10 @@ namespace FlowableWrapper.Application.Services
                 RejectOptions = n.RejectOptions ?? new List<RejectOption>(),
                 IsRejectTarget = n.IsRejectTarget,
                 RejectCode = n.RejectCode,
-                Slots = n.Slots ?? new List<SlotDefinition>()
+                Slots = n.Slots ?? new List<SlotDefinition>(),
+                RoleKey = n.RoleKey,
+                AssigneeMode = n.AssigneeMode,
+                CallbackTiming = n.CallbackTiming
             }).ToList();
         }
 
@@ -202,13 +208,19 @@ namespace FlowableWrapper.Application.Services
                 fields.TryGetValue("pageCode", out var pageCode);
                 fields.TryGetValue("isConvergencePoint", out var convStr);
                 bool.TryParse(convStr, out var isConvergencePoint);
+                fields.TryGetValue("roleKey", out var roleKey);
+                fields.TryGetValue("assigneeMode", out var assigneeMode);
+                fields.TryGetValue("callbackTiming", out var callbackTiming);
 
                 result[taskId] = new NodeSemanticInfo
                 {
                     TaskDefinitionKey = taskId,
                     NodeSemantic = nodeSemantic,
                     PageCode = pageCode,
-                    IsConvergencePoint = isConvergencePoint
+                    IsConvergencePoint = isConvergencePoint,
+                    RoleKey = roleKey,
+                    AssigneeMode = assigneeMode,
+                    CallbackTiming = callbackTiming
                 };
             }
 
@@ -298,6 +310,19 @@ namespace FlowableWrapper.Application.Services
                 }
 
                 // 驳回目标校验：rejectCode 全局唯一
+                if (!string.IsNullOrWhiteSpace(node.AssigneeMode)
+                    && node.AssigneeMode != "single"
+                    && node.AssigneeMode != "multiple")
+                {
+                    errors.Add($"节点 [{key}] assigneeMode 必须是 single 或 multiple，当前值：{node.AssigneeMode}");
+                }
+
+                if (!string.IsNullOrWhiteSpace(node.CallbackTiming)
+                    && node.CallbackTiming != "on_complete")
+                {
+                    errors.Add($"节点 [{key}] callbackTiming Phase 1 只支持 on_complete，当前值：{node.CallbackTiming}");
+                }
+
                 if (node.IsRejectTarget)
                 {
                     if (string.IsNullOrWhiteSpace(node.RejectCode))
@@ -368,6 +393,13 @@ namespace FlowableWrapper.Application.Services
                 info.IsRejectTarget = node.IsRejectTarget;
                 info.RejectCode = node.RejectCode;
                 info.Slots = node.Slots ?? new List<SlotDefinition>();
+
+                if (!string.IsNullOrWhiteSpace(node.RoleKey))
+                    info.RoleKey = node.RoleKey;
+                if (!string.IsNullOrWhiteSpace(node.AssigneeMode))
+                    info.AssigneeMode = node.AssigneeMode;
+                if (!string.IsNullOrWhiteSpace(node.CallbackTiming))
+                    info.CallbackTiming = node.CallbackTiming;
             }
         }
     }

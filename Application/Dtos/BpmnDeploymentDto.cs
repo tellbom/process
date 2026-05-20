@@ -62,6 +62,15 @@ namespace FlowableWrapper.Application.Dtos
 
         // ── 选人契约 ─────────────────────────────────────────────────
         public List<SlotDefinition> Slots { get; set; } = new();
+
+        /// <summary>Business role key. slotConfig overrides BPMN extensionElements when set.</summary>
+        public string RoleKey { get; set; }
+
+        /// <summary>Assignee mode: single / multiple. slotConfig overrides BPMN extensionElements when set.</summary>
+        public string AssigneeMode { get; set; }
+
+        /// <summary>Callback timing. Phase 1 supports on_complete only. slotConfig overrides BPMN extensionElements when set.</summary>
+        public string CallbackTiming { get; set; }
     }
 
     /// <summary>
@@ -102,6 +111,9 @@ namespace FlowableWrapper.Application.Dtos
         public string RejectCode { get; set; }
         public int SlotCount { get; set; }
         public int RejectOptionCount { get; set; }
+        public string RoleKey { get; set; }
+        public string AssigneeMode { get; set; }
+        public string CallbackTiming { get; set; }
     }
 
 
@@ -120,5 +132,8 @@ namespace FlowableWrapper.Application.Dtos
         public bool IsRejectTarget { get; set; }
         public string RejectCode { get; set; }
         public List<SlotDefinition> Slots { get; set; } = new();
+        public string RoleKey { get; set; }
+        public string AssigneeMode { get; set; }
+        public string CallbackTiming { get; set; }
     }
 }
