@@ -87,9 +87,9 @@ namespace FlowableWrapper.Application.Services
             var currentTasks = currentTasksTask.Result;
             var auditRecords = auditRecordsTask.Result;
 
-            // ── 当前节点：补充 nodeSemantic / pageCode / candidateUsers ──
+            // ── 当前节点：补充 nodeSemantic / pageCode / candidateUsers / 推荐人 ──
             var currentNodes = await BuildCurrentNodesAsync(
-                currentTasks, metadata.ProcessDefinitionKey);
+                currentTasks, metadata.ProcessDefinitionKey, metadata);
 
             // ── 审批历史：映射为 DTO ───────────────────────────────
             var auditHistory = auditRecords.Select(MapAuditRecord).ToList();
@@ -221,6 +221,68 @@ namespace FlowableWrapper.Application.Services
         }
 
         // ═══════════════════════════════════════════════════════════
+        // IsNodeCompletedAsync
+        // ═══════════════════════════════════════════════════════════
+
+        /// <summary>
+        /// 判断指定节点是否已完成
+        ///
+        /// 判定规则：查询流程实例当前活跃任务列表，
+        ///   若 taskDefinitionKey 不在活跃列表中 → 节点已完成
+        ///   若仍在活跃列表中 → 节点未完成
+        ///
+        /// 适用场景：
+        ///   - 单任务节点：task 完成后从活跃列表消失
+        ///   - 会签（multiInstance）：所有子任务完成后 taskDefinitionKey 从列表消失
+        ///   - 并行网关分支：各分支节点独立判定
+        ///
+        /// 此方法不缓存，每次直接查询 Flowable（Flowable 是唯一真相源）
+        /// 调用方（ProcessCallbackAppService）在触发 on_complete 回调前调用此方法确认节点状态
+        /// </summary>
+        /// <param name="processInstanceId">Flowable 流程实例 ID</param>
+        /// <param name="taskDefinitionKey">BPMN 节点定义 Key</param>
+        /// <returns>true = 节点已完成；false = 节点仍在活跃中</returns>
+        public async Task<bool> IsNodeCompletedAsync(
+            string processInstanceId,
+            string taskDefinitionKey)
+        {
+            if (string.IsNullOrWhiteSpace(processInstanceId))
+                throw new ArgumentException("processInstanceId 不能为空", nameof(processInstanceId));
+            if (string.IsNullOrWhiteSpace(taskDefinitionKey))
+                throw new ArgumentException("taskDefinitionKey 不能为空", nameof(taskDefinitionKey));
+
+            List<FlowableTask> activeTasks;
+            try
+            {
+                activeTasks = await _taskService.QueryTasksAsync(new FlowableTaskQuery
+                {
+                    ProcessInstanceId = processInstanceId
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(
+                    ex,
+                    "IsNodeCompletedAsync 查询活跃任务失败，保守返回 false。" +
+                    "ProcessInstanceId={ProcessInstanceId}, TaskDefinitionKey={TaskDefinitionKey}",
+                    processInstanceId, taskDefinitionKey);
+                return false;
+            }
+
+            var isCompleted = activeTasks == null
+                || !activeTasks.Any(t => string.Equals(
+                    t.TaskDefinitionKey, taskDefinitionKey,
+                    StringComparison.OrdinalIgnoreCase));
+
+            _logger.LogDebug(
+                "IsNodeCompletedAsync: ProcessInstanceId={ProcessInstanceId}, " +
+                "TaskDefinitionKey={TaskDefinitionKey}, IsCompleted={IsCompleted}",
+                processInstanceId, taskDefinitionKey, isCompleted);
+
+            return isCompleted;
+        }
+
+        // ═══════════════════════════════════════════════════════════
         // 私有辅助方法
         // ═══════════════════════════════════════════════════════════
 
@@ -253,10 +315,13 @@ namespace FlowableWrapper.Application.Services
         /// 对每个活动任务：
         ///   - 从 ES nodeSemanticMap 补充 nodeSemantic / pageCode
         ///   - 并行查 Flowable 获取 candidateUsers
+        ///   - 从 metadata.RecommendedAssigneesSnapshot 合并推荐人
+        ///   - 从 slotDef.RestrictToRecommended 合并选人范围限制
         /// </summary>
         private async Task<List<CurrentNodeDto>> BuildCurrentNodesAsync(
             List<FlowableTask> activeTasks,
-            string processDefinitionKey)
+            string processDefinitionKey,
+            ProcessMetadataDocument metadata)
         {
             if (!activeTasks.Any())
                 return new List<CurrentNodeDto>();
@@ -295,21 +360,47 @@ namespace FlowableWrapper.Application.Services
 
             var taskWithCandidates = await Task.WhenAll(candidateTasks);
 
+            // 推荐人快照（来自实例 metadata，启动时固化）
+            var recommendedSnapshot = metadata?.RecommendedAssigneesSnapshot
+                ?? new Dictionary<string, List<string>>();
+
             return taskWithCandidates.Select(tc =>
             {
                 var (task, candidates) = tc;
                 semanticMap.TryGetValue(task.TaskDefinitionKey, out var nodeInfo);
 
+                // ── 合并推荐人（Key = slotKey）─────────────────────
+                var recommendedUsers = new Dictionary<string, List<string>>();
+                var restrictMap = new Dictionary<string, bool>();
+
+                if (nodeInfo?.Slots != null)
+                {
+                    foreach (var slot in nodeInfo.Slots)
+                    {
+                        // 推荐人：从实例快照取（启动时动态注入）
+                        if (recommendedSnapshot.TryGetValue(slot.SlotKey, out var recommended)
+                            && recommended?.Any() == true)
+                        {
+                            recommendedUsers[slot.SlotKey] = recommended;
+                        }
+
+                        // 选人范围限制：从 slotDef 取（部署时静态配置）
+                        restrictMap[slot.SlotKey] = slot.RestrictToRecommended;
+                    }
+                }
+
                 return new CurrentNodeDto
                 {
-                    TaskId = task.Id,
-                    NodeId = task.TaskDefinitionKey,
-                    NodeName = task.Name,
-                    NodeSemantic = nodeInfo?.NodeSemantic,
-                    PageCode = nodeInfo?.PageCode,
-                    Assignee = task.Assignee,
-                    CandidateUsers = candidates,
-                    CreateTime = task.CreateTime
+                    TaskId            = task.Id,
+                    NodeId            = task.TaskDefinitionKey,
+                    NodeName          = task.Name,
+                    NodeSemantic      = nodeInfo?.NodeSemantic,
+                    PageCode          = nodeInfo?.PageCode,
+                    Assignee          = task.Assignee,
+                    CandidateUsers    = candidates,
+                    CreateTime        = task.CreateTime,
+                    RecommendedUsers      = recommendedUsers,
+                    RestrictToRecommended = restrictMap
                 };
             }).ToList();
         }
