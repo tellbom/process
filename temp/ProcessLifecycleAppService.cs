@@ -62,18 +62,18 @@ namespace FlowableWrapper.Application.Services
             ILogger<ProcessLifecycleAppService> logger,
             IDistributedLockService distributedLockService)
         {
-            _runtimeService       = runtimeService;
-            _taskService          = taskService;
-            _esService            = esService;
-            _slotConfigProvider   = slotConfigProvider;
-            _slotConverter        = slotConverter;
-            _assigneeContractConverter = assigneeContractConverter;
-            _loopAssignmentProjector = loopAssignmentProjector;
-            _currentUser          = currentUser;
-            _businessTypeMapping  = businessTypeMapping.Value;
-            _flowableOptions      = flowableOptions.Value;
-            _logger               = logger;
-            _distributedLockService = distributedLockService;
+            _runtimeService             = runtimeService;
+            _taskService                = taskService;
+            _esService                  = esService;
+            _slotConfigProvider         = slotConfigProvider;
+            _slotConverter              = slotConverter;
+            _assigneeContractConverter  = assigneeContractConverter;
+            _loopAssignmentProjector    = loopAssignmentProjector;
+            _currentUser                = currentUser;
+            _businessTypeMapping        = businessTypeMapping.Value;
+            _flowableOptions            = flowableOptions.Value;
+            _logger                     = logger;
+            _distributedLockService     = distributedLockService;
         }
 
         // ═══════════════════════════════════════════════════════════
@@ -86,10 +86,10 @@ namespace FlowableWrapper.Application.Services
         /// 执行步骤：
         ///   1. 参数校验
         ///   2. businessType → processDefinitionKey 映射
-        ///   3. 查首节点 Slot 定义，将 InitialSlotSelections 转换为 Flowable 变量
-        ///   4. 注入框架内置变量（frameworkCallbackUrl / businessId / processDefinitionKey）
+        ///   3. 选人变量转换（AssigneeContract 优先，无则退回旧 InitialSlotSelections 路径）
+        ///   4. 构建启动变量（Slot变量 + LoopAssignment变量 + 框架内置变量）
         ///   5. 调 Flowable StartProcessInstance（变量已含首节点 assignee，Flowable 自动绑定）
-        ///   6. 写 ES ProcessMetadataDocument
+        ///   6. 写 ES ProcessMetadataDocument（含推荐人快照，失败时一次同步重试）
         ///   7. 查首任务信息（用于响应，让调用方减少一次 RTT）
         ///   8. 从 ES nodeSemanticMap 补充首任务的 nodeSemantic / pageCode
         /// </summary>
@@ -159,16 +159,16 @@ namespace FlowableWrapper.Application.Services
                     request.BusinessId,
                     createdBy);
 
-                // 3. Convert assignee variables. AssigneeContract takes precedence; old InitialSlotSelections remains compatible.
+                // 3. 选人变量转换
+                // AssigneeContract 优先（全自动流程）；无则退回旧 InitialSlotSelections 路径（旧流程兼容）
                 SlotConversionResult initConversionResult;
+
                 if (request.AssigneeContract?.Roles?.Any() == true)
                 {
                     if (request.InitialSlotSelections?.Any() == true)
-                    {
                         _logger.LogWarning(
-                            "AssigneeContract and InitialSlotSelections were both provided. AssigneeContract takes precedence. BusinessId={BusinessId}",
+                            "AssigneeContract 与 InitialSlotSelections 同时传入，AssigneeContract 优先，InitialSlotSelections 已忽略。BusinessId={BusinessId}",
                             request.BusinessId);
-                    }
 
                     var semanticMap = await _slotConfigProvider
                         .GetNodeSemanticMapAsync(processDefinitionKey);
@@ -179,12 +179,12 @@ namespace FlowableWrapper.Application.Services
                         request.BusinessVariables);
 
                     _logger.LogInformation(
-                        "AssigneeContract path used for start variables. BusinessId={BusinessId}, RoleCount={RoleCount}",
-                        request.BusinessId,
-                        request.AssigneeContract.Roles.Count);
+                        "使用 AssigneeContract 路径投影选人变量: BusinessId={BusinessId}, 角色数={RoleCount}",
+                        request.BusinessId, request.AssigneeContract.Roles.Count);
                 }
                 else
                 {
+                    // 旧路径：按 SlotKey 逐节点投影
                     initConversionResult = await ConvertInitialSlotsAsync(
                         request.InitialSlotSelections,
                         processDefinitionKey);
@@ -233,7 +233,7 @@ namespace FlowableWrapper.Application.Services
                     processInstance.Id,
                     request.BusinessId);
 
-                // 6. Write ES metadata
+                // 6. 写入 ES 元数据
                 var esDocument = BuildProcessMetadataDocument(
                     processInstance,
                     request,
@@ -248,33 +248,40 @@ namespace FlowableWrapper.Application.Services
                 {
                     _logger.LogError(
                         ex,
-                        "[ES_WRITE_FAIL] Process started in Flowable but ES metadata write failed. Retrying once. ProcessInstanceId={ProcessInstanceId}, BusinessId={BusinessId}",
+                        "[ES_WRITE_FAIL] 流程启动成功但 ES 元数据写入失败，尝试一次重试。" +
+                        "ProcessInstanceId={ProcessInstanceId}, BusinessId={BusinessId}",
                         processInstance.Id,
                         request.BusinessId);
 
+                    // 同步重试一次（等待 500ms 后重试，给 ES 短暂恢复窗口）
                     try
                     {
-                        await Task.Delay(500);
+                        await System.Threading.Tasks.Task.Delay(500);
                         await _esService.IndexProcessMetadataAsync(esDocument);
 
                         _logger.LogWarning(
-                            "[ES_WRITE_RETRY_SUCCESS] ES metadata write retry succeeded. ProcessInstanceId={ProcessInstanceId}, BusinessId={BusinessId}",
-                            processInstance.Id,
-                            request.BusinessId);
+                            "[ES_WRITE_RETRY_SUCCESS] ES 写入重试成功: ProcessInstanceId={ProcessInstanceId}",
+                            processInstance.Id);
                     }
                     catch (Exception retryEx)
                     {
+                        // 重试也失败：记录 CRITICAL 告警，不回滚 Flowable（Flowable 已运行，回滚代价更大）
+                        // 此时 Flowable 中存在无 ES 记录的孤儿实例，需运维介入补录
                         _logger.LogCritical(
                             retryEx,
-                            "[ES_WRITE_ORPHAN] Process instance exists in Flowable but ES metadata write failed twice. ProcessInstanceId={ProcessInstanceId}, BusinessId={BusinessId}",
+                            "[ES_WRITE_ORPHAN] 流程实例已在 Flowable 启动但 ES 写入两次均失败。" +
+                            "ProcessInstanceId={ProcessInstanceId}, BusinessId={BusinessId}。" +
+                            "请运维人员通过对账 Job 修复或手动补写 ES 记录。",
                             processInstance.Id,
                             request.BusinessId);
 
                         throw new BusinessException(
-                            $"Process started (ProcessInstanceId={processInstance.Id}), but metadata write failed. Please repair ES metadata.",
+                            $"流程已启动（ProcessInstanceId={processInstance.Id}），" +
+                            $"但元数据写入失败，请联系管理员补录。",
                             "PROCESS_METADATA_INDEX_ORPHAN");
                     }
                 }
+
                 _logger.LogInformation(
                     "ES 元数据写入成功: ProcessInstanceId={ProcessInstanceId}",
                     processInstance.Id);
@@ -504,7 +511,7 @@ namespace FlowableWrapper.Application.Services
         /// 构建 Flowable 启动变量
         ///
         /// 变量优先级（高→低）：
-        ///   框架内置变量 > Slot 转换变量 > 业务变量
+        ///   框架内置变量 > Slot/AssigneeContract 转换变量 > LoopAssignment 集合变量 > 业务变量
         /// </summary>
         private Dictionary<string, object> BuildStartVariables(
             StartProcessRequest request,
@@ -519,14 +526,16 @@ namespace FlowableWrapper.Application.Services
             foreach (var kv in slotVariables)
                 variables[kv.Key] = kv.Value;
 
+            // LoopAssignment 集合变量（在 Slot 变量之后合并）
+            // 变量名格式 {loopKey}_{roleKey}_list 与 Slot 变量命名空间天然隔离
             if (request.LoopAssignments?.Items?.Any() == true)
             {
-                var loopVariables = _loopAssignmentProjector.Project(request.LoopAssignments);
-                foreach (var kv in loopVariables)
+                var loopVars = _loopAssignmentProjector.Project(request.LoopAssignments);
+                foreach (var kv in loopVars)
                     variables[kv.Key] = kv.Value;
             }
 
-            // 框架内置变量（最高优先级，不可被覆盖）
+            // 框架内置变量（最高优先级，最后写入，不可被覆盖）
             if (!string.IsNullOrWhiteSpace(_flowableOptions.FrameworkCallbackUrl))
             {
                 variables["frameworkCallbackUrl"] = _flowableOptions.FrameworkCallbackUrl;
@@ -585,6 +594,8 @@ namespace FlowableWrapper.Application.Services
                 // 它在部署 BPMN 时由 BpmnDeploymentAppService 写入 ProcessDefinitionSemanticDocument
                 // 查询时从 ProcessDefinitionSemanticDocument 读取，不存在于实例文档中
                 NodeSemanticMap      = new Dictionary<string, NodeSemanticInfo>(),
+                // 推荐处理人快照：固化启动时传入的推荐人，供节点推进时前端读取
+                // 不参与 Flowable 变量投影，不影响任何执行逻辑
                 RecommendedAssigneesSnapshot = request.RecommendedAssignees
                     ?? new Dictionary<string, List<string>>()
             };
