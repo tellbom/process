@@ -1,0 +1,124 @@
+[
+  {
+    "taskDefinitionKey": "ut00_starter_submit",
+    "nodeSemantic": "STARTER_SUBMIT",
+    "pageCode": "InspectionBriefing/StarterSubmitForm",
+    "isStarterNode": true,
+    "isConvergencePoint": false,
+    "canReject": false,
+    "rejectOptions": [],
+    "isRejectTarget": true,
+    "rejectCode": "TO_STARTER",
+    "slots": [
+      {
+        "slotKey": "dept_head",
+        "label": "相关部门一把手",
+        "mode": "single",
+        "variableName": "deptHeadAssignee",
+        "required": true,
+        "conditionalOn": null
+      }
+    ]
+  },
+  {
+    "taskDefinitionKey": "ut01_dept_head_handle",
+    "nodeSemantic": "DEPT_HEAD_HANDLE",
+    "pageCode": "InspectionBriefing/BriefingFeedbackForm",
+    "isStarterNode": false,
+    "isConvergencePoint": false,
+    "canReject": true,
+    "rejectOptions": [
+      {
+        "rejectCode": "TO_STARTER",
+        "label": "退回发起人重新提交",
+        "description": "退回至发起人，重新填写发起内容"
+      }
+    ],
+    "isRejectTarget": false,
+    "rejectCode": null,
+    "slots": [
+      {
+        "slotKey": "feedback_assignee",
+        "label": "反馈人",
+        "mode": "single",
+        "variableName": "feedbackAssignee",
+        "required": false,
+        "conditionalOn": "needFeedback==true"
+      },
+      {
+        "slotKey": "company_leader_path_a",
+        "label": "公司分管领导（自处理路径）",
+        "mode": "single",
+        "variableName": "companyLeaderAssignee",
+        "required": true,
+        "conditionalOn": "needFeedback==false"
+      }
+    ]
+  },
+  {
+    "taskDefinitionKey": "ut02_assignee_feedback",
+    "nodeSemantic": "ASSIGNEE_FEEDBACK",
+    "pageCode": "InspectionBriefing/BriefingFeedbackViewForm",
+    "isStarterNode": false,
+    "isConvergencePoint": false,
+    "canReject": true,
+    "rejectOptions": [
+      {
+        "rejectCode": "TO_STARTER",
+        "label": "退回发起人重新提交",
+        "description": "退回至发起人，重新发起本轮流程"
+      }
+    ],
+    "isRejectTarget": false,
+    "rejectCode": null,
+    "slots": [
+      {
+        "slotKey": "company_leader_path_b",
+        "label": "公司分管领导（反馈路径）",
+        "mode": "single",
+        "variableName": "companyLeaderAssignee",
+        "required": true,
+        "conditionalOn": null
+      }
+    ]
+  },
+  {
+    "taskDefinitionKey": "ut03_company_leader_review",
+    "nodeSemantic": "COMPANY_LEADER_REVIEW",
+    "pageCode": "InspectionBriefing/BriefingLeaderApprovalForm",
+    "isStarterNode": false,
+    "isConvergencePoint": false,
+    "canReject": true,
+    "rejectOptions": [
+      {
+        "rejectCode": "TO_STARTER",
+        "label": "退回发起人重新提交",
+        "description": "退回至发起人，重新发起本轮流程"
+      }
+    ],
+    "isRejectTarget": false,
+    "rejectCode": null,
+    "slots": [
+      {
+        "slotKey": "chief_leader",
+        "label": "巡察主管领导",
+        "mode": "single",
+        "variableName": "chiefLeaderAssignee",
+        "required": true,
+        "conditionalOn": null
+      }
+    ]
+  },
+  {
+    "taskDefinitionKey": "ut04_chief_leader_review",
+    "nodeSemantic": "CHIEF_LEADER_REVIEW",
+    "pageCode": "InspectionBriefing/BriefingChiefReviewForm",
+    "isStarterNode": false,
+    "isConvergencePoint": true,
+    "canReject": false,
+    "rejectOptions": [],
+    "isRejectTarget": false,
+    "rejectCode": null,
+    "slots": []
+  }
+]

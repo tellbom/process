@@ -1,0 +1,216 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xmlns:flowable="http://flowable.org/bpmn"
+             typeLanguage="http://www.w3.org/2001/XMLSchema"
+             expressionLanguage="http://www.w3.org/1999/XPath"
+             targetNamespace="http://www.flowable.org/processdef">
+
+  <!--
+    流程：巡察人员选调信息收集
+    ProcessDefinitionKey : personnel_selection_collection
+    BusinessType         : personnel_selection_collection
+
+    启动方式：后端为每个相关部门各启动一个实例
+    启动变量：deptHeadAssignee（一把手工号，由业务系统初始化传入）
+
+    流程路径：
+      路径A（一把手自处理）：UT-00 → UT-01 → EG-01[否] → UT-04 → ST-02回调 → 结束
+      路径B（指派下属）：    UT-00 → UT-01 → EG-01[是] → UT-02 → UT-03 → UT-04 → ST-02回调 → 结束
+
+    节点变量说明：
+      starterAssignee        : 发起人工号，启动时由业务系统传入，UT-00 assignee
+      deptHeadAssignee       : 一把手工号，启动时传入，UT-01 / UT-03 共用
+      feedbackPersonAssignee : 下属反馈人工号，UT-01完成时由前端传入（needFeedback=true时）
+      inspectionOfficeAssignee: 巡察办核实人工号
+        - 路径A：UT-01完成时前端传入
+        - 路径B：UT-03完成时前端传入
+
+    启动流程说明：
+      业务系统调用 StartProcess 启动流程后，需独立调用一次 CompleteTask
+      将发起人的表单数据作为 businessVariables 传入并 complete UT-00
+      此设计权在业务系统，流程中心不自动 complete 启动人节点
+  -->
+  <process id="personnel_selection_collection"
+           name="巡察人员选调信息收集"
+           isExecutable="true">
+
+    <startEvent id="start_event" name="开始"/>
+
+    <sequenceFlow id="flow_start_to_ut00"
+                  sourceRef="start_event"
+                  targetRef="ut00_starter_submit"/>
+
+    <!-- UT-00 发起人提交节点 -->
+    <userTask id="ut00_starter_submit"
+              name="发起人提交"
+              flowable:assignee="${starterAssignee}">
+      <documentation>
+        处理人: 启动时由业务系统传入 starterAssignee（发起人工号）
+        前端表单: SelectionCollection/StarterSubmitForm
+        操作: 发起人填写并提交选调基本信息表单
+        业务系统在 StartProcess 后独立调用 CompleteTask complete 此节点，携带表单数据
+        驳回落点: 所有节点驳回均回到此节点，发起人可感知流程被退回
+        slots: 选一把手 → deptHeadAssignee
+      </documentation>
+      <extensionElements>
+        <flowable:field name="nodeSemantic" stringValue="STARTER_SUBMIT"/>
+        <flowable:field name="pageCode" stringValue="SelectionCollection/StarterSubmitForm"/>
+        <flowable:field name="isConvergencePoint" stringValue="false"/>
+      </extensionElements>
+    </userTask>
+
+    <sequenceFlow id="flow_ut00_to_ut01"
+                  sourceRef="ut00_starter_submit"
+                  targetRef="ut01_dept_head_handle"/>
+
+    <!-- UT-01 相关部门一把手处理 -->
+    <userTask id="ut01_dept_head_handle"
+              name="相关部门一把手处理"
+              flowable:assignee="${deptHeadAssignee}">
+      <documentation>
+        处理人: UT-00完成时由前端通过 slot 传入 deptHeadAssignee
+        前端表单: SelectionCollection/DeptHeadHandleForm
+        操作: 一把手决定自己处理还是指派下属
+        必填变量: needFeedback(bool)
+        slots(needFeedback=true):  选下属反馈人 → feedbackPersonAssignee
+        slots(needFeedback=false): 选巡察办核实人 → inspectionOfficeAssignee
+      </documentation>
+      <extensionElements>
+        <flowable:field name="nodeSemantic" stringValue="DEPT_HEAD_HANDLE"/>
+        <flowable:field name="pageCode" stringValue="SelectionCollection/DeptHeadHandleForm"/>
+        <flowable:field name="isConvergencePoint" stringValue="false"/>
+      </extensionElements>
+    </userTask>
+
+    <sequenceFlow id="flow_ut01_to_eg01"
+                  sourceRef="ut01_dept_head_handle"
+                  targetRef="eg01_need_feedback"/>
+
+    <!-- EG-01 是否需要指派人员反馈 -->
+    <exclusiveGateway id="eg01_need_feedback" name="是否指派下属？"/>
+
+    <!-- 路径B：指派下属 -->
+    <sequenceFlow id="flow_eg01_yes_to_ut02"
+                  name="指派下属"
+                  sourceRef="eg01_need_feedback"
+                  targetRef="ut02_assignee_feedback">
+      <extensionElements>
+        <flowable:field name="branchLabel" stringValue="指派下属"/>
+      </extensionElements>
+      <conditionExpression xsi:type="tFormalExpression">${needFeedback == true}</conditionExpression>
+    </sequenceFlow>
+
+    <!-- 路径A：一把手自处理 -->
+    <sequenceFlow id="flow_eg01_no_to_ut04"
+                  name="自行处理"
+                  sourceRef="eg01_need_feedback"
+                  targetRef="ut04_inspection_office_verify">
+      <extensionElements>
+        <flowable:field name="branchLabel" stringValue="自行处理"/>
+      </extensionElements>
+      <conditionExpression xsi:type="tFormalExpression">${needFeedback == false}</conditionExpression>
+    </sequenceFlow>
+
+    <!-- UT-02 指派人员填写反馈（路径B） -->
+    <userTask id="ut02_assignee_feedback"
+              name="指派人员填写反馈"
+              flowable:assignee="${feedbackPersonAssignee}">
+      <documentation>
+        处理人: UT-01完成时前端传入 feedbackPersonAssignee
+        前端表单: SelectionCollection/AssigneeFeedbackForm
+        操作: 下属填写个人情况说明，上传附件（可选）
+        slots: 选一把手审批人 → deptHeadAssignee（前端传同一把手工号）
+      </documentation>
+      <extensionElements>
+        <flowable:field name="nodeSemantic" stringValue="ASSIGNEE_FEEDBACK"/>
+        <flowable:field name="pageCode" stringValue="SelectionCollection/AssigneeFeedbackForm"/>
+        <flowable:field name="isConvergencePoint" stringValue="false"/>
+      </extensionElements>
+    </userTask>
+
+    <sequenceFlow id="flow_ut02_to_ut03"
+                  sourceRef="ut02_assignee_feedback"
+                  targetRef="ut03_dept_head_approve"/>
+
+    <!-- UT-03 一把手审批下属内容（路径B） -->
+    <userTask id="ut03_dept_head_approve"
+              name="一把手审批"
+              flowable:assignee="${deptHeadAssignee}">
+      <documentation>
+        处理人: UT-02完成时前端传入 deptHeadAssignee（前端固定传一把手工号）
+        前端表单: SelectionCollection/DeptHeadApproveForm
+        操作: 一把手审批下属填写的反馈内容，填写审批意见
+        slots: 选巡察办核实人 → inspectionOfficeAssignee
+      </documentation>
+      <extensionElements>
+        <flowable:field name="nodeSemantic" stringValue="DEPT_HEAD_APPROVE"/>
+        <flowable:field name="pageCode" stringValue="SelectionCollection/DeptHeadApproveForm"/>
+        <flowable:field name="isConvergencePoint" stringValue="false"/>
+      </extensionElements>
+    </userTask>
+
+    <sequenceFlow id="flow_ut03_to_ut04"
+                  sourceRef="ut03_dept_head_approve"
+                  targetRef="ut04_inspection_office_verify"/>
+
+    <!-- UT-04 巡察办核实（两条路径汇聚） -->
+    <userTask id="ut04_inspection_office_verify"
+              name="巡察办核实"
+              flowable:assignee="${inspectionOfficeAssignee}">
+      <documentation>
+        处理人:
+          路径A - UT-01完成时前端传入 inspectionOfficeAssignee
+          路径B - UT-03完成时前端传入 inspectionOfficeAssignee
+        前端表单: SelectionCollection/InspectionOfficeVerifyForm
+        操作: 巡察办核实人员信息，确认后流程结束
+        slots: 无（末节点，完成后直接触发回调）
+        isConvergencePoint: true（此节点通过后不可撤回）
+      </documentation>
+      <extensionElements>
+        <flowable:field name="nodeSemantic" stringValue="INSPECTION_OFFICE_VERIFY"/>
+        <flowable:field name="pageCode" stringValue="SelectionCollection/InspectionOfficeVerifyForm"/>
+        <flowable:field name="isConvergencePoint" stringValue="true"/>
+      </extensionElements>
+    </userTask>
+
+    <sequenceFlow id="flow_ut04_to_st02"
+                  sourceRef="ut04_inspection_office_verify"
+                  targetRef="st02_framework_callback"/>
+
+    <!-- ST-02 框架回调业务系统（HTTP Task） -->
+    <serviceTask id="st02_framework_callback"
+                 name="框架回调业务系统"
+                 flowable:type="http">
+      <documentation>
+        框架标准回调节点，引擎 POST frameworkCallbackUrl
+        FlowableCallbackController 接收后触发业务系统回调链
+      </documentation>
+      <extensionElements>
+        <flowable:field name="requestMethod">
+          <flowable:string>POST</flowable:string>
+        </flowable:field>
+        <flowable:field name="requestUrl">
+          <flowable:expression>${frameworkCallbackUrl}</flowable:expression>
+        </flowable:field>
+        <flowable:field name="requestHeaders">
+          <flowable:string>Content-Type: application/json</flowable:string>
+        </flowable:field>
+        <flowable:field name="requestBody">
+          <flowable:expression>{"processInstanceId":"${execution.processInstanceId}","businessId":"${businessId}","processDefinitionKey":"${processDefinitionKey}"}</flowable:expression>
+        </flowable:field>
+        <flowable:field name="saveResponseParameters">
+          <flowable:string>false</flowable:string>
+        </flowable:field>
+      </extensionElements>
+    </serviceTask>
+
+    <sequenceFlow id="flow_st02_to_end"
+                  sourceRef="st02_framework_callback"
+                  targetRef="end_event"/>
+
+    <endEvent id="end_event" name="结束"/>
+
+  </process>
+
+</definitions>

@@ -1,0 +1,292 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xmlns:flowable="http://flowable.org/bpmn"
+             xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+             xmlns:omgdc="http://www.omg.org/spec/DD/20100524/DC"
+             xmlns:omgdi="http://www.omg.org/spec/DD/20100524/DI"
+             typeLanguage="http://www.w3.org/2001/XMLSchema"
+             expressionLanguage="http://www.w3.org/1999/XPath"
+             targetNamespace="http://www.flowable.org/processdef">
+
+  <!--
+    流程：巡察人员选调审批
+    ProcessDefinitionKey : personnel_selection_approval
+    BusinessType         : personnel_selection_approval
+
+    启动方式：巡察办汇总完流程一（collection）结果后手动发起一次
+    启动变量：groupLeaderAssignee（巡察组组长工号，由业务系统初始化传入）
+
+    流程路径：
+      路径A（本人处理）：UT-01 → UT-02 → UT-03 → UT-04 → EG-01[否] → UT-07 → UT-08 → 结束
+      路径B（指派他人反馈）：UT-01 → UT-02 → UT-03 → UT-04 → EG-01[是] → UT-05 → UT-06 → UT-07 → UT-08 → 结束
+
+    节点变量说明：
+      groupLeaderAssignee          : 巡察组组长，启动时传入，UT-01 assignee
+      inspectionOfficeReviewAssignee: 巡察办审核人，UT-01 完成时前端传入，UT-02 assignee
+      integrityDeptReviewAssignee  : 纪检部审核人，UT-02 完成时前端传入，UT-03 assignee
+      integrityHeadAssignee        : 纪检部一把手，UT-03 完成时前端传入，UT-04 处理；他人反馈后由 UT-06 审批
+      feedbackPersonAssignee       : 反馈人工号，UT-04 完成时前端传入（needPersonFeedback=true 时），UT-05 assignee
+      officeDirectorAssignee       : 巡察办主任，UT-04 本人处理时传入，或 UT-06 他人反馈后传入，UT-07 assignee
+      secretaryAssignee            : 纪委书记，UT-07 完成时前端传入，UT-08 assignee
+
+    撤回约束：UT-08 通过后 isConvergencePoint=true，不可再撤回至之前节点
+  -->
+  <process id="personnel_selection_approval"
+           name="巡察人员选调审批"
+           isExecutable="true">
+
+    <startEvent id="start_event" name="开始"/>
+
+    <!-- UT-00 发起人提交 -->
+    <userTask id="ut00_starter_submit"
+          name="发起人提交"
+          flowable:assignee="${starterAssignee}">
+      <documentation>
+      处理人: 启动时由业务系统传入 starterAssignee（发起人工号）
+      前端表单: SelectionApproval/StarterSubmitForm
+      操作: 发起人确认并提交审批数据
+      slots: 选巡察组组长 → groupLeaderAssignee
+
+      说明:
+      1. 正常启动时，该节点可由系统自动完成并推进到 UT-01
+      2. 驳回到发起人时，流程真实回退到该节点，由发起人重新处理
+      </documentation>
+      <extensionElements>
+        <flowable:field name="nodeSemantic" stringValue="STARTER_SUBMIT"/>
+        <flowable:field name="pageCode" stringValue="SelectionApproval/StarterSubmitForm"/>
+        <flowable:field name="isConvergencePoint" stringValue="false"/>
+      </extensionElements>
+    </userTask>
+
+    <sequenceFlow id="flow_start_to_ut00"
+                  sourceRef="start_event"
+                  targetRef="ut00_starter_submit"/>
+
+    <!-- UT-01 巡察组组长确认 -->
+    <userTask id="ut01_group_leader_confirm"
+              name="巡察组组长确认"
+              flowable:assignee="${groupLeaderAssignee}">
+      <documentation>
+        处理人: 启动时由业务系统传入 groupLeaderAssignee（组长工号）
+        前端表单: SelectionApproval/GroupLeaderConfirmForm
+        操作: 查看推荐人员名单，填写组长确认意见
+        slots: 选巡察办审核人 → inspectionOfficeReviewAssignee
+      </documentation>
+      <extensionElements>
+        <flowable:field name="nodeSemantic" stringValue="GROUP_LEADER_CONFIRM"/>
+        <flowable:field name="pageCode" stringValue="SelectionApproval/GroupLeaderConfirmForm"/>
+        <flowable:field name="isConvergencePoint" stringValue="false"/>
+      </extensionElements>
+    </userTask>
+
+    <sequenceFlow id="flow_ut01_to_ut02"
+                  sourceRef="ut01_group_leader_confirm"
+                  targetRef="ut02_inspection_office_review"/>
+
+    <!-- UT-02 巡察办审核 -->
+    <userTask id="ut02_inspection_office_review"
+              name="巡察办审核"
+              flowable:assignee="${inspectionOfficeReviewAssignee}">
+      <documentation>
+        处理人: UT-01 完成时前端通过 slot 传入 inspectionOfficeReviewAssignee
+        前端表单: SelectionApproval/InspectionOfficeReviewForm
+        操作: 审核入选人员资质，填写审核意见
+        slots: 选纪检部审核人 → integrityDeptReviewAssignee
+      </documentation>
+      <extensionElements>
+        <flowable:field name="nodeSemantic" stringValue="INSPECTION_OFFICE_REVIEW"/>
+        <flowable:field name="pageCode" stringValue="SelectionApproval/InspectionOfficeReviewForm"/>
+        <flowable:field name="isConvergencePoint" stringValue="false"/>
+      </extensionElements>
+    </userTask>
+
+    <sequenceFlow id="flow_ut02_to_ut03"
+                  sourceRef="ut02_inspection_office_review"
+                  targetRef="ut03_integrity_dept_review"/>
+
+    <!-- UT-03 纪检部审核 -->
+    <userTask id="ut03_integrity_dept_review"
+              name="纪检部审核"
+              flowable:assignee="${integrityDeptReviewAssignee}">
+      <documentation>
+        处理人: UT-02 完成时前端通过 slot 传入 integrityDeptReviewAssignee
+        前端表单: SelectionApproval/IntegrityDeptReviewForm
+        操作: 合规视角审核人员选调，填写审核意见
+        slots: 选纪检部一把手 → integrityHeadAssignee
+      </documentation>
+      <extensionElements>
+        <flowable:field name="nodeSemantic" stringValue="INTEGRITY_DEPT_REVIEW"/>
+        <flowable:field name="pageCode" stringValue="SelectionApproval/IntegrityDeptReviewForm"/>
+        <flowable:field name="isConvergencePoint" stringValue="false"/>
+      </extensionElements>
+    </userTask>
+
+    <sequenceFlow id="flow_ut03_to_ut04"
+                  sourceRef="ut03_integrity_dept_review"
+                  targetRef="ut04_integrity_head_handle"/>
+
+    <!-- UT-04 纪检部一把手处理 -->
+    <userTask id="ut04_integrity_head_handle"
+              name="纪检部一把手处理"
+              flowable:assignee="${integrityHeadAssignee}">
+      <documentation>
+        处理人: UT-03 完成时前端通过 slot 传入 integrityHeadAssignee
+        前端表单: SelectionApproval/IntegrityHeadHandleForm
+        操作: 决定本人处理后提交巡察办主任，或指派他人补充反馈
+        必填变量: needPersonFeedback(bool)
+        slots(needPersonFeedback=true):  选反馈人 → feedbackPersonAssignee
+        slots(needPersonFeedback=false): 选巡察办主任 → officeDirectorAssignee
+      </documentation>
+      <extensionElements>
+        <flowable:field name="nodeSemantic" stringValue="INTEGRITY_HEAD_HANDLE"/>
+        <flowable:field name="pageCode" stringValue="SelectionApproval/IntegrityHeadHandleForm"/>
+        <flowable:field name="isConvergencePoint" stringValue="false"/>
+      </extensionElements>
+    </userTask>
+
+    <sequenceFlow id="flow_ut04_to_eg01"
+                  sourceRef="ut04_integrity_head_handle"
+                  targetRef="eg01_need_person_feedback"/>
+
+    <!-- EG-01 是否需要人员反馈 -->
+    <exclusiveGateway id="eg01_need_person_feedback" name="是否需要人员反馈？"/>
+
+    <!-- 路径B：指派他人反馈 -->
+    <sequenceFlow id="flow_eg01_yes_to_ut05"
+                  name="指派反馈"
+                  sourceRef="eg01_need_person_feedback"
+                  targetRef="ut05_person_feedback">
+      <conditionExpression xsi:type="tFormalExpression">${needPersonFeedback == true}</conditionExpression>
+    </sequenceFlow>
+
+    <!-- 路径A：本人处理后提交巡察办主任审核 -->
+    <sequenceFlow id="flow_eg01_no_to_ut07"
+                  name="本人处理"
+                  sourceRef="eg01_need_person_feedback"
+                  targetRef="ut07_office_director_review">
+      <conditionExpression xsi:type="tFormalExpression">${needPersonFeedback == false}</conditionExpression>
+    </sequenceFlow>
+
+    <!-- UT-05 指派人员反馈（路径B） -->
+    <userTask id="ut05_person_feedback"
+              name="指派人员反馈"
+              flowable:assignee="${feedbackPersonAssignee}">
+      <documentation>
+        处理人: UT-04 完成时前端通过 slot 传入 feedbackPersonAssignee
+        前端表单: SelectionApproval/PersonFeedbackForm
+        操作: 填写个人补充说明，上传证明材料（可选）
+        slots: 无（完成后进入 UT-06，由纪检部一把手审批）
+      </documentation>
+      <extensionElements>
+        <flowable:field name="nodeSemantic" stringValue="PERSON_FEEDBACK"/>
+        <flowable:field name="pageCode" stringValue="SelectionApproval/PersonFeedbackForm"/>
+        <flowable:field name="isConvergencePoint" stringValue="false"/>
+      </extensionElements>
+    </userTask>
+
+    <sequenceFlow id="flow_ut05_to_ut06"
+                  sourceRef="ut05_person_feedback"
+                  targetRef="ut06_integrity_head_approve"/>
+
+    <!-- UT-06 纪检部一把手审批（仅他人反馈路径） -->
+    <userTask id="ut06_integrity_head_approve"
+              name="纪检部一把手审批"
+              flowable:assignee="${integrityHeadAssignee}">
+      <documentation>
+        处理人: 纪检部一把手（UT-03 完成时已传入）
+        前端表单: SelectionApproval/IntegrityHeadApprovalForm
+        操作: 审批他人反馈后的选调人员名单，填写审批意见
+        slots: 选巡察办主任 → officeDirectorAssignee
+      </documentation>
+      <extensionElements>
+        <flowable:field name="nodeSemantic" stringValue="INTEGRITY_HEAD_APPROVE"/>
+        <flowable:field name="pageCode" stringValue="SelectionApproval/IntegrityHeadApprovalForm"/>
+        <flowable:field name="isConvergencePoint" stringValue="false"/>
+      </extensionElements>
+    </userTask>
+
+    <sequenceFlow id="flow_ut06_to_ut07"
+                  sourceRef="ut06_integrity_head_approve"
+                  targetRef="ut07_office_director_review"/>
+
+    <!-- UT-07 巡察办主任审核 -->
+    <userTask id="ut07_office_director_review"
+              name="巡察办主任审核"
+              flowable:assignee="${officeDirectorAssignee}">
+      <documentation>
+        处理人: UT-04 本人处理路径或 UT-06 他人反馈路径通过 slot 传入 officeDirectorAssignee
+        前端表单: SelectionApproval/OfficeDirectorReviewForm
+        操作: 汇总确认人员名单，填写主任审核意见
+        slots: 选纪委书记 → secretaryAssignee
+      </documentation>
+      <extensionElements>
+        <flowable:field name="nodeSemantic" stringValue="OFFICE_DIRECTOR_REVIEW"/>
+        <flowable:field name="pageCode" stringValue="SelectionApproval/OfficeDirectorReviewForm"/>
+        <flowable:field name="isConvergencePoint" stringValue="false"/>
+      </extensionElements>
+    </userTask>
+
+    <sequenceFlow id="flow_ut07_to_ut08"
+                  sourceRef="ut07_office_director_review"
+                  targetRef="ut08_secretary_final_approve"/>
+
+    <!-- UT-08 纪委书记审定（末节点，isConvergencePoint=true） -->
+    <userTask id="ut08_secretary_final_approve"
+              name="纪委书记审定"
+              flowable:assignee="${secretaryAssignee}">
+      <documentation>
+        处理人: UT-07 完成时前端通过 slot 传入 secretaryAssignee
+        前端表单: SelectionApproval/SecretaryApprovalForm
+        操作: 最终审定，流程收口，填写书记审定意见
+        slots: 无（末节点）
+        isConvergencePoint: true（本节点通过后不可再撤回至之前任何节点）
+      </documentation>
+      <extensionElements>
+        <flowable:field name="nodeSemantic" stringValue="SECRETARY_FINAL_APPROVE"/>
+        <flowable:field name="pageCode" stringValue="SelectionApproval/SecretaryApprovalForm"/>
+        <flowable:field name="isConvergencePoint" stringValue="true"/>
+      </extensionElements>
+    </userTask>
+
+    <sequenceFlow id="flow_ut08_to_st02"
+                  sourceRef="ut08_secretary_final_approve"
+                  targetRef="st02_framework_callback"/>
+
+    <!-- ST-02 框架回调业务系统（HTTP Task） -->
+    <serviceTask id="st02_framework_callback"
+                 name="框架回调业务系统"
+                 flowable:type="http">
+      <documentation>
+        框架标准回调节点，引擎 POST frameworkCallbackUrl
+        FlowableCallbackController 接收后触发业务系统回调链
+      </documentation>
+      <extensionElements>
+        <flowable:field name="requestMethod">
+          <flowable:string>POST</flowable:string>
+        </flowable:field>
+        <flowable:field name="requestUrl">
+          <flowable:expression>${frameworkCallbackUrl}</flowable:expression>
+        </flowable:field>
+        <flowable:field name="requestHeaders">
+          <flowable:string>Content-Type: application/json</flowable:string>
+        </flowable:field>
+        <flowable:field name="requestBody">
+          <flowable:expression>{"processInstanceId":"${execution.processInstanceId}","businessId":"${businessId}","processDefinitionKey":"${processDefinitionKey}"}</flowable:expression>
+        </flowable:field>
+        <flowable:field name="saveResponseParameters">
+          <flowable:string>false</flowable:string>
+        </flowable:field>
+      </extensionElements>
+    </serviceTask>
+
+    <sequenceFlow id="flow_st02_to_end"
+                  sourceRef="st02_framework_callback"
+                  targetRef="end_event"/>
+
+    <endEvent id="end_event" name="结束"/>
+
+  </process>
+
+
+</definitions>

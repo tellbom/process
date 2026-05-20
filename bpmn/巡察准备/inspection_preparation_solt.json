@@ -1,0 +1,89 @@
+[
+  {
+    "taskDefinitionKey": "ut01_upload_plan",
+    "nodeSemantic": "STARTER_SUBMIT",
+    "pageCode": "InspectionPrep/StarterUploadForm",
+    "isStarterNode": true,
+    "isConvergencePoint": false,
+    "canReject": false,
+    "rejectOptions": [],
+    "isRejectTarget": true,
+    "rejectCode": "TO_STARTER",
+    "slots": [
+      {
+        "slotKey": "group_leader",
+        "label": "巡察组组长",
+        "mode": "single",
+        "variableName": "groupLeaderAssignee",
+        "required": true,
+        "conditionalOn": null
+      }
+    ]
+  },
+  {
+    "taskDefinitionKey": "ut02_group_leader_review",
+    "nodeSemantic": "GROUP_LEADER_REVIEW",
+    "pageCode": "InspectionPrep/GroupLeaderReviewForm",
+    "isStarterNode": false,
+    "isConvergencePoint": false,
+    "canReject": true,
+    "rejectOptions": [
+      {
+        "rejectCode": "TO_STARTER",
+        "label": "退回发起人重新提交",
+        "description": "实施方案或分工表有问题，退回重新上传"
+      }
+    ],
+    "isRejectTarget": false,
+    "rejectCode": null,
+    "slots": [
+      {
+        "slotKey": "office_director",
+        "label": "巡察办主任",
+        "mode": "single",
+        "variableName": "officeDirectorAssignee",
+        "required": true,
+        "conditionalOn": null
+      }
+    ]
+  },
+  {
+    "taskDefinitionKey": "ut03_office_director_review",
+    "nodeSemantic": "OFFICE_DIRECTOR_REVIEW",
+    "pageCode": "InspectionPrep/OfficeDirectorReviewForm",
+    "isStarterNode": false,
+    "isConvergencePoint": false,
+    "canReject": true,
+    "rejectOptions": [
+      {
+        "rejectCode": "TO_STARTER",
+        "label": "退回发起人重新提交",
+        "description": "实施方案或分工表有问题，退回重新上传"
+      }
+    ],
+    "isRejectTarget": false,
+    "rejectCode": null,
+    "slots": [
+      {
+        "slotKey": "secretary",
+        "label": "纪委书记",
+        "mode": "single",
+        "variableName": "secretaryAssignee",
+        "required": true,
+        "conditionalOn": null
+      }
+    ]
+  },
+  {
+    "taskDefinitionKey": "ut04_secretary_approve",
+    "nodeSemantic": "SECRETARY_APPROVE",
+    "pageCode": "InspectionPrep/SecretaryApproveForm",
+    "isStarterNode": false,
+    "isConvergencePoint": true,
+    "canReject": false,
+    "rejectOptions": [],
+    "isRejectTarget": false,
+    "rejectCode": null,
+    "slots": []
+  }
+]

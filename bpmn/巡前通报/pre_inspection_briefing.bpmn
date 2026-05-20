@@ -1,0 +1,314 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xmlns:flowable="http://flowable.org/bpmn"
+             xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+             xmlns:omgdc="http://www.omg.org/spec/DD/20100524/DC"
+             xmlns:omgdi="http://www.omg.org/spec/DD/20100524/DI"
+             typeLanguage="http://www.w3.org/2001/XMLSchema"
+             expressionLanguage="http://www.w3.org/1999/XPath"
+             targetNamespace="http://www.flowable.org/processdef">
+
+  <!--
+    流程：巡前通报
+    ProcessDefinitionKey : pre_inspection_briefing
+    BusinessType         : pre_inspection_briefing
+
+    启动方式：业务后端为每个被督察部门各启动一个实例（后端循环调用 StartProcess）
+    启动变量：
+      starterAssignee  — 发起人工号，由业务系统传入，UT-00 assignee
+      deptHeadAssignee — 相关部门一把手工号，由业务系统传入，UT-01 assignee
+
+    流程路径：
+      路径A（自处理）：  UT-00 → UT-01 → EG-01[否] → UT-03 → UT-04 → 回调 → 结束
+      路径B（指派反馈）：UT-00 → UT-01 → EG-01[是] → UT-02 → UT-03 → UT-04 → 回调 → 结束
+
+    节点变量说明：
+      starterAssignee       : 发起人工号，启动时传入，UT-00 assignee
+      deptHeadAssignee      : 一把手工号，启动时传入，UT-01 assignee
+      feedbackAssignee      : 反馈人工号，UT-01完成时前端传入（needFeedback=true时），UT-02 assignee
+      companyLeaderAssignee : 公司分管领导工号，UT-01完成时前端传入，UT-03 assignee
+      chiefLeaderAssignee   : 巡察主管领导工号，UT-03完成时前端传入，UT-04 assignee
+
+    驳回落点：所有节点驳回均回到 UT-00（发起人），发起人可感知并重新提交
+  -->
+  <process id="pre_inspection_briefing"
+           name="巡前通报"
+           isExecutable="true">
+
+    <startEvent id="start_event" name="开始"/>
+
+    <sequenceFlow id="flow_start_to_ut00"
+                  sourceRef="start_event"
+                  targetRef="ut00_starter_submit"/>
+
+    <!-- UT-00 发起人提交（发起人节点，驳回落点） -->
+    <userTask id="ut00_starter_submit"
+              name="发起人提交"
+              flowable:assignee="${starterAssignee}">
+      <documentation>
+        处理人: 启动时由业务系统传入 starterAssignee（发起人工号）
+        前端表单: InspectionBriefing/StarterSubmitForm
+        操作: 发起人确认通报内容，提交发起
+        驳回落点: 所有节点驳回均回到此节点，发起人可感知并重新提交
+        slots: 选相关部门一把手 → deptHeadAssignee
+      </documentation>
+      <extensionElements>
+        <flowable:field name="nodeSemantic" stringValue="STARTER_SUBMIT"/>
+        <flowable:field name="pageCode" stringValue="InspectionBriefing/StarterSubmitForm"/>
+        <flowable:field name="isConvergencePoint" stringValue="false"/>
+      </extensionElements>
+    </userTask>
+
+    <sequenceFlow id="flow_ut00_to_ut01"
+                  sourceRef="ut00_starter_submit"
+                  targetRef="ut01_dept_head_handle"/>
+
+    <!-- UT-01 相关部门一把手处理 -->
+    <userTask id="ut01_dept_head_handle"
+              name="相关部门一把手处理"
+              flowable:assignee="${deptHeadAssignee}">
+      <documentation>
+        处理人: UT-00完成时前端通过 slot 传入 deptHeadAssignee
+        前端表单: InspectionBriefing/BriefingFeedbackForm
+        操作: 查看通报内容，决定自处理或指派下属反馈，填写处理意见
+        必填变量: needFeedback(bool)
+        slots(needFeedback=true):  选反馈人 → feedbackAssignee
+        slots(needFeedback=false): 选公司分管领导 → companyLeaderAssignee
+      </documentation>
+      <extensionElements>
+        <flowable:field name="nodeSemantic" stringValue="DEPT_HEAD_HANDLE"/>
+        <flowable:field name="pageCode" stringValue="InspectionBriefing/BriefingFeedbackForm"/>
+        <flowable:field name="isConvergencePoint" stringValue="false"/>
+      </extensionElements>
+    </userTask>
+
+    <sequenceFlow id="flow_ut01_to_eg01"
+                  sourceRef="ut01_dept_head_handle"
+                  targetRef="eg01_need_feedback"/>
+
+    <!-- EG-01 是否需要指派人员反馈 -->
+    <exclusiveGateway id="eg01_need_feedback" name="是否指派反馈？"/>
+
+    <!-- 路径B：指派下属反馈 -->
+    <sequenceFlow id="flow_eg01_yes_to_ut02"
+                  name="指派反馈"
+                  sourceRef="eg01_need_feedback"
+                  targetRef="ut02_assignee_feedback">
+      <conditionExpression xsi:type="tFormalExpression">${needFeedback == true}</conditionExpression>
+    </sequenceFlow>
+
+    <!-- 路径A：自处理，直接进入分管领导审核 -->
+    <sequenceFlow id="flow_eg01_no_to_ut03"
+                  name="自行处理"
+                  sourceRef="eg01_need_feedback"
+                  targetRef="ut03_company_leader_review">
+      <conditionExpression xsi:type="tFormalExpression">${needFeedback == false}</conditionExpression>
+    </sequenceFlow>
+
+    <!-- UT-02 指派人员反馈（路径B） -->
+    <userTask id="ut02_assignee_feedback"
+              name="指派人员反馈"
+              flowable:assignee="${feedbackAssignee}">
+      <documentation>
+        处理人: UT-01完成时前端通过 slot 传入 feedbackAssignee
+        前端表单: InspectionBriefing/BriefingFeedbackViewForm
+        操作: 填写个人情况说明，上传附件（可选）
+        slots: 选公司分管领导 → companyLeaderAssignee
+      </documentation>
+      <extensionElements>
+        <flowable:field name="nodeSemantic" stringValue="ASSIGNEE_FEEDBACK"/>
+        <flowable:field name="pageCode" stringValue="InspectionBriefing/BriefingFeedbackViewForm"/>
+        <flowable:field name="isConvergencePoint" stringValue="false"/>
+      </extensionElements>
+    </userTask>
+
+    <sequenceFlow id="flow_ut02_to_ut03"
+                  sourceRef="ut02_assignee_feedback"
+                  targetRef="ut03_company_leader_review"/>
+
+    <!-- UT-03 公司分管领导审核（两条路径汇聚） -->
+    <userTask id="ut03_company_leader_review"
+              name="公司分管领导审核"
+              flowable:assignee="${companyLeaderAssignee}">
+      <documentation>
+        处理人:
+          路径A — UT-01完成时前端传入 companyLeaderAssignee
+          路径B — UT-02完成时前端传入 companyLeaderAssignee
+        前端表单: InspectionBriefing/BriefingLeaderApprovalForm
+        操作: 查看通报内容及一把手处理意见，填写分管领导审核意见
+        slots: 选巡察主管领导 → chiefLeaderAssignee
+      </documentation>
+      <extensionElements>
+        <flowable:field name="nodeSemantic" stringValue="COMPANY_LEADER_REVIEW"/>
+        <flowable:field name="pageCode" stringValue="InspectionBriefing/BriefingLeaderApprovalForm"/>
+        <flowable:field name="isConvergencePoint" stringValue="false"/>
+      </extensionElements>
+    </userTask>
+
+    <sequenceFlow id="flow_ut03_to_ut04"
+                  sourceRef="ut03_company_leader_review"
+                  targetRef="ut04_chief_leader_review"/>
+
+    <!-- UT-04 巡察主管领导审核（末节点，isConvergencePoint=true） -->
+    <userTask id="ut04_chief_leader_review"
+              name="巡察主管领导审核"
+              flowable:assignee="${chiefLeaderAssignee}">
+      <documentation>
+        处理人: UT-03完成时前端通过 slot 传入 chiefLeaderAssignee
+        前端表单: InspectionBriefing/BriefingChiefReviewForm
+        操作: 查看完整通报链，填写主管领导审核意见，流程收口
+        slots: 无（末节点）
+        isConvergencePoint: true（本节点通过后不可再撤回至之前任何节点）
+      </documentation>
+      <extensionElements>
+        <flowable:field name="nodeSemantic" stringValue="CHIEF_LEADER_REVIEW"/>
+        <flowable:field name="pageCode" stringValue="InspectionBriefing/BriefingChiefReviewForm"/>
+        <flowable:field name="isConvergencePoint" stringValue="true"/>
+      </extensionElements>
+    </userTask>
+
+    <sequenceFlow id="flow_ut04_to_st02"
+                  sourceRef="ut04_chief_leader_review"
+                  targetRef="st02_framework_callback"/>
+
+    <!-- ST-02 框架回调业务系统（HTTP Task） -->
+    <serviceTask id="st02_framework_callback"
+                 name="框架回调业务系统"
+                 flowable:type="http">
+      <documentation>
+        框架标准回调节点，引擎 POST frameworkCallbackUrl
+        FlowableCallbackController 接收后触发业务系统回调链
+      </documentation>
+      <extensionElements>
+        <flowable:field name="requestMethod">
+          <flowable:string>POST</flowable:string>
+        </flowable:field>
+        <flowable:field name="requestUrl">
+          <flowable:expression>${frameworkCallbackUrl}</flowable:expression>
+        </flowable:field>
+        <flowable:field name="requestHeaders">
+          <flowable:string>Content-Type: application/json</flowable:string>
+        </flowable:field>
+        <flowable:field name="requestBody">
+          <flowable:expression>{"processInstanceId":"${execution.processInstanceId}","businessId":"${businessId}","processDefinitionKey":"${processDefinitionKey}"}</flowable:expression>
+        </flowable:field>
+        <flowable:field name="saveResponseParameters">
+          <flowable:string>false</flowable:string>
+        </flowable:field>
+      </extensionElements>
+    </serviceTask>
+
+    <sequenceFlow id="flow_st02_to_end"
+                  sourceRef="st02_framework_callback"
+                  targetRef="end_event"/>
+
+    <endEvent id="end_event" name="结束"/>
+
+  </process>
+
+  <bpmndi:BPMNDiagram id="BPMNDiagram_pre_inspection_briefing">
+    <bpmndi:BPMNPlane id="BPMNPlane_pre_inspection_briefing"
+                      bpmnElement="pre_inspection_briefing">
+
+      <bpmndi:BPMNShape id="shape_start_event" bpmnElement="start_event">
+        <omgdc:Bounds x="172" y="52" width="36" height="36"/>
+        <bpmndi:BPMNLabel>
+          <omgdc:Bounds x="178" y="95" width="24" height="14"/>
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="shape_ut00" bpmnElement="ut00_starter_submit">
+        <omgdc:Bounds x="90" y="130" width="200" height="60"/>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="shape_ut01" bpmnElement="ut01_dept_head_handle">
+        <omgdc:Bounds x="90" y="240" width="200" height="60"/>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="shape_eg01" bpmnElement="eg01_need_feedback" isMarkerVisible="true">
+        <omgdc:Bounds x="155" y="350" width="50" height="50"/>
+        <bpmndi:BPMNLabel>
+          <omgdc:Bounds x="120" y="407" width="120" height="14"/>
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="shape_ut02" bpmnElement="ut02_assignee_feedback">
+        <omgdc:Bounds x="320" y="335" width="200" height="60"/>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="shape_ut03" bpmnElement="ut03_company_leader_review">
+        <omgdc:Bounds x="90" y="460" width="200" height="60"/>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="shape_ut04" bpmnElement="ut04_chief_leader_review">
+        <omgdc:Bounds x="90" y="570" width="200" height="60"/>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="shape_st02" bpmnElement="st02_framework_callback">
+        <omgdc:Bounds x="90" y="680" width="200" height="60"/>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="shape_end_event" bpmnElement="end_event">
+        <omgdc:Bounds x="172" y="790" width="36" height="36"/>
+        <bpmndi:BPMNLabel>
+          <omgdc:Bounds x="178" y="833" width="24" height="14"/>
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNEdge id="edge_start_to_ut00" bpmnElement="flow_start_to_ut00">
+        <omgdi:waypoint x="190" y="88"/>
+        <omgdi:waypoint x="190" y="130"/>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="edge_ut00_to_ut01" bpmnElement="flow_ut00_to_ut01">
+        <omgdi:waypoint x="190" y="190"/>
+        <omgdi:waypoint x="190" y="240"/>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="edge_ut01_to_eg01" bpmnElement="flow_ut01_to_eg01">
+        <omgdi:waypoint x="190" y="300"/>
+        <omgdi:waypoint x="180" y="350"/>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="edge_eg01_yes_to_ut02" bpmnElement="flow_eg01_yes_to_ut02">
+        <omgdi:waypoint x="205" y="375"/>
+        <omgdi:waypoint x="320" y="365"/>
+        <bpmndi:BPMNLabel>
+          <omgdc:Bounds x="243" y="352" width="44" height="14"/>
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="edge_ut02_to_ut03" bpmnElement="flow_ut02_to_ut03">
+        <omgdi:waypoint x="420" y="395"/>
+        <omgdi:waypoint x="420" y="490"/>
+        <omgdi:waypoint x="290" y="490"/>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="edge_eg01_no_to_ut03" bpmnElement="flow_eg01_no_to_ut03">
+        <omgdi:waypoint x="180" y="400"/>
+        <omgdi:waypoint x="190" y="460"/>
+        <bpmndi:BPMNLabel>
+          <omgdc:Bounds x="155" y="422" width="44" height="14"/>
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="edge_ut03_to_ut04" bpmnElement="flow_ut03_to_ut04">
+        <omgdi:waypoint x="190" y="520"/>
+        <omgdi:waypoint x="190" y="570"/>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="edge_ut04_to_st02" bpmnElement="flow_ut04_to_st02">
+        <omgdi:waypoint x="190" y="630"/>
+        <omgdi:waypoint x="190" y="680"/>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="edge_st02_to_end" bpmnElement="flow_st02_to_end">
+        <omgdi:waypoint x="190" y="740"/>
+        <omgdi:waypoint x="190" y="790"/>
+      </bpmndi:BPMNEdge>
+
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+
+</definitions>

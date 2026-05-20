@@ -1,0 +1,130 @@
+[
+  {
+    "taskDefinitionKey": "ut00_starter_submit",
+    "nodeSemantic": "STARTER_SUBMIT",
+    "pageCode": "SelectionCollection/StarterSubmitForm",
+    "isStarterNode": true,
+    "isConvergencePoint": false,
+    "canReject": false,
+    "rejectOptions": [],
+    "isRejectTarget": true,
+    "rejectCode": "TO_STARTER",
+    "slots": [
+      {
+        "slotKey": "dept_head",
+        "label": "相关部门一把手",
+        "mode": "single",
+        "variableName": "deptHeadAssignee",
+        "required": true,
+        "conditionalOn": null
+      }
+    ]
+  },
+  {
+    "taskDefinitionKey": "ut01_dept_head_handle",
+    "nodeSemantic": "DEPT_HEAD_HANDLE",
+    "pageCode": "SelectionCollection/DeptHeadHandleForm",
+    "isStarterNode": false,
+    "isConvergencePoint": false,
+    "canReject": true,
+    "rejectOptions": [
+      {
+        "	": "TO_STARTER",
+        "label": "退回发起人重新提交",
+        "description": "退回至发起人，重新填写表单数据"
+      }
+    ],
+    "isRejectTarget": false,
+    "rejectCode": null,
+    "slots": [
+      {
+        "slotKey": "feedback_person",
+        "label": "下属反馈人",
+        "mode": "single",
+        "variableName": "feedbackPersonAssignee",
+        "required": false,
+        "conditionalOn": "needFeedback==true"
+      },
+      {
+        "slotKey": "inspection_office_verifier_path_a",
+        "label": "巡察办核实人（自处理路径）",
+        "mode": "single",
+        "variableName": "inspectionOfficeAssignee",
+        "required": false,
+        "conditionalOn": "needFeedback==false"
+      }
+    ]
+  },
+  {
+    "taskDefinitionKey": "ut02_assignee_feedback",
+    "nodeSemantic": "ASSIGNEE_FEEDBACK",
+    "pageCode": "SelectionCollection/AssigneeFeedbackForm",
+    "isStarterNode": false,
+    "isConvergencePoint": false,
+    "canReject": true,
+    "rejectOptions": [
+      {
+        "rejectCode": "TO_STARTER",
+        "label": "退回发起人重新提交",
+        "description": "退回至发起人，重新发起本轮流程"
+      }
+    ],
+    "isRejectTarget": false,
+    "rejectCode": null,
+    "slots": [
+      {
+        "slotKey": "dept_head_approver",
+        "label": "一把手审批人",
+        "mode": "single",
+        "variableName": "deptHeadAssignee",
+        "required": true,
+        "conditionalOn": null
+      }
+    ]
+  },
+  {
+    "taskDefinitionKey": "ut03_dept_head_approve",
+    "nodeSemantic": "DEPT_HEAD_APPROVE",
+    "pageCode": "SelectionCollection/DeptHeadApproveForm",
+    "isStarterNode": false,
+    "isConvergencePoint": false,
+    "canReject": true,
+    "rejectOptions": [
+      {
+        "rejectCode": "TO_STARTER",
+        "label": "退回发起人重新提交",
+        "description": "退回至发起人，重新发起本轮流程"
+      }
+    ],
+    "isRejectTarget": false,
+    "rejectCode": null,
+    "slots": [
+      {
+        "slotKey": "inspection_office_verifier_path_b",
+        "label": "巡察办核实人（指派路径）",
+        "mode": "single",
+        "variableName": "inspectionOfficeAssignee",
+        "required": true,
+        "conditionalOn": null
+      }
+    ]
+  },
+  {
+    "taskDefinitionKey": "ut04_inspection_office_verify",
+    "nodeSemantic": "INSPECTION_OFFICE_VERIFY",
+    "pageCode": "SelectionCollection/InspectionOfficeVerifyForm",
+    "isStarterNode": false,
+    "isConvergencePoint": true,
+    "canReject": true,
+    "rejectOptions": [
+      {
+        "rejectCode": "TO_STARTER",
+        "label": "退回发起人重新提交",
+        "description": "核实信息有误，退回至发起人重新发起"
+      }
+    ],
+    "isRejectTarget": false,
+    "rejectCode": null,
+    "slots": []
+  }
+]
