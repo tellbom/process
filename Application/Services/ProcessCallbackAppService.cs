@@ -45,6 +45,7 @@ namespace FlowableWrapper.Application.Services
     {
         private readonly IElasticSearchService _esService;
         private readonly IHttpClientFactory _httpClientFactory;
+        private readonly ProcessQueryAppService _queryService;
         private readonly ILogger<ProcessCallbackAppService> _logger;
 
         private static readonly JsonSerializerOptions JsonOptions = new()
@@ -55,10 +56,12 @@ namespace FlowableWrapper.Application.Services
         public ProcessCallbackAppService(
             IElasticSearchService esService,
             IHttpClientFactory httpClientFactory,
+            ProcessQueryAppService queryService,
             ILogger<ProcessCallbackAppService> logger)
         {
             _esService         = esService;
             _httpClientFactory = httpClientFactory;
+            _queryService      = queryService;
             _logger            = logger;
         }
 
@@ -69,16 +72,24 @@ namespace FlowableWrapper.Application.Services
         /// <summary>
         /// 处理 Flowable HTTP Task 回调
         ///
-        /// 触发时机：Flowable 流程走到 endEvent，HTTP ServiceTask 执行
-        /// 含义：流程已自然结束，无论经过什么路径（正常通过/驳回终止）
+        /// 回调类型（由 Flowable 流程变量 callbackType 区分）：
+        ///   1. 节点级回调（callbackType = node_on_complete）
+        ///      触发时机：BPMN 节点完成后跟随的 HTTP ServiceTask 执行
+        ///      处理：确认节点已完成 → 单次 POST 业务系统（无重试）
+        ///      → 由 HandleNodeOnCompleteCallbackAsync 处理
         ///
-        /// 执行步骤：
-        ///   1. 参数校验
+        ///   2. 流程结束回调（无 callbackType 或其他值）
+        ///      触发时机：流程走到 endEvent，HTTP ServiceTask 执行
+        ///      处理：幂等校验 → 更新 ES status = completed → 通知业务系统
+        ///      → 由原有逻辑处理（保持不变）
+        ///
+        /// 执行步骤（流程结束回调）：
+        ///   1. 参数校验 + 回调类型分发
         ///   2. 查 ES 流程元数据
         ///   3. 幂等校验（已是终态直接返回 200）
-        ///   4. 更新 ES status = completed，写入 completedTime
-        ///   5. 若配置了业务系统回调 URL，转发通知
-        ///   6. 返回成功响应（Controller 返回 200 给 Flowable）
+        ///   4. 转发通知业务系统
+        ///   5. 更新 ES status = completed
+        ///   6. 返回成功响应
         /// </summary>
         public async Task<FlowableCallbackResponse> HandleFlowableCallbackAsync(
             FlowableCallbackRequest request)
@@ -92,6 +103,18 @@ namespace FlowableWrapper.Application.Services
             _logger.LogInformation(
                 "收到 Flowable 回调: ProcessInstanceId={ProcessInstanceId}, BusinessId={BusinessId}",
                 request.ProcessInstanceId, request.BusinessId);
+
+            // ── Step 1b: 回调类型分发（Phase 1 新增）──────────────
+            // callbackType = node_on_complete → 节点级回调，走独立处理路径
+            // 其他或无 callbackType → 流程结束回调，走原有路径
+            var callbackType = request.Variables
+                ?.GetValueOrDefault("callbackType")?.ToString();
+
+            if (string.Equals(callbackType, "node_on_complete",
+                StringComparison.OrdinalIgnoreCase))
+            {
+                return await HandleNodeOnCompleteCallbackAsync(request);
+            }
 
             // ── Step 2: 查流程元数据 ───────────────────────────────
             var metadata = await _esService.GetProcessMetadataAsync(
@@ -160,6 +183,157 @@ namespace FlowableWrapper.Application.Services
                 Success = true,
                 Message = "回调处理成功"
             };
+        }
+
+        // ═══════════════════════════════════════════════════════════
+        // 节点级回调（Phase 1 新增）
+        // ═══════════════════════════════════════════════════════════
+
+        /// <summary>
+        /// 处理节点级 on_complete 回调
+        ///
+        /// 触发方式：BPMN 目标节点完成后追加的 HTTP ServiceTask，
+        ///   流程变量须携带：
+        ///     callbackType    = "node_on_complete"
+        ///     callbackNodeKey = 对应节点的 taskDefinitionKey
+        ///     nodeCallbackUrl = 业务系统接收通知的 URL
+        ///
+        /// 执行步骤：
+        ///   1. 读取 callbackNodeKey 和 nodeCallbackUrl
+        ///   2. 调用 IsNodeCompletedAsync 确认节点已完成（Flowable 真相源原则）
+        ///   3. 单次 HTTP POST 业务系统（无重试，Phase 1 限制）
+        ///   4. 失败只记 Error 日志，不抛异常，不影响 Flowable 流程推进
+        ///
+        /// Phase 1 明确限制：
+        ///   ✘ 不实现重试
+        ///   ✘ 不实现幂等键
+        ///   ✘ 不实现回调状态机
+        ///   ✘ 不实现 per-instance 模式
+        /// </summary>
+        private async Task<FlowableCallbackResponse> HandleNodeOnCompleteCallbackAsync(
+            FlowableCallbackRequest request)
+        {
+            var taskDefinitionKey = request.Variables
+                ?.GetValueOrDefault("callbackNodeKey")?.ToString();
+
+            if (string.IsNullOrWhiteSpace(taskDefinitionKey))
+            {
+                _logger.LogWarning(
+                    "node_on_complete 回调缺少 callbackNodeKey，已跳过。" +
+                    "ProcessInstanceId={ProcessInstanceId}",
+                    request.ProcessInstanceId);
+
+                return new FlowableCallbackResponse
+                {
+                    Success = true,
+                    Message = "callbackNodeKey 为空，跳过节点回调"
+                };
+            }
+
+            // 用 Flowable 确认节点已完成（不信本地状态）
+            var isCompleted = await _queryService.IsNodeCompletedAsync(
+                request.ProcessInstanceId, taskDefinitionKey);
+
+            if (!isCompleted)
+            {
+                _logger.LogWarning(
+                    "节点 [{NodeKey}] 尚未完成，跳过 on_complete 回调。" +
+                    "ProcessInstanceId={ProcessInstanceId}",
+                    taskDefinitionKey, request.ProcessInstanceId);
+
+                return new FlowableCallbackResponse
+                {
+                    Success = true,
+                    Message = $"节点 [{taskDefinitionKey}] 尚未完成，跳过回调"
+                };
+            }
+
+            // 读取节点级回调 URL（由 BPMN ServiceTask 注入流程变量）
+            var callbackUrl = request.Variables
+                ?.GetValueOrDefault("nodeCallbackUrl")?.ToString();
+
+            if (string.IsNullOrWhiteSpace(callbackUrl))
+            {
+                _logger.LogWarning(
+                    "节点 [{NodeKey}] on_complete 回调 URL 为空，已跳过。" +
+                    "ProcessInstanceId={ProcessInstanceId}",
+                    taskDefinitionKey, request.ProcessInstanceId);
+
+                return new FlowableCallbackResponse
+                {
+                    Success = true,
+                    Message = $"节点 [{taskDefinitionKey}] 回调 URL 为空，跳过"
+                };
+            }
+
+            // 单次 HTTP POST，无重试，无幂等（Phase 1 限制）
+            await CallBusinessSystemOnceAsync(callbackUrl, taskDefinitionKey, request);
+
+            return new FlowableCallbackResponse
+            {
+                Success = true,
+                Message = $"节点 [{taskDefinitionKey}] on_complete 回调已发送"
+            };
+        }
+
+        /// <summary>
+        /// 节点级单次 HTTP POST 业务系统
+        ///
+        /// Phase 1 限制：失败只记 Error 日志，不抛异常（Flowable 返回 200，不重试）
+        /// 如需可靠重试，Phase 2 引入 reliable delivery mechanism
+        /// </summary>
+        private async Task CallBusinessSystemOnceAsync(
+            string callbackUrl,
+            string taskDefinitionKey,
+            FlowableCallbackRequest request)
+        {
+            _logger.LogInformation(
+                "发送节点回调: NodeKey={NodeKey}, Url={Url}, " +
+                "ProcessInstanceId={ProcessInstanceId}",
+                taskDefinitionKey, callbackUrl, request.ProcessInstanceId);
+
+            var payload = new NodeCallbackPayload
+            {
+                BusinessId           = request.BusinessId,
+                ProcessInstanceId    = request.ProcessInstanceId,
+                TaskDefinitionKey    = taskDefinitionKey,
+                CallbackTiming       = "on_complete",
+                TriggeredAt          = DateTime.UtcNow
+            };
+
+            try
+            {
+                var httpClient = _httpClientFactory.CreateClient("BusinessCallback");
+                httpClient.Timeout = TimeSpan.FromSeconds(30);
+
+                using var httpRequest = new HttpRequestMessage(
+                    HttpMethod.Post, callbackUrl);
+                httpRequest.Content = JsonContent.Create(payload, options: JsonOptions);
+
+                var response = await httpClient.SendAsync(httpRequest);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    _logger.LogInformation(
+                        "节点回调成功: NodeKey={NodeKey}, StatusCode={StatusCode}",
+                        taskDefinitionKey, (int)response.StatusCode);
+                    return;
+                }
+
+                var responseBody = await response.Content.ReadAsStringAsync();
+                _logger.LogError(
+                    "节点回调失败（非 2xx）: NodeKey={NodeKey}, " +
+                    "StatusCode={StatusCode}, Response={Response}",
+                    taskDefinitionKey, (int)response.StatusCode, responseBody);
+                // Phase 1：不抛异常，不重试，Flowable 仍返回 200
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex,
+                    "节点回调异常: NodeKey={NodeKey}, Url={Url}",
+                    taskDefinitionKey, callbackUrl);
+                // Phase 1：不抛异常，不重试
+            }
         }
 
         // ═══════════════════════════════════════════════════════════

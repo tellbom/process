@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 
 namespace FlowableWrapper.Application.Dtos
@@ -28,6 +30,12 @@ namespace FlowableWrapper.Application.Dtos
         /// 由流程变量 ${processDefinitionKey} 注入
         /// </summary>
         public string ProcessDefinitionKey { get; set; }
+
+        /// <summary>
+        /// Flowable variables passed through by the HTTP task.
+        /// </summary>
+        public Dictionary<string, object> Variables { get; set; }
+            = new Dictionary<string, object>();
     }
 
     /// <summary>
@@ -40,5 +48,17 @@ namespace FlowableWrapper.Application.Dtos
     {
         public bool Success { get; set; }
         public string Message { get; set; }
+    }
+
+    /// <summary>
+    /// Payload sent for a node-level on_complete callback.
+    /// </summary>
+    public class NodeCallbackPayload
+    {
+        public string BusinessId { get; set; }
+        public string ProcessInstanceId { get; set; }
+        public string TaskDefinitionKey { get; set; }
+        public string CallbackTiming { get; set; }
+        public DateTime TriggeredAt { get; set; }
     }
 }
