@@ -619,9 +619,6 @@ namespace FlowableWrapper.Application.Services
         {
             try
             {
-                // 通过 Flowable Repository API 获取最新 BPMN XML
-                // Flowable REST: GET /repository/process-definitions/{id}/resourcedata
-                // 这里简化为通过 key 查最新定义
                 var definition = await _repositoryService
                     .GetLatestProcessDefinitionByKeyAsync(processDefinitionKey);
 
@@ -632,17 +629,24 @@ namespace FlowableWrapper.Application.Services
                     return null;
                 }
 
-                // TODO: IFlowableRepositoryService 需要补充 GetBpmnXmlAsync 方法
-                // 当前先返回 null，前端走 dagre 布局
-                // Phase 10 后续扩展：在 IFlowableRepositoryService 中增加
-                return await _repositoryService.GetBpmnXmlByDefinitionIdAsync(definition.Id);
-                // Task<string> GetBpmnXmlByDefinitionIdAsync(string processDefinitionId)
-                // return null;
+                var xml = await _repositoryService
+                    .GetBpmnXmlByDefinitionIdAsync(definition.Id);
+
+                if (string.IsNullOrWhiteSpace(xml))
+                {
+                    _logger.LogWarning(
+                        "BPMN XML 内容为空: ProcessDefinitionKey={Key}, DefinitionId={Id}",
+                        processDefinitionKey, definition.Id);
+                    return null;
+                }
+
+                return xml;
             }
             catch (Exception ex)
             {
                 _logger.LogWarning(ex,
-                    "获取 BPMN XML 失败: {Key}，将返回 null", processDefinitionKey);
+                    "获取 BPMN XML 失败: {Key}，前端走 dagre 自动布局",
+                    processDefinitionKey);
                 return null;
             }
         }

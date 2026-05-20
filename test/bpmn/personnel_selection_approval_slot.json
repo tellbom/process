@@ -1,0 +1,252 @@
+[
+  {
+    "taskDefinitionKey": "ut00_starter_submit",
+    "nodeSemantic": "STARTER_SUBMIT",
+    "pageCode": "https://httpbin.org/get?node=starter_submit",
+    "isStarterNode": true,
+    "isConvergencePoint": false,
+    "canReject": false,
+    "rejectOptions": [],
+    "isRejectTarget": true,
+    "rejectCode": "TO_STARTER",
+    "roleKey": "starter",
+    "assigneeMode": "single",
+    "callbackTiming": null,
+    "slots": [
+      {
+        "slotKey": "group_leader",
+        "label": "巡察组组长",
+        "mode": "single",
+        "variableName": "groupLeaderAssignee",
+        "required": true,
+        "conditionalOn": null,
+        "restrictToRecommended": false
+      }
+    ]
+  },
+  {
+    "taskDefinitionKey": "ut01_group_leader_confirm",
+    "nodeSemantic": "GROUP_LEADER_CONFIRM",
+    "pageCode": "https://httpbin.org/get?node=group_leader_confirm",
+    "isStarterNode": false,
+    "isConvergencePoint": false,
+    "canReject": true,
+    "rejectOptions": [
+      {
+        "rejectCode": "TO_STARTER",
+        "label": "退回发起人重新提交",
+        "description": "退回发起人重新发起"
+      }
+    ],
+    "isRejectTarget": false,
+    "rejectCode": null,
+    "roleKey": "group_leader",
+    "assigneeMode": "single",
+    "callbackTiming": null,
+    "slots": [
+      {
+        "slotKey": "inspection_office_reviewer",
+        "label": "巡察办审核人",
+        "mode": "single",
+        "variableName": "inspectionOfficeReviewAssignee",
+        "required": true,
+        "conditionalOn": null,
+        "restrictToRecommended": false
+      }
+    ]
+  },
+  {
+    "taskDefinitionKey": "ut02_inspection_office_review",
+    "nodeSemantic": "INSPECTION_OFFICE_REVIEW",
+    "pageCode": "https://httpbin.org/get?node=inspection_office_review",
+    "isStarterNode": false,
+    "isConvergencePoint": false,
+    "canReject": true,
+    "rejectOptions": [
+      {
+        "rejectCode": "TO_STARTER",
+        "label": "退回发起人重新提交",
+        "description": "审核不通过，退回发起人重新发起"
+      }
+    ],
+    "isRejectTarget": false,
+    "rejectCode": null,
+    "roleKey": "inspection_office_reviewer",
+    "assigneeMode": "single",
+    "callbackTiming": null,
+    "slots": [
+      {
+        "slotKey": "integrity_dept_reviewer",
+        "label": "纪检部审核人",
+        "mode": "single",
+        "variableName": "integrityDeptReviewAssignee",
+        "required": true,
+        "conditionalOn": null,
+        "restrictToRecommended": false
+      }
+    ]
+  },
+  {
+    "taskDefinitionKey": "ut03_integrity_dept_review",
+    "nodeSemantic": "INTEGRITY_DEPT_REVIEW",
+    "pageCode": "https://httpbin.org/get?node=integrity_dept_review",
+    "isStarterNode": false,
+    "isConvergencePoint": false,
+    "canReject": true,
+    "rejectOptions": [
+      {
+        "rejectCode": "TO_STARTER",
+        "label": "退回发起人重新提交",
+        "description": "审核不通过，退回发起人重新发起"
+      }
+    ],
+    "isRejectTarget": false,
+    "rejectCode": null,
+    "roleKey": "integrity_dept_reviewer",
+    "assigneeMode": "single",
+    "callbackTiming": null,
+    "slots": [
+      {
+        "slotKey": "integrity_head",
+        "label": "纪检部一把手",
+        "mode": "single",
+        "variableName": "integrityHeadAssignee",
+        "required": true,
+        "conditionalOn": null,
+        "restrictToRecommended": false
+      }
+    ]
+  },
+  {
+    "taskDefinitionKey": "ut04_integrity_head_handle",
+    "nodeSemantic": "INTEGRITY_HEAD_HANDLE",
+    "pageCode": "https://httpbin.org/get?node=integrity_head_handle",
+    "isStarterNode": false,
+    "isConvergencePoint": false,
+    "canReject": true,
+    "rejectOptions": [
+      {
+        "rejectCode": "TO_STARTER",
+        "label": "退回发起人重新提交",
+        "description": "退回发起人重新发起本轮流程"
+      }
+    ],
+    "isRejectTarget": false,
+    "rejectCode": null,
+    "roleKey": "integrity_head",
+    "assigneeMode": "single",
+    "callbackTiming": null,
+    "slots": [
+      {
+        "slotKey": "feedback_person",
+        "label": "他人反馈人",
+        "mode": "single",
+        "variableName": "feedbackPersonAssignee",
+        "required": false,
+        "conditionalOn": "needPersonFeedback==true",
+        "restrictToRecommended": false
+      },
+      {
+        "slotKey": "office_director_self_handle",
+        "label": "巡察办主任（本人处理路径）",
+        "mode": "single",
+        "variableName": "officeDirectorAssignee",
+        "required": true,
+        "conditionalOn": "needPersonFeedback==false",
+        "restrictToRecommended": false
+      }
+    ]
+  },
+  {
+    "taskDefinitionKey": "ut05_person_feedback",
+    "nodeSemantic": "PERSON_FEEDBACK",
+    "pageCode": "https://httpbin.org/get?node=person_feedback",
+    "isStarterNode": false,
+    "isConvergencePoint": false,
+    "canReject": false,
+    "rejectOptions": [],
+    "isRejectTarget": false,
+    "rejectCode": null,
+    "roleKey": "feedback_person",
+    "assigneeMode": "single",
+    "callbackTiming": null,
+    "slots": []
+  },
+  {
+    "taskDefinitionKey": "ut06_integrity_head_approve",
+    "nodeSemantic": "INTEGRITY_HEAD_APPROVE",
+    "pageCode": "https://httpbin.org/get?node=integrity_head_approve",
+    "isStarterNode": false,
+    "isConvergencePoint": false,
+    "canReject": true,
+    "rejectOptions": [
+      {
+        "rejectCode": "TO_STARTER",
+        "label": "退回发起人重新提交",
+        "description": "退回发起人重新发起本轮流程"
+      }
+    ],
+    "isRejectTarget": false,
+    "rejectCode": null,
+    "roleKey": "integrity_head",
+    "assigneeMode": "single",
+    "callbackTiming": null,
+    "slots": [
+      {
+        "slotKey": "office_director_after_feedback",
+        "label": "巡察办主任（他人反馈路径）",
+        "mode": "single",
+        "variableName": "officeDirectorAssignee",
+        "required": true,
+        "conditionalOn": null,
+        "restrictToRecommended": false
+      }
+    ]
+  },
+  {
+    "taskDefinitionKey": "ut07_office_director_review",
+    "nodeSemantic": "OFFICE_DIRECTOR_REVIEW",
+    "pageCode": "https://httpbin.org/get?node=office_director_review",
+    "isStarterNode": false,
+    "isConvergencePoint": false,
+    "canReject": true,
+    "rejectOptions": [
+      {
+        "rejectCode": "TO_STARTER",
+        "label": "退回发起人重新提交",
+        "description": "审核不通过，退回发起人重新发起"
+      }
+    ],
+    "isRejectTarget": false,
+    "rejectCode": null,
+    "roleKey": "office_director",
+    "assigneeMode": "single",
+    "callbackTiming": null,
+    "slots": [
+      {
+        "slotKey": "secretary",
+        "label": "纪委书记",
+        "mode": "single",
+        "variableName": "secretaryAssignee",
+        "required": true,
+        "conditionalOn": null,
+        "restrictToRecommended": false
+      }
+    ]
+  },
+  {
+    "taskDefinitionKey": "ut08_secretary_final_approve",
+    "nodeSemantic": "SECRETARY_FINAL_APPROVE",
+    "pageCode": "https://httpbin.org/get?node=secretary_final_approve",
+    "isStarterNode": false,
+    "isConvergencePoint": true,
+    "canReject": false,
+    "rejectOptions": [],
+    "isRejectTarget": false,
+    "rejectCode": null,
+    "roleKey": "secretary",
+    "assigneeMode": "single",
+    "callbackTiming": "on_complete",
+    "slots": []
+  }
+]
