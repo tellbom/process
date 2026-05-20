@@ -24,6 +24,13 @@ namespace FlowableWrapper.Domain.ElasticSearch
 
         public Dictionary<string, NodeSemanticInfo> NodeSemanticMap { get; set; }
 
+        /// <summary>
+        /// 启动时传入的推荐处理人快照，Key = slotKey，Value = 推荐人员列表。
+        /// 仅用于节点推进时前端展示和审计感知，不参与 Flowable 变量投影。
+        /// </summary>
+        public Dictionary<string, List<string>> RecommendedAssigneesSnapshot { get; set; }
+            = new Dictionary<string, List<string>>();
+
         public ProcessMetadataDocument() { }
     }
 
@@ -96,6 +103,21 @@ namespace FlowableWrapper.Domain.ElasticSearch
         /// 当前节点完成时为下一节点选人的契约
         /// </summary>
         public List<SlotDefinition> Slots { get; set; } = new();
+
+        /// <summary>
+        /// 该节点绑定的业务角色 Key，对应 AssigneeContract.Roles[].RoleKey。
+        /// </summary>
+        public string RoleKey { get; set; }
+
+        /// <summary>
+        /// 处理人模式：single = 单人，multiple = 多人。
+        /// </summary>
+        public string AssigneeMode { get; set; }
+
+        /// <summary>
+        /// 节点完成后触发回调的时机。Phase 1 仅支持 on_complete，空值表示不触发。
+        /// </summary>
+        public string CallbackTiming { get; set; }
     }
 
     /// <summary>
@@ -129,6 +151,11 @@ namespace FlowableWrapper.Domain.ElasticSearch
         public bool Required { get; set; } = true;
         /// <summary>条件表达式，满足时才需要填写，如 needFeedback=true</summary>
         public string ConditionalOn { get; set; }
+
+        /// <summary>
+        /// 是否限制只能从推荐范围内选人。Phase 1 后端不强拦截，仅在审计时记录是否越界。
+        /// </summary>
+        public bool RestrictToRecommended { get; set; } = false;
     }
 
     // ══════════════════════════════════════════════════════════════
@@ -197,6 +224,23 @@ namespace FlowableWrapper.Domain.ElasticSearch
         public DateTime OperatedAt { get; set; }
 
         public List<SlotSelectionRecord> SlotSelections { get; set; } = new();
+
+        /// <summary>
+        /// 本次提交中是否有人员超出推荐范围；null 表示不适用。
+        /// </summary>
+        public bool? HasOutOfRecommendedRange { get; set; }
+
+        /// <summary>
+        /// 本次完成任务时各 slot 的推荐人快照，Key = slotKey。
+        /// </summary>
+        public Dictionary<string, List<string>> RecommendedUsersSnapshot { get; set; }
+            = new Dictionary<string, List<string>>();
+
+        /// <summary>
+        /// 各 slot 的 RestrictToRecommended 配置值快照，Key = slotKey。
+        /// </summary>
+        public Dictionary<string, bool> RestrictToRecommendedSnapshot { get; set; }
+            = new Dictionary<string, bool>();
     }
 
     /// <summary>
