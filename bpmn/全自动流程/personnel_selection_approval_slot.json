@@ -11,7 +11,7 @@
     "rejectCode": "TO_STARTER",
     "roleKey": "starter",
     "assigneeMode": "single",
-    "callbackTiming": "on_complete",
+    "callbackTiming": null,
     "slots": [
       {
         "slotKey": "group_leader",
@@ -42,7 +42,7 @@
     "rejectCode": null,
     "roleKey": "group_leader",
     "assigneeMode": "single",
-    "callbackTiming": "on_complete",
+    "callbackTiming": null,
     "slots": [
       {
         "slotKey": "inspection_office_reviewer",
@@ -73,7 +73,7 @@
     "rejectCode": null,
     "roleKey": "inspection_office_reviewer",
     "assigneeMode": "single",
-    "callbackTiming": "on_complete",
+    "callbackTiming": null,
     "slots": [
       {
         "slotKey": "integrity_dept_reviewer",
@@ -104,7 +104,7 @@
     "rejectCode": null,
     "roleKey": "integrity_dept_reviewer",
     "assigneeMode": "single",
-    "callbackTiming": "on_complete",
+    "callbackTiming": null,
     "slots": [
       {
         "slotKey": "integrity_head",
@@ -169,7 +169,7 @@
     "rejectCode": null,
     "roleKey": "feedback_person",
     "assigneeMode": "single",
-    "callbackTiming": "on_complete",
+    "callbackTiming": null,
     "slots": []
   },
   {
@@ -190,7 +190,7 @@
     "rejectCode": null,
     "roleKey": "integrity_head",
     "assigneeMode": "single",
-    "callbackTiming": "on_complete",
+    "callbackTiming": null,
     "slots": [
       {
         "slotKey": "office_director_after_feedback",
@@ -221,7 +221,7 @@
     "rejectCode": null,
     "roleKey": "office_director",
     "assigneeMode": "single",
-    "callbackTiming": "on_complete",
+    "callbackTiming": null,
     "slots": [
       {
         "slotKey": "secretary",

@@ -58,6 +58,8 @@
 #### 场景 A：全自动流程（AssigneeContract，Phase 1 新增）
 
 启动时一次性按角色传入全流程处理人，由 Flowable 自动绑定各节点 assignee。
+如流程中配置了节点级回调，需要在 `businessVariables.nodeCallbackUrl` 中传入业务系统节点回调地址；
+流程结束回调地址仍使用 `callback.url`。
 
 ```json
 {
@@ -65,12 +67,21 @@
   "businessId": "SELECTION_2024_001",
   "assigneeContract": {
     "roles": [
-      { "roleKey": "dept_head",                    "mode": "single",   "users": ["EMP_001"] },
-      { "roleKey": "inspection_office_reviewer",   "mode": "single",   "users": ["EMP_005"] },
-      { "roleKey": "final_approver",               "mode": "single",   "users": ["EMP_010"] }
+      { "roleKey": "starter",                    "mode": "single", "users": ["EMP_001"] },
+      { "roleKey": "group_leader",               "mode": "single", "users": ["EMP_002"] },
+      { "roleKey": "inspection_office_reviewer", "mode": "single", "users": ["EMP_003"] },
+      { "roleKey": "integrity_dept_reviewer",    "mode": "single", "users": ["EMP_004"] },
+      { "roleKey": "integrity_head",             "mode": "single", "users": ["EMP_005"] },
+      { "roleKey": "office_director",            "mode": "single", "users": ["EMP_006"] },
+      { "roleKey": "secretary",                  "mode": "single", "users": ["EMP_007"] }
     ]
   },
-  "businessVariables": { "batchName": "2024年第一批" },
+  "businessVariables": {
+    "batchName": "2024年第一批",
+    "starterAssignee": "EMP_000",
+    "needPersonFeedback": false,
+    "nodeCallbackUrl": "https://biz-system.internal/api/node-callback"
+  },
   "callback": {
     "url": "https://biz-system.internal/api/process-callback",
     "timeoutSeconds": 30
@@ -544,7 +555,18 @@ GET /process_audit_records/_search
 
 **预期**：ES `status = completed`，业务系统收到流程结束通知，返回 200。
 
-#### 场景 B：节点级 on_complete 回调（Phase 1 新增）
+#### 场景 B：节点级回调（Phase 1 新增）
+
+节点级回调由 BPMN 中挂在业务节点之后的 HTTP ServiceTask 触发。
+Flowable 能推进到该 ServiceTask 即表示前置节点已完成，流程中心不再额外查询 Flowable 判断节点是否完成。
+
+`callbackType` 当前支持三种：
+
+| callbackType | BPMN ServiceTask 挂载位置 | 触发时机 |
+|---|---|---|
+| `NODE_COMPLETED` | userTask 直接后续 | 单节点完成后 |
+| `MULTI_INSTANCE_COMPLETED` | multiInstance 节点之后，非子实例内部 | 所有子实例完成后 |
+| `PARALLEL_JOIN_COMPLETED` | parallelGateway join 之后 | 所有分支汇聚后 |
 
 ```json
 {
@@ -552,8 +574,8 @@ GET /process_audit_records/_search
   "businessId": "SELECTION_2024_001",
   "processDefinitionKey": "personnel_selection_approval",
   "variables": {
-    "callbackType": "node_on_complete",
-    "callbackNodeKey": "ut01_dept_head_handle",
+    "callbackType": "NODE_COMPLETED",
+    "callbackNodeKey": "ut04_integrity_head_handle",
     "nodeCallbackUrl": "https://biz-system.internal/api/node-callback"
   }
 }
@@ -561,33 +583,43 @@ GET /process_audit_records/_search
 
 **预期**：向 `nodeCallbackUrl` 发送一次 POST，ES `status` 不变（仍为 `running`），返回 200。
 
-**节点级回调 Payload**（流程中心 → 业务系统）：
+**节点级回调 Payload**（流程中心 → 业务系统，`NodeCompletedCallbackPayload`）：
 
 ```json
 {
   "businessId": "SELECTION_2024_001",
   "processInstanceId": "proc-uuid-001",
-  "taskDefinitionKey": "ut01_dept_head_handle",
-  "callbackTiming": "on_complete",
+  "processDefinitionKey": "personnel_selection_approval",
+  "businessType": "personnel_selection_approval",
+  "callbackType": "NODE_COMPLETED",
+  "taskDefinitionKey": "ut04_integrity_head_handle",
+  "nodeSemantic": "INTEGRITY_HEAD_HANDLE",
+  "lastAuditRecord": {
+    "action": "approve",
+    "operatorId": "EMP_005",
+    "comment": "同意，资料齐全",
+    "rejectReason": null,
+    "operatedAt": "2026-05-21T02:33:54.7587074Z",
+    "slotSelections": []
+  },
   "triggeredAt": "2024-01-15T09:00:00Z"
 }
 ```
 
-#### 场景 C：节点回调，节点未完成（callbackNodeKey 对应节点仍活跃）
+#### 场景 C：节点回调参数缺失
 
 ```json
 {
   "processInstanceId": "proc-uuid-001",
   "businessId": "SELECTION_2024_001",
   "variables": {
-    "callbackType": "node_on_complete",
-    "callbackNodeKey": "ut01_dept_head_handle",
-    "nodeCallbackUrl": "https://biz-system.internal/api/node-callback"
+    "callbackType": "NODE_COMPLETED",
+    "callbackNodeKey": "ut04_integrity_head_handle"
   }
 }
 ```
 
-**预期**：日志出现 `节点 [ut01_dept_head_handle] 尚未完成，跳过 on_complete 回调`，业务系统不收到通知，返回 200。
+**预期**：日志出现缺少 `nodeCallbackUrl` 的 Warning，业务系统不收到通知，返回 200。
 
 #### 场景 D：幂等测试（已是 completed 状态重复回调）
 
@@ -608,7 +640,7 @@ GET /process_audit_records/_search
 
 | 测试用例 | 操作 | 验证点 |
 |---|---|---|
-| T-AC-01 | 传 `assigneeContract`，角色数=3 | Flowable 变量中对应 `variableName` 正确赋值 |
+| T-AC-01 | 传 `assigneeContract`，覆盖全自动流程所需角色 | Flowable 变量中对应 `variableName` 正确赋值 |
 | T-AC-02 | `AssigneeContract.mode=single` | 变量值为 `string`（非数组） |
 | T-AC-03 | `AssigneeContract.mode=multiple` | 变量值为 `List<string>` |
 | T-AC-04 | RoleKey 在 semanticMap 中无对应节点 | 静默跳过，其他节点正常投影 |
@@ -643,25 +675,26 @@ GET /process_audit_records/_search
 | T-ES-01 | 模拟 ES 首次写入失败，第二次成功 | 日志出现 `[ES_WRITE_RETRY_SUCCESS]`，流程正常启动 |
 | T-ES-02 | 模拟 ES 两次写入均失败 | 日志出现 `[ES_WRITE_ORPHAN]`（Critical），错误码 `PROCESS_METADATA_INDEX_ORPHAN`，接口返回 `success:false` |
 
-### 5.5 节点完成判定验证
+### 5.5 节点完成推进语义验证
 
 | 测试用例 | 操作 | 验证点 |
 |---|---|---|
-| T-NC-01 | 单任务节点已完成 | `IsNodeCompletedAsync` 返回 `true` |
-| T-NC-02 | 会签节点，部分子任务仍活跃 | `IsNodeCompletedAsync` 返回 `false` |
-| T-NC-03 | 会签节点，所有子任务完成 | `IsNodeCompletedAsync` 返回 `true` |
-| T-NC-04 | Flowable 查询异常 | 保守返回 `false`，日志有 Warning |
+| T-NC-01 | 单任务节点之后挂 HTTP ServiceTask | 只有 userTask 完成后才会触发该 ServiceTask |
+| T-NC-02 | 多实例节点之后挂 HTTP ServiceTask | 所有子实例完成后才会触发一次 |
+| T-NC-03 | 并行汇聚网关之后挂 HTTP ServiceTask | 所有分支到达 join 后才会触发 |
+| T-NC-04 | Flowable HTTP ServiceTask 调用流程中心失败 | 由 Flowable HTTP Task 重试/失败策略处理，流程中心不反查节点完成状态 |
 
 ### 5.6 节点级回调验证
 
 | 测试用例 | 操作 | 验证点 |
 |---|---|---|
-| T-CB-01 | 发送 `callbackType=node_on_complete`，节点已完成 | 业务系统收到 POST，返回 200 |
-| T-CB-02 | 发送 `callbackType=node_on_complete`，节点未完成 | 业务系统不收到通知，返回 200，日志有 Warning |
-| T-CB-03 | 缺少 `callbackNodeKey` | 返回 200，日志有 Warning，业务系统不收到通知 |
-| T-CB-04 | 缺少 `nodeCallbackUrl` | 返回 200，日志有 Warning，业务系统不收到通知 |
-| T-CB-05 | 业务系统回调返回 500 | 流程中心返回 200（不重试，Phase 1 限制），日志有 Error |
-| T-CB-06 | 无 `callbackType`（原有流程结束回调） | 走原有路径，ES status=completed，行为不变 |
+| T-CB-01 | 发送 `callbackType=NODE_COMPLETED` | 业务系统收到 POST，返回 200 |
+| T-CB-02 | 发送 `callbackType=MULTI_INSTANCE_COMPLETED` | 业务系统收到 POST，返回 200 |
+| T-CB-03 | 发送 `callbackType=PARALLEL_JOIN_COMPLETED` | 业务系统收到 POST，返回 200 |
+| T-CB-04 | 缺少 `callbackNodeKey` | 返回 200，日志有 Warning，业务系统不收到通知 |
+| T-CB-05 | 缺少 `nodeCallbackUrl` | 返回 200，日志有 Warning，业务系统不收到通知 |
+| T-CB-06 | 业务系统回调返回 500 | 流程中心返回 200（不重试，Phase 1 限制），日志有 Error |
+| T-CB-07 | 无 `callbackType`（原有流程结束回调） | 走原有路径，ES status=completed，行为不变 |
 
 ### 5.7 向后兼容性验证（回归）
 
@@ -682,27 +715,25 @@ GET /process_audit_records/_search
 在需要触发 on_complete 回调的节点完成后，在 BPMN 中追加一个 HTTP ServiceTask：
 
 ```xml
-<serviceTask id="st_notify_dept_head_complete"
-             name="通知部门一把手节点完成"
+<serviceTask id="st_notify_integrity_head_handle_completed"
+             name="通知纪检部一把手处理完成"
              flowable:type="http">
   <extensionElements>
-    <flowable:field name="requestMethod" stringValue="POST"/>
-    <flowable:field name="requestUrl"
-                    expression="${frameworkCallbackUrl}"/>
-    <flowable:field name="requestHeaders"
-                    stringValue="Content-Type: application/json"/>
-    <flowable:field name="requestBody"
-                    expression="{
-                      &quot;processInstanceId&quot;:&quot;${execution.processInstanceId}&quot;,
-                      &quot;businessId&quot;:&quot;${businessId}&quot;,
-                      &quot;variables&quot;:{
-                        &quot;callbackType&quot;:&quot;node_on_complete&quot;,
-                        &quot;callbackNodeKey&quot;:&quot;ut01_dept_head_handle&quot;,
-                        &quot;nodeCallbackUrl&quot;:&quot;${nodeCallbackUrl}&quot;
-                      }
-                    }"/>
-    <flowable:field name="responseVariableName"
-                    stringValue="nodeCallbackResponse"/>
+    <flowable:field name="requestMethod">
+      <flowable:string>POST</flowable:string>
+    </flowable:field>
+    <flowable:field name="requestUrl">
+      <flowable:expression>${frameworkCallbackUrl}</flowable:expression>
+    </flowable:field>
+    <flowable:field name="requestHeaders">
+      <flowable:string>Content-Type: application/json</flowable:string>
+    </flowable:field>
+    <flowable:field name="requestBody">
+      <flowable:expression>{"processInstanceId":"${execution.processInstanceId}","businessId":"${businessId}","processDefinitionKey":"${processDefinitionKey}","variables":{"callbackType":"NODE_COMPLETED","callbackNodeKey":"ut04_integrity_head_handle","nodeCallbackUrl":"${nodeCallbackUrl}"}}</flowable:expression>
+    </flowable:field>
+    <flowable:field name="saveResponseParameters">
+      <flowable:string>false</flowable:string>
+    </flowable:field>
   </extensionElements>
 </serviceTask>
 ```
@@ -730,7 +761,50 @@ GET /process_audit_records/_search
 
 ---
 
-## 7. 日志关键字速查
+## 7. 生产上线评估
+
+### 7.1 当前验证结论
+
+按“场景 A：全自动流程（AssigneeContract）”进行过本地联调验证：
+
+| 项目 | 结论 |
+|---|---|
+| BPMN + slotConfig 部署 | 通过 |
+| AssigneeContract 启动全自动流程 | 通过 |
+| 全流程审批通过 | 通过 |
+| `NODE_COMPLETED` 节点级回调 | 通过 |
+| `nodeCallbackUrl` 转发到业务系统测试接口 | 通过 |
+| 流程结束回调 | 通过 |
+| ES 流程状态更新为 `completed` | 通过 |
+
+已验证的节点级回调节点：
+
+| 节点 | callbackType | 结果 |
+|---|---|---|
+| `ut04_integrity_head_handle` | `NODE_COMPLETED` | `nodeCallbackUrl` 收到 POST，返回 200 |
+| `ut08_secretary_final_approve` | `NODE_COMPLETED` | `nodeCallbackUrl` 收到 POST，返回 200 |
+
+### 7.2 上线判断
+
+当前实现已达到“测试环境/预发环境可评审、可继续联调”的标准；不建议直接按生产全量上线。
+
+生产上线前建议至少补齐以下检查项：
+
+| 检查项 | 要求 |
+|---|---|
+| 回调幂等 | 业务系统按 `businessId + processInstanceId + callbackType + taskDefinitionKey` 做幂等 |
+| 回调地址治理 | `nodeCallbackUrl` 不允许任意公网地址，生产环境需白名单或从业务配置读取 |
+| 认证鉴权 | Flowable → 流程中心、流程中心 → 业务系统均需签名、Token 或内网鉴权 |
+| HTTPS / 内网链路 | 生产回调地址使用可信链路，不使用测试地址 |
+| 失败告警 | 节点回调失败当前不阻断流程，必须接入日志告警和补偿机制 |
+| 灰度验证 | 使用生产等价 Flowable、ES、Redis 环境完成至少一轮预发演练 |
+| README 与配置同步 | `FrameworkCallbackUrl`、业务回调 URL、BPMN 部署版本需纳入发布记录 |
+
+建议上线策略：先预发部署新 BPMN 版本，跑 3-5 条真实等价测试实例；确认节点回调、流程结束回调、ES 状态和业务幂等均正常后，再小流量灰度。
+
+---
+
+## 8. 日志关键字速查
 
 | 关键字 | 级别 | 含义 |
 |---|---|---|
@@ -740,7 +814,10 @@ GET /process_audit_records/_search
 | `PROCESS_METADATA_INDEX_ORPHAN` | **Critical** | 同上，错误码 |
 | `[RECOMMEND_RANGE_EXCEEDED]` | Warning | 提交了推荐范围外人员（后端审计，不拦截） |
 | `AssigneeContract 优先，InitialSlotSelections 已忽略` | Warning | 两种选人方式同时传入 |
-| `节点 [X] 尚未完成，跳过 on_complete 回调` | Warning | 节点级回调提前触发 |
+| `[NODE_COMPLETED] 节点回调成功` | Information | 单节点完成回调发送成功 |
+| `[MULTI_INSTANCE_COMPLETED] 节点回调成功` | Information | 多实例整体完成回调发送成功 |
+| `[PARALLEL_JOIN_COMPLETED] 节点回调成功` | Information | 并行汇聚完成回调发送成功 |
+| `缺少 nodeCallbackUrl` | Warning | 节点级回调未配置业务系统地址，已跳过 |
 
 ---
 

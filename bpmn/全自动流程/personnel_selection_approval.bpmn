@@ -146,11 +146,42 @@
         <flowable:field name="nodeSemantic" stringValue="INTEGRITY_HEAD_HANDLE"/>
         <flowable:field name="pageCode" stringValue="SelectionApproval/IntegrityHeadHandleForm"/>
         <flowable:field name="isConvergencePoint" stringValue="false"/>
+        <flowable:field name="callbackTiming" stringValue="on_complete"/>
       </extensionElements>
     </userTask>
 
     <sequenceFlow id="flow_ut04_to_eg01"
                   sourceRef="ut04_integrity_head_handle"
+                  targetRef="st_notify_integrity_head_handle_completed"/>
+
+    <!-- ST-UT04 节点完成回调：纪检部一把手处理 -->
+    <serviceTask id="st_notify_integrity_head_handle_completed"
+                 name="通知纪检部一把手处理完成"
+                 flowable:type="http">
+      <documentation>
+        UT-04 完成后通知流程中心，由流程中心携带完整上下文回调业务系统
+      </documentation>
+      <extensionElements>
+        <flowable:field name="requestMethod">
+          <flowable:string>POST</flowable:string>
+        </flowable:field>
+        <flowable:field name="requestUrl">
+          <flowable:expression>${frameworkCallbackUrl}</flowable:expression>
+        </flowable:field>
+        <flowable:field name="requestHeaders">
+          <flowable:string>Content-Type: application/json</flowable:string>
+        </flowable:field>
+        <flowable:field name="requestBody">
+          <flowable:expression>{"processInstanceId":"${execution.processInstanceId}","businessId":"${businessId}","processDefinitionKey":"${processDefinitionKey}","variables":{"callbackType":"NODE_COMPLETED","callbackNodeKey":"ut04_integrity_head_handle","nodeCallbackUrl":"${nodeCallbackUrl}"}}</flowable:expression>
+        </flowable:field>
+        <flowable:field name="saveResponseParameters">
+          <flowable:string>false</flowable:string>
+        </flowable:field>
+      </extensionElements>
+    </serviceTask>
+
+    <sequenceFlow id="flow_st_notify_ut04_to_eg01"
+                  sourceRef="st_notify_integrity_head_handle_completed"
                   targetRef="eg01_need_person_feedback"/>
 
     <!-- EG-01 是否需要人员反馈 -->
@@ -250,11 +281,42 @@
         <flowable:field name="nodeSemantic" stringValue="SECRETARY_FINAL_APPROVE"/>
         <flowable:field name="pageCode" stringValue="SelectionApproval/SecretaryApprovalForm"/>
         <flowable:field name="isConvergencePoint" stringValue="true"/>
+        <flowable:field name="callbackTiming" stringValue="on_complete"/>
       </extensionElements>
     </userTask>
 
     <sequenceFlow id="flow_ut08_to_st02"
                   sourceRef="ut08_secretary_final_approve"
+                  targetRef="st_notify_secretary_final_approve_completed"/>
+
+    <!-- ST-UT08 节点完成回调：纪委书记审定 -->
+    <serviceTask id="st_notify_secretary_final_approve_completed"
+                 name="通知纪委书记审定完成"
+                 flowable:type="http">
+      <documentation>
+        UT-08 完成后通知流程中心，由流程中心携带完整上下文回调业务系统
+      </documentation>
+      <extensionElements>
+        <flowable:field name="requestMethod">
+          <flowable:string>POST</flowable:string>
+        </flowable:field>
+        <flowable:field name="requestUrl">
+          <flowable:expression>${frameworkCallbackUrl}</flowable:expression>
+        </flowable:field>
+        <flowable:field name="requestHeaders">
+          <flowable:string>Content-Type: application/json</flowable:string>
+        </flowable:field>
+        <flowable:field name="requestBody">
+          <flowable:expression>{"processInstanceId":"${execution.processInstanceId}","businessId":"${businessId}","processDefinitionKey":"${processDefinitionKey}","variables":{"callbackType":"NODE_COMPLETED","callbackNodeKey":"ut08_secretary_final_approve","nodeCallbackUrl":"${nodeCallbackUrl}"}}</flowable:expression>
+        </flowable:field>
+        <flowable:field name="saveResponseParameters">
+          <flowable:string>false</flowable:string>
+        </flowable:field>
+      </extensionElements>
+    </serviceTask>
+
+    <sequenceFlow id="flow_st_notify_ut08_to_st02"
+                  sourceRef="st_notify_secretary_final_approve_completed"
                   targetRef="st02_framework_callback"/>
 
     <!-- ST-02 框架回调业务系统（HTTP Task） -->
