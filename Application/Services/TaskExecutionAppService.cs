@@ -190,6 +190,8 @@ namespace FlowableWrapper.Application.Services
 
                 semanticMap.TryGetValue(task.TaskDefinitionKey, out var nodeInfo);
 
+                var pageCode = nodeInfo?.PageCode;
+
                 result.Add(new PendingTaskDto
                 {
                     TaskId = task.Id,
@@ -197,9 +199,16 @@ namespace FlowableWrapper.Application.Services
                     BusinessId = meta.BusinessId,
                     BusinessType = meta.BusinessType,
                     NodeSemantic = nodeInfo?.NodeSemantic,
-                    PageCode = nodeInfo?.PageCode,
-                    CanReject = nodeInfo.CanReject,
-                    RejectOptions = nodeInfo.RejectOptions,
+                    PageCode = pageCode,
+                    PageUrl = BuildPageUrl(
+                        pageCode,
+                        meta.BusinessId,
+                        task.Id,
+                        meta.BusinessType,
+                        task.TaskDefinitionKey,
+                        task.ProcessInstanceId),
+                    CanReject = nodeInfo?.CanReject ?? false,
+                    RejectOptions = nodeInfo?.RejectOptions ?? new List<RejectOption>(),
                     RequiredSlots = nodeInfo?.Slots ?? new List<SlotDefinition>(),
                     // 前端通过 pageCode → COMPONENT_REGISTRY 找到表单组件，
                     // 表单组件自己知道要选哪些人
@@ -222,6 +231,47 @@ namespace FlowableWrapper.Application.Services
                 PageIndex = request.PageIndex,
                 PageSize = request.PageSize
             };
+        }
+
+        private static string BuildPageUrl(
+            string pageCode,
+            string businessId,
+            string taskId,
+            string businessType,
+            string nodeId,
+            string processInstanceId)
+        {
+            if (string.IsNullOrWhiteSpace(pageCode))
+                return null;
+
+            if (!Uri.TryCreate(pageCode, UriKind.Absolute, out var uri)
+                || (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
+            {
+                return null;
+            }
+
+            var fragmentIndex = pageCode.IndexOf('#');
+            var fragment = fragmentIndex >= 0 ? pageCode.Substring(fragmentIndex) : string.Empty;
+            var baseUrl = fragmentIndex >= 0 ? pageCode.Substring(0, fragmentIndex) : pageCode;
+            var separator = baseUrl.Contains('?') ? "&" : "?";
+
+            var query = string.Join("&", new[]
+            {
+                ToQueryPair("businessId", businessId),
+                ToQueryPair("taskId", taskId),
+                ToQueryPair("businessType", businessType),
+                ToQueryPair("nodeId", nodeId),
+                ToQueryPair("processInstanceId", processInstanceId)
+            });
+
+            return baseUrl + separator + query + fragment;
+        }
+
+        private static string ToQueryPair(string key, string value)
+        {
+            return Uri.EscapeDataString(key)
+                   + "="
+                   + Uri.EscapeDataString(value ?? string.Empty);
         }
 
         // ═══════════════════════════════════════════════════════════

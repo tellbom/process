@@ -9,13 +9,9 @@ namespace FlowableWrapper.Application.Dtos
     // Phase 10 修正：替换 Phase 4 的 PendingTaskDto.cs
     //
     // 修正说明：
-    //   删除 RequiredSlots 字段
-    //   原因：Slot 是流程中心内部的变量映射配置，不是前端渲染依据
-    //         前端表单组件（通过 pageCode → COMPONENT_REGISTRY 找到）
-    //         自身包含了选人逻辑，不依赖流程中心下发 Slot 定义
-    //
-    //   保留 NodeSemantic + PageCode：前端通过 pageCode 在 COMPONENT_REGISTRY
-    //   中找到对应的 Vue 组件并渲染，这是正确的解耦方式
+    //   保留原始 PageCode，同时新增 PageUrl：
+    //     - PageCode 是 BPMN/slotConfig 中配置的原始页面标识或业务页面 URL
+    //     - PageUrl 是流程中心为 iframe 场景拼好业务上下文后的 URL
     // ════════════════════════════════════════════════════════════════
 
     /// <summary>
@@ -34,13 +30,12 @@ namespace FlowableWrapper.Application.Dtos
     /// 待办任务 DTO（修正版）
     ///
     /// 设计原则：
-    ///   流程中心只告诉前端"你在哪个节点"（nodeSemantic + pageCode）
-    ///   表单渲染、选人逻辑、下一步是否选人，全部由业务系统的表单组件自己决定
-    ///   前端通过 pageCode 查 COMPONENT_REGISTRY 找到对应组件并挂载
+    ///   流程中心告诉前端当前节点、原始页面配置以及可直接 iframe 渲染的 pageUrl。
+    ///   对全自动流程，pageCode 可以是业务系统 URL；流程中心会把 businessId 等上下文拼到 pageUrl。
     ///
     /// 不包含：
     ///   ❌ requiredSlots（流程中心不推断业务系统的表单需要什么）
-    ///   ❌ jumpUrl / jumpType（由 pageCode 替代）
+    ///   ❌ jumpUrl / jumpType（由 pageUrl 替代）
     ///   ❌ nextViewComponentPath（由业务表单组件自行处理）
     /// </summary>
     public class PendingTaskDto
@@ -75,12 +70,18 @@ namespace FlowableWrapper.Application.Dtos
         public string NodeSemantic { get; set; }
 
         /// <summary>
-        /// 页面编码
-        /// 示例：PersonnelSelection/InspectionGroupForm
-        /// 前端通过 COMPONENT_REGISTRY[pageCode] 找到对应的 Vue 组件并渲染
-        /// 流程中心不感知 Vue 路由，不返回路由地址
+        /// 原始页面配置。
+        /// 对组件化流程：可为组件编码，例如 SelectionApproval/IntegrityHeadHandleForm。
+        /// 对 iframe 流程：可为业务系统 URL，例如 https://biz-system/form/approval。
         /// </summary>
         public string PageCode { get; set; }
+
+        /// <summary>
+        /// iframe 可直接使用的页面 URL。
+        /// 当 PageCode 是 http/https URL 时，流程中心会追加 businessId、taskId、businessType、nodeId 等上下文参数。
+        /// 当 PageCode 不是 URL 时，此字段为 null，前端继续按组件编码方式处理 PageCode。
+        /// </summary>
+        public string PageUrl { get; set; }
 
         /// <summary>
         /// 是否已过不可撤回节点

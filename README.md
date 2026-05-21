@@ -321,7 +321,8 @@
         "businessId": "SELECTION_2024_001",
         "businessType": "personnel_selection_approval",
         "nodeSemantic": "DEPT_HEAD_HANDLE",
-        "pageCode": "SelectionCollection/DeptHeadHandleForm",
+        "pageCode": "https://biz-system.internal/selection/approval-form",
+        "pageUrl": "https://biz-system.internal/selection/approval-form?businessId=SELECTION_2024_001&taskId=task-uuid-001&businessType=personnel_selection_approval&nodeId=ut01_dept_head_handle&processInstanceId=proc-uuid-001",
         "canReject": true,
         "rejectOptions": [
           { "rejectCode": "TO_STARTER", "label": "退回发起人" }
@@ -345,6 +346,10 @@
   }
 }
 ```
+
+`pageCode` 是 BPMN/slotConfig 中的原始页面配置。全自动流程可将其配置为业务系统 URL；
+流程中心会在待办接口中额外返回 `pageUrl`，自动追加 `businessId`、`taskId`、`businessType`、`nodeId`、`processInstanceId`。
+流程中心前端 iframe 渲染时优先使用 `pageUrl`。
 
 ---
 
