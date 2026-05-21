@@ -1,64 +1,83 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using FlowableWrapper.Domain.ElasticSearch;
 
 namespace FlowableWrapper.Application.Dtos
 {
     /// <summary>
-    /// Flowable HTTP Task 回调请求体
-    /// Flowable 的 HTTP serviceTask 完成后，POST 到 frameworkCallbackUrl
-    /// Controller 接收后交给 ProcessCallbackAppService 处理
+    /// Flowable HTTP ServiceTask callback request.
     /// </summary>
     public class FlowableCallbackRequest
     {
-        /// <summary>
-        /// Flowable 流程实例 ID
-        /// 由 BPMN 中 ${execution.processInstanceId} 注入
-        /// </summary>
         [Required(ErrorMessage = "processInstanceId 不能为空")]
-        public string ProcessInstanceId { get; set; }
+        public string ProcessInstanceId { get; set; } = string.Empty;
 
-        /// <summary>
-        /// 业务 ID
-        /// 由流程变量 ${businessId} 注入
-        /// </summary>
         [Required(ErrorMessage = "businessId 不能为空")]
-        public string BusinessId { get; set; }
+        public string BusinessId { get; set; } = string.Empty;
+
+        public string ProcessDefinitionKey { get; set; } = string.Empty;
 
         /// <summary>
-        /// 流程定义 Key
-        /// 由流程变量 ${processDefinitionKey} 注入
-        /// </summary>
-        public string ProcessDefinitionKey { get; set; }
-
-        /// <summary>
-        /// Flowable variables passed through by the HTTP task.
+        /// Flowable variables passed through by the HTTP ServiceTask.
+        /// callbackType decides the processing path:
+        /// NODE_COMPLETED / MULTI_INSTANCE_COMPLETED / PARALLEL_JOIN_COMPLETED.
+        /// Missing or unknown values use the process-end callback path.
         /// </summary>
         public Dictionary<string, object> Variables { get; set; }
             = new Dictionary<string, object>();
     }
 
-    /// <summary>
-    /// 框架回调处理结果（返回给 Flowable HTTP Task）
-    /// Flowable 根据 HTTP 状态码判断是否成功：
-    ///   2xx → 成功，流程继续
-    ///   非 2xx → 失败，触发重试，最终进死信队列
-    /// </summary>
+    public static class FlowableCallbackTypes
+    {
+        public const string NodeCompleted = "NODE_COMPLETED";
+        public const string MultiInstanceCompleted = "MULTI_INSTANCE_COMPLETED";
+        public const string ParallelJoinCompleted = "PARALLEL_JOIN_COMPLETED";
+    }
+
     public class FlowableCallbackResponse
     {
         public bool Success { get; set; }
-        public string Message { get; set; }
+        public string Message { get; set; } = string.Empty;
     }
 
     /// <summary>
-    /// Payload sent for a node-level on_complete callback.
+    /// Payload sent from the process center to a business system for all node-level callbacks.
     /// </summary>
-    public class NodeCallbackPayload
+    public class NodeCompletedCallbackPayload
     {
-        public string BusinessId { get; set; }
-        public string ProcessInstanceId { get; set; }
-        public string TaskDefinitionKey { get; set; }
-        public string CallbackTiming { get; set; }
+        public string BusinessId { get; set; } = string.Empty;
+        public string ProcessInstanceId { get; set; } = string.Empty;
+        public string ProcessDefinitionKey { get; set; } = string.Empty;
+        public string BusinessType { get; set; } = string.Empty;
+        public string CallbackType { get; set; } = string.Empty;
+        public string TaskDefinitionKey { get; set; } = string.Empty;
+        public string NodeSemantic { get; set; } = string.Empty;
+        public AuditRecordSnapshot? LastAuditRecord { get; set; }
         public DateTime TriggeredAt { get; set; }
+    }
+
+    public class AuditRecordSnapshot
+    {
+        public string Action { get; set; } = string.Empty;
+        public string OperatorId { get; set; } = string.Empty;
+        public string Comment { get; set; } = string.Empty;
+        public string RejectReason { get; set; } = string.Empty;
+        public DateTime OperatedAt { get; set; }
+        public List<SlotSelectionRecord> SlotSelections { get; set; }
+            = new List<SlotSelectionRecord>();
+    }
+
+    /// <summary>
+    /// Payload sent from the process center to a business system when the whole process ends.
+    /// </summary>
+    public class BusinessCallbackPayload
+    {
+        public string BusinessId { get; set; } = string.Empty;
+        public string ProcessInstanceId { get; set; } = string.Empty;
+        public string ProcessDefinitionKey { get; set; } = string.Empty;
+        public string BusinessType { get; set; } = string.Empty;
+        public string Status { get; set; } = string.Empty;
+        public DateTime CompletedTime { get; set; }
     }
 }
