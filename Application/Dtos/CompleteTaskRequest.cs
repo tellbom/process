@@ -102,9 +102,14 @@ namespace FlowableWrapper.Application.Dtos
         public List<string> NewAssignees { get; set; } = new List<string>();
 
         /// <summary>
-        /// 转派原因（可选，写入日志）
+        /// 转派原因（可选，写入审计记录）
         /// </summary>
         public string Reason { get; set; }
+
+        /// <summary>
+        /// 操作人工号（可选，不传则读 Header X-User-Id）
+        /// </summary>
+        public string OperatorId { get; set; }
     }
 
     /// <summary>

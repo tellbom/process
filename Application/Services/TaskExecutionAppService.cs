@@ -282,6 +282,9 @@ namespace FlowableWrapper.Application.Services
                         "任务转派（多人候选）: TaskId={TaskId}, Count={Count}",
                         task.Id, request.NewAssignees.Count);
                 }
+
+                // 写转派审计记录（失败不影响主流程）
+                await WriteReassignAuditRecordSafeAsync(metadata, task, request);
             }
 
             _logger.LogInformation(
@@ -531,6 +534,60 @@ namespace FlowableWrapper.Application.Services
 
 
             return matchedTasks.First();
+        }
+
+        private async Task WriteReassignAuditRecordSafeAsync(
+            ProcessMetadataDocument metadata,
+            FlowableTask task,
+            ReassignTaskRequest request)
+        {
+            try
+            {
+                string nodeSemantic = null;
+                string pageCode = null;
+                try
+                {
+                    var semanticMap = await _slotConfigProvider
+                        .GetNodeSemanticMapAsync(metadata.ProcessDefinitionKey);
+                    semanticMap.TryGetValue(task.TaskDefinitionKey, out var nodeInfo);
+                    nodeSemantic = nodeInfo?.NodeSemantic;
+                    pageCode = nodeInfo?.PageCode;
+                }
+                catch { }
+
+                var operatorId = ResolveOperatorId(request.OperatorId);
+
+                var auditRecord = new ProcessAuditRecord
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    ProcessInstanceId = metadata.ProcessInstanceId,
+                    BusinessId = metadata.BusinessId,
+                    BusinessType = metadata.BusinessType,
+                    TaskId = task.Id,
+                    TaskDefinitionKey = task.TaskDefinitionKey,
+                    NodeSemantic = nodeSemantic,
+                    PageCode = pageCode,
+                    Action = "reassign",
+                    OperatorId = operatorId,
+                    Comment = string.IsNullOrWhiteSpace(request.Reason)
+                        ? $"转派给 {string.Join(",", request.NewAssignees)}"
+                        : $"{request.Reason}（转派给 {string.Join(",", request.NewAssignees)}）",
+                    OperatedAt = DateTime.UtcNow,
+                    SlotSelections = new List<SlotSelectionRecord>()
+                };
+
+                await _esService.IndexAuditRecordAsync(auditRecord);
+
+                _logger.LogInformation(
+                    "转派审计记录写入成功: TaskId={TaskId}, NewAssignees=[{Assignees}]",
+                    task.Id, string.Join(",", request.NewAssignees));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex,
+                    "转派审计记录写入失败（不影响转派结果）: TaskId={TaskId}, BusinessId={BusinessId}",
+                    task.Id, metadata.BusinessId);
+            }
         }
 
         private async Task WriteAuditRecordSafeAsync(

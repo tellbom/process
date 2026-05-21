@@ -459,7 +459,9 @@ namespace FlowableWrapper.Application.Services
                 // 推断 outcome
                 string outcome;
                 if (record.Action == "reject")
-                    outcome = "rejected_return"; // 简化：驳回统一用 rejected_return
+                    outcome = "rejected_return";
+                else if (record.Action == "reassign")
+                    outcome = "reassigned";
                 else
                     outcome = "approved";
 
