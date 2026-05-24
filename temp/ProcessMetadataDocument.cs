@@ -25,14 +25,17 @@ namespace FlowableWrapper.Domain.ElasticSearch
         public Dictionary<string, NodeSemanticInfo> NodeSemanticMap { get; set; }
 
         /// <summary>
-        /// 推荐处理人快照，Key = roleKey，Value = 推荐人员列表。
-        /// 来源：StartProcessRequest.AssigneeContract 展开（直接按 roleKey 存储）。
+        /// 推荐处理人快照（Key = roleKey，Value = 推荐人员工号列表）
+        /// 来源：StartProcessRequest.AssigneeContract 展开（直接按 roleKey 存储）
         ///
-        /// roleKey 表示"谁来处理当前节点"；slotKey 表示"当前节点完成时为下一节点选谁"。
-        /// 两者是不同主体，不能把当前节点 roleKey 的推荐人写入当前节点的 slot。
+        /// Key 语义（F1 fix）：
+        ///   Key 是 roleKey（当前节点处理人的角色），不是 slotKey
+        ///   roleKey 表示"谁来处理当前节点"
+        ///   slotKey 表示"当前节点完成时为下一节点选谁"，两者是不同的人
+        ///   前端在当前节点通过 nodeInfo.roleKey 查此字典，得到当前节点处理人推荐
         ///
-        /// 节点推进时前端读取此快照初始化选人区，最终由用户通过 NextSlotSelections 确认提交。
-        /// 不参与 Flowable 变量投影，不影响执行路径。
+        /// 用途：节点推进时前端读取此快照初始化选人区，最终由用户通过 NextSlotSelections 确认提交
+        /// 不参与 Flowable 变量投影，不影响任何执行逻辑
         /// </summary>
         public Dictionary<string, List<string>> RecommendedAssigneesSnapshot { get; set; }
             = new Dictionary<string, List<string>>();
@@ -110,19 +113,28 @@ namespace FlowableWrapper.Domain.ElasticSearch
         /// </summary>
         public List<SlotDefinition> Slots { get; set; } = new();
 
+        // ── NodeContract Phase 1 字段 ──────────────────────────────
+
         /// <summary>
-        /// 该节点绑定的业务角色 Key，对应 AssigneeContract.Roles[].RoleKey。
+        /// 该节点绑定的业务角色 Key，对应 AssigneeContract.Roles[].RoleKey
+        /// 部署 BPMN 时从 extensionElements 读取写入；slotConfig 可覆盖
+        /// 用于 AssigneeContractConverter 从全流程选人契约中定位处理人
         /// </summary>
         public string RoleKey { get; set; }
 
         /// <summary>
-        /// 处理人模式：single = 单人，multiple = 多人。
+        /// 处理人模式：single = 单人，multiple = 多人
+        /// 与 SlotDefinition.Mode 对应，AssigneeContractConverter 投影时用于 mode 一致性校验
+        /// 合法值：single / multiple
         /// </summary>
         public string AssigneeMode { get; set; }
 
         /// <summary>
-        /// 节点级回调 URL。节点完成后流程中心固定以 POST 方式发送 NodeCompletedCallbackPayload。
-        /// 为空时降级使用流程实例 metadata.Callback.Url；两者均为空则跳过节点回调。
+        /// 节点级回调 URL（可选）
+        /// 节点完成（含多实例完成、并行汇聚）后，流程中心 POST 此地址
+        /// null 或空字符串 → 降级使用 ProcessMetadataDocument.Callback.Url（流程级统一端点）
+        /// 两者均为空 → 该节点不触发回调
+        /// 请求方法固定为 POST，Body 为 NodeCompletedCallbackPayload（JSON）
         /// </summary>
         public string CallbackUrl { get; set; }
     }
@@ -160,7 +172,9 @@ namespace FlowableWrapper.Domain.ElasticSearch
         public string ConditionalOn { get; set; }
 
         /// <summary>
-        /// 是否限制只能从推荐范围内选人。Phase 1 后端不强拦截，仅在审计时记录是否越界。
+        /// 是否限制只能从推荐范围内选人
+        /// 前端读取后控制选人区 UI 范围；后端不强拦截，只在审计时记录是否越界
+        /// 默认 false = 允许选择推荐范围外人员
         /// </summary>
         public bool RestrictToRecommended { get; set; } = false;
     }
@@ -232,20 +246,27 @@ namespace FlowableWrapper.Domain.ElasticSearch
 
         public List<SlotSelectionRecord> SlotSelections { get; set; } = new();
 
+        // ── 推荐处理人审计字段（Phase 1 新增）─────────────────────
+
         /// <summary>
-        /// 本次提交中是否有人员超出推荐范围；null 表示不适用。
+        /// 本次提交中是否有人员越出推荐范围
+        /// null  = 该节点无推荐人配置，或所有相关 slot 的 RestrictToRecommended=false（不适用）
+        /// true  = 至少一个 RestrictToRecommended=true 的 slot 提交了推荐范围外的人员
+        /// false = 所有 RestrictToRecommended=true 的 slot 均在推荐范围内
+        /// 流程中心只记录，不拦截
         /// </summary>
         public bool? HasOutOfRecommendedRange { get; set; }
 
         /// <summary>
-        /// 本次完成任务时各 slot 的推荐人快照，Key = slotKey。
-        /// 数据来自 roleKey 维度的 RecommendedAssigneesSnapshot；仅当 slotKey 与目标 roleKey 对应时记录。
+        /// 本次完成任务时各 slot 的推荐人快照（Key = slotKey）
+        /// 记录操作发生时的推荐候选名单，用于事后审计对比
         /// </summary>
         public Dictionary<string, List<string>> RecommendedUsersSnapshot { get; set; }
             = new Dictionary<string, List<string>>();
 
         /// <summary>
-        /// 各 slot 的 RestrictToRecommended 配置值快照，Key = slotKey。
+        /// 各 slot 的 RestrictToRecommended 配置值快照（Key = slotKey）
+        /// 记录操作发生时的配置状态，防止后续部署修改配置导致审计数据失真
         /// </summary>
         public Dictionary<string, bool> RestrictToRecommendedSnapshot { get; set; }
             = new Dictionary<string, bool>();

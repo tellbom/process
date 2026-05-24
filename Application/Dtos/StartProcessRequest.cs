@@ -19,7 +19,7 @@ namespace FlowableWrapper.Application.Dtos
         /// <summary>
         /// 首节点选人（基于 Slot 契约）
         /// 传空数组时通过 businessVariables 直接传 assignee 变量名也可
-        /// Legacy compatibility path. New processes should prefer AssigneeContract.
+        /// 推荐人通过 AssigneeContract 传入（roleKey 维度），不通过此字段。
         /// </summary>
         public List<SlotSelection> InitialSlotSelections { get; set; }
             = new List<SlotSelection>();
@@ -36,20 +36,11 @@ namespace FlowableWrapper.Application.Dtos
         public CallbackConfigDto Callback { get; set; }
 
         /// <summary>
-        /// Full-process role assignment contract. When present, it takes precedence over InitialSlotSelections.
+        /// 按业务角色 Key 传入推荐处理人，内部展开为 RecommendedAssigneesSnapshot。
+        /// 不注入任何 Flowable 变量，不影响执行路径；最终生效人员仍来自 NextSlotSelections。
+        /// roleKey 对应 slot.json 中各节点配置的 roleKey 字段。
         /// </summary>
         public AssigneeContract? AssigneeContract { get; set; }
-
-        /// <summary>
-        /// Structured multi-instance assignment input, projected to Flowable collection variables.
-        /// </summary>
-        public LoopAssignments? LoopAssignments { get; set; }
-
-        /// <summary>
-        /// Instance-level recommended assignees snapshot. Key = slotKey.
-        /// </summary>
-        public Dictionary<string, List<string>> RecommendedAssignees { get; set; }
-            = new Dictionary<string, List<string>>();
     }
 
     public class AssigneeContract
@@ -62,26 +53,10 @@ namespace FlowableWrapper.Application.Dtos
         /// <summary>Business role key matching NodeSemanticInfo.RoleKey.</summary>
         public string RoleKey { get; set; }
 
-        /// <summary>single / multiple</summary>
+        /// <summary>single / multiple，仅作调用方语义描述，不参与 Flowable 变量投影。</summary>
         public string Mode { get; set; }
 
         public List<string> Users { get; set; } = new List<string>();
-    }
-
-    public class LoopAssignments
-    {
-        public List<LoopItem> Items { get; set; } = new List<LoopItem>();
-    }
-
-    public class LoopItem
-    {
-        /// <summary>Loop key used to build {loopKey}_{roleKey}_list variables.</summary>
-        public string LoopKey { get; set; }
-
-        /// <summary>Optional business key for traceability.</summary>
-        public string BusinessKey { get; set; }
-
-        public List<RoleAssignment> Roles { get; set; } = new List<RoleAssignment>();
     }
 
     public class CallbackConfigDto

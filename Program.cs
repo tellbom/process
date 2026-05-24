@@ -70,10 +70,9 @@ builder.Services.AddScoped<SlotVariableConverter>();
 builder.Services.AddScoped<IProcessSlotConfigProvider, ElasticSearchSlotConfigProvider>();
 
 // Phase 3 (Patch Plan V1.2) - assignee contract services
-// AssigneeContractConverter: role contract -> SlotSelection -> Flowable variables
-// LoopAssignmentProjector: loop assignments -> Flowable collection variables
+// AssigneeContractConverter: role contract -> RecommendedAssigneesSnapshot
 builder.Services.AddScoped<AssigneeContractConverter>();
-builder.Services.AddScoped<LoopAssignmentProjector>();
+// LoopAssignmentProjector is deprecated and no longer registered.
 
 // Phase 5 — 任务执行
 builder.Services.AddScoped<TaskExecutionAppService>();

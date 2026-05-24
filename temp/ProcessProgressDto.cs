@@ -115,17 +115,29 @@ namespace FlowableWrapper.Application.Dtos
         /// </summary>
         public DateTime CreateTime { get; set; }
 
+        // ── Phase 1 新增：推荐处理人字段 ──────────────────────────
+
         /// <summary>
-        /// Recommended users for the current node, keyed by roleKey.
-        /// roleKey describes who handles the current node; slotKey describes who this node selects next.
-        /// Empty dictionary means no recommended users are configured for this node.
+        /// 当前节点处理人推荐（Key = roleKey，Value = 推荐人工号列表）
+        /// 来源：ProcessMetadataDocument.RecommendedAssigneesSnapshot（启动时快照，roleKey 为 Key）
+        ///
+        /// Key 语义说明：
+        ///   Key 是 roleKey（当前节点处理人的角色），不是 slotKey
+        ///   前端通过 nodeInfo.roleKey 取出当前节点的推荐处理人，展示给用户确认
+        ///   roleKey 表示"谁来处理当前节点"
+        ///   slotKey 表示"当前节点完成时为下一节点选谁"，两者是不同的人
+        ///
+        /// 无推荐人配置时为空字典 {}
+        /// 最终生效人员仍由用户通过 NextSlotSelections 确认提交
         /// </summary>
         public Dictionary<string, List<string>> RecommendedUsers { get; set; }
             = new Dictionary<string, List<string>>();
 
         /// <summary>
-        /// Restrict-to-recommended flags for the current node, keyed by slotKey.
-        /// This is intentionally separate from RecommendedUsers because the restriction belongs to slots.
+        /// 各选人槽位是否限制只能从推荐范围内选人（Key = slotKey，Value = restrictToRecommended）
+        /// 来源：SlotDefinition.RestrictToRecommended（slotConfig 部署时配置）
+        /// Key 是 slotKey（选人槽位维度），与 RecommendedUsers 的 roleKey 不同
+        /// 前端据此控制各槽位选人区 UI 范围；后端不强拦截，只在审计时记录是否越界
         /// </summary>
         public Dictionary<string, bool> RestrictToRecommended { get; set; }
             = new Dictionary<string, bool>();

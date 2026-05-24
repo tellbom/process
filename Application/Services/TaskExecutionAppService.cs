@@ -738,25 +738,39 @@ namespace FlowableWrapper.Application.Services
             EvaluateRecommendedRange(
                 List<SlotSelection> nextSlotSelections,
                 List<SlotDefinition> slotDefs,
-                Dictionary<string, List<string>> recommendedSnapshot)
+                Dictionary<string, List<string>> recommendedByRoleKey)
         {
-            if (recommendedSnapshot == null || !recommendedSnapshot.Any())
+            if (recommendedByRoleKey == null || !recommendedByRoleKey.Any())
                 return (null, new Dictionary<string, List<string>>(), new Dictionary<string, bool>());
 
             if (slotDefs == null || !slotDefs.Any())
                 return (null, new Dictionary<string, List<string>>(), new Dictionary<string, bool>());
 
+            // RecommendedAssigneesSnapshot is keyed by roleKey. For slot audit and range checks,
+            // only slots whose slotKey matches a recommended roleKey can be compared.
+            var recommendedBySlotKey = slotDefs
+                .Where(d => !string.IsNullOrWhiteSpace(d.SlotKey)
+                            && recommendedByRoleKey.TryGetValue(d.SlotKey, out var users)
+                            && users?.Any() == true)
+                .ToDictionary(
+                    d => d.SlotKey,
+                    d => new List<string>(recommendedByRoleKey[d.SlotKey]),
+                    StringComparer.OrdinalIgnoreCase);
+
+            if (!recommendedBySlotKey.Any())
+                return (null, new Dictionary<string, List<string>>(), new Dictionary<string, bool>());
+
             var restrictSnapshot = slotDefs
-                .Where(d => recommendedSnapshot.ContainsKey(d.SlotKey))
+                .Where(d => recommendedBySlotKey.ContainsKey(d.SlotKey))
                 .ToDictionary(d => d.SlotKey, d => d.RestrictToRecommended);
 
             var restrictedSlots = slotDefs
                 .Where(d => d.RestrictToRecommended
-                            && recommendedSnapshot.ContainsKey(d.SlotKey))
+                            && recommendedBySlotKey.ContainsKey(d.SlotKey))
                 .ToList();
 
             if (!restrictedSlots.Any())
-                return (null, recommendedSnapshot, restrictSnapshot);
+                return (null, recommendedBySlotKey, restrictSnapshot);
 
             var selectionDict = (nextSlotSelections ?? new List<SlotSelection>())
                 .GroupBy(s => s.SlotKey, StringComparer.OrdinalIgnoreCase)
@@ -768,7 +782,7 @@ namespace FlowableWrapper.Application.Services
             {
                 if (!selectionDict.TryGetValue(slot.SlotKey, out var selection)) continue;
                 if (selection.Users == null || !selection.Users.Any()) continue;
-                if (!recommendedSnapshot.TryGetValue(slot.SlotKey, out var recommended)) continue;
+                if (!recommendedBySlotKey.TryGetValue(slot.SlotKey, out var recommended)) continue;
 
                 var outOfRangeUsers = selection.Users
                     .Where(u => !recommended.Contains(u, StringComparer.OrdinalIgnoreCase))
@@ -785,7 +799,7 @@ namespace FlowableWrapper.Application.Services
                 }
             }
 
-            return (hasOutOfRange, recommendedSnapshot, restrictSnapshot);
+            return (hasOutOfRange, recommendedBySlotKey, restrictSnapshot);
         }
 
         private string ResolveOperatorId(string requestEmployeeId)

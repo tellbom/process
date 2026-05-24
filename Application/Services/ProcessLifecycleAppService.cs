@@ -41,7 +41,6 @@ namespace FlowableWrapper.Application.Services
         private readonly IProcessSlotConfigProvider _slotConfigProvider;
         private readonly SlotVariableConverter _slotConverter;
         private readonly AssigneeContractConverter _assigneeContractConverter;
-        private readonly LoopAssignmentProjector _loopAssignmentProjector;
         private readonly ICurrentUser _currentUser;
         private readonly BusinessTypeProcessMapping _businessTypeMapping;
         private readonly FlowableOptions _flowableOptions;
@@ -55,7 +54,6 @@ namespace FlowableWrapper.Application.Services
             IProcessSlotConfigProvider slotConfigProvider,
             SlotVariableConverter slotConverter,
             AssigneeContractConverter assigneeContractConverter,
-            LoopAssignmentProjector loopAssignmentProjector,
             ICurrentUser currentUser,
             IOptions<BusinessTypeProcessMapping> businessTypeMapping,
             IOptions<FlowableOptions> flowableOptions,
@@ -68,7 +66,6 @@ namespace FlowableWrapper.Application.Services
             _slotConfigProvider   = slotConfigProvider;
             _slotConverter        = slotConverter;
             _assigneeContractConverter = assigneeContractConverter;
-            _loopAssignmentProjector = loopAssignmentProjector;
             _currentUser          = currentUser;
             _businessTypeMapping  = businessTypeMapping.Value;
             _flowableOptions      = flowableOptions.Value;
@@ -87,6 +84,7 @@ namespace FlowableWrapper.Application.Services
         ///   1. 参数校验
         ///   2. businessType → processDefinitionKey 映射
         ///   3. 查首节点 Slot 定义，将 InitialSlotSelections 转换为 Flowable 变量
+        ///   3b. 将 AssigneeContract 展开为推荐人快照，不生成 Flowable 变量
         ///   4. 注入框架内置变量（frameworkCallbackUrl / businessId / processDefinitionKey）
         ///   5. 调 Flowable StartProcessInstance（变量已含首节点 assignee，Flowable 自动绑定）
         ///   6. 写 ES ProcessMetadataDocument
@@ -159,35 +157,35 @@ namespace FlowableWrapper.Application.Services
                     request.BusinessId,
                     createdBy);
 
-                // 3. Convert assignee variables. AssigneeContract takes precedence; old InitialSlotSelections remains compatible.
-                SlotConversionResult initConversionResult;
+                // 3. InitialSlotSelections is the only start-time source for Flowable assignee variables.
+                var initConversionResult = await ConvertInitialSlotsAsync(
+                    request.InitialSlotSelections,
+                    processDefinitionKey);
+
+                // 3b. AssigneeContract is only expanded into the recommended-assignee snapshot.
+                var contractSnapshot = new Dictionary<string, List<string>>(
+                    StringComparer.OrdinalIgnoreCase);
                 if (request.AssigneeContract?.Roles?.Any() == true)
                 {
-                    if (request.InitialSlotSelections?.Any() == true)
+                    try
                     {
-                        _logger.LogWarning(
-                            "AssigneeContract and InitialSlotSelections were both provided. AssigneeContract takes precedence. BusinessId={BusinessId}",
+                        var semanticMap = await _slotConfigProvider
+                            .GetNodeSemanticMapAsync(processDefinitionKey);
+
+                        contractSnapshot = _assigneeContractConverter
+                            .ToRecommendedSnapshot(request.AssigneeContract, semanticMap);
+
+                        _logger.LogInformation(
+                            "AssigneeContract expanded into recommended snapshot. BusinessId={BusinessId}, SlotKeys={Count}",
+                            request.BusinessId,
+                            contractSnapshot.Count);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex,
+                            "AssigneeContract recommended snapshot expansion failed and will be skipped. BusinessId={BusinessId}",
                             request.BusinessId);
                     }
-
-                    var semanticMap = await _slotConfigProvider
-                        .GetNodeSemanticMapAsync(processDefinitionKey);
-
-                    initConversionResult = _assigneeContractConverter.Convert(
-                        request.AssigneeContract,
-                        semanticMap,
-                        request.BusinessVariables);
-
-                    _logger.LogInformation(
-                        "AssigneeContract path used for start variables. BusinessId={BusinessId}, RoleCount={RoleCount}",
-                        request.BusinessId,
-                        request.AssigneeContract.Roles.Count);
-                }
-                else
-                {
-                    initConversionResult = await ConvertInitialSlotsAsync(
-                        request.InitialSlotSelections,
-                        processDefinitionKey);
                 }
 
                 // 4. 构建启动变量
@@ -238,7 +236,8 @@ namespace FlowableWrapper.Application.Services
                     processInstance,
                     request,
                     processDefinitionKey,
-                    createdBy);
+                    createdBy,
+                    contractSnapshot);
 
                 try
                 {
@@ -504,7 +503,10 @@ namespace FlowableWrapper.Application.Services
         /// 构建 Flowable 启动变量
         ///
         /// 变量优先级（高→低）：
-        ///   框架内置变量 > Slot 转换变量 > 业务变量
+        ///   框架内置变量 > InitialSlotSelections 转换变量 > 业务变量
+        ///
+        /// AssigneeContract 不生成任何 Flowable 变量；
+        /// 它只写入 RecommendedAssigneesSnapshot 供前端初始化选人区。
         /// </summary>
         private Dictionary<string, object> BuildStartVariables(
             StartProcessRequest request,
@@ -518,13 +520,6 @@ namespace FlowableWrapper.Application.Services
             // Slot 转换变量覆盖业务变量
             foreach (var kv in slotVariables)
                 variables[kv.Key] = kv.Value;
-
-            if (request.LoopAssignments?.Items?.Any() == true)
-            {
-                var loopVariables = _loopAssignmentProjector.Project(request.LoopAssignments);
-                foreach (var kv in loopVariables)
-                    variables[kv.Key] = kv.Value;
-            }
 
             // 框架内置变量（最高优先级，不可被覆盖）
             if (!string.IsNullOrWhiteSpace(_flowableOptions.FrameworkCallbackUrl))
@@ -554,7 +549,8 @@ namespace FlowableWrapper.Application.Services
             FlowableProcessInstance processInstance,
             StartProcessRequest request,
             string processDefinitionKey,
-            string createdBy)
+            string createdBy,
+            Dictionary<string, List<string>> contractSnapshot)
         {
             CallbackMetadata callbackMetadata = null;
             if (request.Callback != null
@@ -585,7 +581,7 @@ namespace FlowableWrapper.Application.Services
                 // 它在部署 BPMN 时由 BpmnDeploymentAppService 写入 ProcessDefinitionSemanticDocument
                 // 查询时从 ProcessDefinitionSemanticDocument 读取，不存在于实例文档中
                 NodeSemanticMap      = new Dictionary<string, NodeSemanticInfo>(),
-                RecommendedAssigneesSnapshot = request.RecommendedAssignees
+                RecommendedAssigneesSnapshot = contractSnapshot
                     ?? new Dictionary<string, List<string>>()
             };
         }

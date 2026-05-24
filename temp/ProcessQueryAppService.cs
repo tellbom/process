@@ -373,8 +373,9 @@ namespace FlowableWrapper.Application.Services
                 var recommendedUsers = new Dictionary<string, List<string>>();
                 var restrictMap = new Dictionary<string, bool>();
 
-                // Recommended users are keyed by roleKey, which describes the current node assignee.
-                // Slots describe downstream assignee selections, so slotKey is intentionally not used here.
+                // 推荐人：Key = roleKey（当前节点处理人的角色）
+                // Snapshot 存储的 Key 是 roleKey，前端按 nodeInfo.roleKey 取当前节点推荐人
+                // 注意：不按 slotKey 取，因为 slot 表示"为下一节点选谁"，与当前节点处理人不同
                 if (!string.IsNullOrWhiteSpace(nodeInfo?.RoleKey)
                     && recommendedSnapshot.TryGetValue(nodeInfo.RoleKey, out var recommended)
                     && recommended?.Any() == true)
@@ -382,6 +383,7 @@ namespace FlowableWrapper.Application.Services
                     recommendedUsers[nodeInfo.RoleKey] = recommended;
                 }
 
+                // 选人范围限制：Key = slotKey（slot 是为下一节点选人的槽位，限制策略属于 slot 维度）
                 if (nodeInfo?.Slots != null)
                 {
                     foreach (var slot in nodeInfo.Slots)
