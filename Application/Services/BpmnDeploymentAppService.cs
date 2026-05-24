@@ -141,7 +141,7 @@ namespace FlowableWrapper.Application.Services
                     RejectOptionCount = n.RejectOptions?.Count ?? 0,
                     RoleKey = n.RoleKey,
                     AssigneeMode = n.AssigneeMode,
-                    CallbackTiming = n.CallbackTiming
+                    CallbackUrl = n.CallbackUrl
                 }).ToList()
             };
         }
@@ -172,7 +172,7 @@ namespace FlowableWrapper.Application.Services
                 Slots = n.Slots ?? new List<SlotDefinition>(),
                 RoleKey = n.RoleKey,
                 AssigneeMode = n.AssigneeMode,
-                CallbackTiming = n.CallbackTiming
+                CallbackUrl = n.CallbackUrl
             }).ToList();
         }
 
@@ -210,7 +210,7 @@ namespace FlowableWrapper.Application.Services
                 bool.TryParse(convStr, out var isConvergencePoint);
                 fields.TryGetValue("roleKey", out var roleKey);
                 fields.TryGetValue("assigneeMode", out var assigneeMode);
-                fields.TryGetValue("callbackTiming", out var callbackTiming);
+                fields.TryGetValue("callbackUrl", out var callbackUrl);
 
                 result[taskId] = new NodeSemanticInfo
                 {
@@ -220,7 +220,7 @@ namespace FlowableWrapper.Application.Services
                     IsConvergencePoint = isConvergencePoint,
                     RoleKey = roleKey,
                     AssigneeMode = assigneeMode,
-                    CallbackTiming = callbackTiming
+                    CallbackUrl = callbackUrl
                 };
             }
 
@@ -317,10 +317,13 @@ namespace FlowableWrapper.Application.Services
                     errors.Add($"节点 [{key}] assigneeMode 必须是 single 或 multiple，当前值：{node.AssigneeMode}");
                 }
 
-                if (!string.IsNullOrWhiteSpace(node.CallbackTiming)
-                    && node.CallbackTiming != "on_complete")
+                if (!string.IsNullOrWhiteSpace(node.CallbackUrl)
+                    && !Uri.TryCreate(node.CallbackUrl, UriKind.Absolute, out _))
                 {
-                    errors.Add($"节点 [{key}] callbackTiming Phase 1 只支持 on_complete，当前值：{node.CallbackTiming}");
+                    _logger.LogWarning(
+                        "节点 [{Key}] callbackUrl 不是绝对 URL，请确认配置正确: {Url}",
+                        key,
+                        node.CallbackUrl);
                 }
 
                 if (node.IsRejectTarget)
@@ -398,8 +401,8 @@ namespace FlowableWrapper.Application.Services
                     info.RoleKey = node.RoleKey;
                 if (!string.IsNullOrWhiteSpace(node.AssigneeMode))
                     info.AssigneeMode = node.AssigneeMode;
-                if (!string.IsNullOrWhiteSpace(node.CallbackTiming))
-                    info.CallbackTiming = node.CallbackTiming;
+                if (!string.IsNullOrWhiteSpace(node.CallbackUrl))
+                    info.CallbackUrl = node.CallbackUrl;
             }
         }
     }

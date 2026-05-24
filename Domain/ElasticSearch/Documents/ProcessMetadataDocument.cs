@@ -115,9 +115,10 @@ namespace FlowableWrapper.Domain.ElasticSearch
         public string AssigneeMode { get; set; }
 
         /// <summary>
-        /// 节点完成后触发回调的时机。Phase 1 仅支持 on_complete，空值表示不触发。
+        /// 节点级回调 URL。节点完成后流程中心固定以 POST 方式发送 NodeCompletedCallbackPayload。
+        /// 为空时降级使用流程实例 metadata.Callback.Url；两者均为空则跳过节点回调。
         /// </summary>
-        public string CallbackTiming { get; set; }
+        public string CallbackUrl { get; set; }
     }
 
     /// <summary>

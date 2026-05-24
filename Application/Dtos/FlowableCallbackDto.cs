@@ -33,6 +33,7 @@ namespace FlowableWrapper.Application.Dtos
         public const string NodeCompleted = "NODE_COMPLETED";
         public const string MultiInstanceCompleted = "MULTI_INSTANCE_COMPLETED";
         public const string ParallelJoinCompleted = "PARALLEL_JOIN_COMPLETED";
+        public const string RejectOccurred = "REJECT_OCCURRED";
     }
 
     public class FlowableCallbackResponse
@@ -53,6 +54,7 @@ namespace FlowableWrapper.Application.Dtos
         public string CallbackType { get; set; } = string.Empty;
         public string TaskDefinitionKey { get; set; } = string.Empty;
         public string NodeSemantic { get; set; } = string.Empty;
+        public string RejectTargetNodeKey { get; set; } = string.Empty;
         public AuditRecordSnapshot? LastAuditRecord { get; set; }
         public DateTime TriggeredAt { get; set; }
     }

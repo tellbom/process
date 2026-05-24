@@ -146,7 +146,6 @@
         <flowable:field name="nodeSemantic" stringValue="INTEGRITY_HEAD_HANDLE"/>
         <flowable:field name="pageCode" stringValue="SelectionApproval/IntegrityHeadHandleForm"/>
         <flowable:field name="isConvergencePoint" stringValue="false"/>
-        <flowable:field name="callbackTiming" stringValue="on_complete"/>
       </extensionElements>
     </userTask>
 
@@ -172,7 +171,7 @@
           <flowable:string>Content-Type: application/json</flowable:string>
         </flowable:field>
         <flowable:field name="requestBody">
-          <flowable:expression>{"processInstanceId":"${execution.processInstanceId}","businessId":"${businessId}","processDefinitionKey":"${processDefinitionKey}","variables":{"callbackType":"NODE_COMPLETED","callbackNodeKey":"ut04_integrity_head_handle","nodeCallbackUrl":"${nodeCallbackUrl}"}}</flowable:expression>
+          <flowable:expression>{"processInstanceId":"${execution.processInstanceId}","businessId":"${businessId}","processDefinitionKey":"${processDefinitionKey}","variables":{"callbackType":"NODE_COMPLETED","callbackNodeKey":"ut04_integrity_head_handle"}}</flowable:expression>
         </flowable:field>
         <flowable:field name="saveResponseParameters">
           <flowable:string>false</flowable:string>
@@ -281,7 +280,6 @@
         <flowable:field name="nodeSemantic" stringValue="SECRETARY_FINAL_APPROVE"/>
         <flowable:field name="pageCode" stringValue="SelectionApproval/SecretaryApprovalForm"/>
         <flowable:field name="isConvergencePoint" stringValue="true"/>
-        <flowable:field name="callbackTiming" stringValue="on_complete"/>
       </extensionElements>
     </userTask>
 
@@ -307,7 +305,7 @@
           <flowable:string>Content-Type: application/json</flowable:string>
         </flowable:field>
         <flowable:field name="requestBody">
-          <flowable:expression>{"processInstanceId":"${execution.processInstanceId}","businessId":"${businessId}","processDefinitionKey":"${processDefinitionKey}","variables":{"callbackType":"NODE_COMPLETED","callbackNodeKey":"ut08_secretary_final_approve","nodeCallbackUrl":"${nodeCallbackUrl}"}}</flowable:expression>
+          <flowable:expression>{"processInstanceId":"${execution.processInstanceId}","businessId":"${businessId}","processDefinitionKey":"${processDefinitionKey}","variables":{"callbackType":"NODE_COMPLETED","callbackNodeKey":"ut08_secretary_final_approve"}}</flowable:expression>
         </flowable:field>
         <flowable:field name="saveResponseParameters">
           <flowable:string>false</flowable:string>

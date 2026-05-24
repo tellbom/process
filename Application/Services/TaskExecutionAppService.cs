@@ -35,6 +35,7 @@ namespace FlowableWrapper.Application.Services
         private readonly SlotVariableConverter _slotConverter;
         private readonly ICurrentUser _currentUser;
         private readonly ILogger<TaskExecutionAppService> _logger;
+        private readonly ProcessCallbackAppService _callbackService;
 
         public TaskExecutionAppService(
             IFlowableRuntimeService runtimeService,
@@ -43,7 +44,8 @@ namespace FlowableWrapper.Application.Services
             IProcessSlotConfigProvider slotConfigProvider,
             SlotVariableConverter slotConverter,
             ICurrentUser currentUser,
-            ILogger<TaskExecutionAppService> logger)
+            ILogger<TaskExecutionAppService> logger,
+            ProcessCallbackAppService callbackService)
         {
             _runtimeService = runtimeService;
             _taskService = taskService;
@@ -52,6 +54,7 @@ namespace FlowableWrapper.Application.Services
             _slotConverter = slotConverter;
             _currentUser = currentUser;
             _logger = logger;
+            _callbackService = callbackService;
         }
 
         // ═══════════════════════════════════════════════════════════
@@ -445,6 +448,22 @@ namespace FlowableWrapper.Application.Services
                 metadata, currentTask, request, operatorId,
                 new List<SlotSelectionSnapshot>(),
                 targetNode.TaskDefinitionKey);
+
+            var rejectAuditSnapshot = new AuditRecordSnapshot
+            {
+                Action = "reject",
+                OperatorId = operatorId,
+                Comment = request.Comment ?? string.Empty,
+                RejectReason = request.RejectReason ?? string.Empty,
+                OperatedAt = DateTime.UtcNow,
+                SlotSelections = new List<SlotSelectionRecord>()
+            };
+
+            await _callbackService.SendRejectCallbackSafeAsync(
+                metadata,
+                currentTask.TaskDefinitionKey,
+                targetNode.TaskDefinitionKey,
+                rejectAuditSnapshot);
 
             return new CompleteTaskResponse
             {

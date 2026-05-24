@@ -6,6 +6,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using System.Threading.Tasks;
 using FlowableWrapper.Application.Dtos;
+using FlowableWrapper.Application.Slots;
 using FlowableWrapper.Domain.Abstractions;
 using FlowableWrapper.Domain.ElasticSearch;
 using FlowableWrapper.Domain.Services;
@@ -21,6 +22,7 @@ namespace FlowableWrapper.Application.Services
     {
         private readonly IElasticSearchService _esService;
         private readonly IHttpClientFactory _httpClientFactory;
+        private readonly IProcessSlotConfigProvider _slotConfigProvider;
         private readonly ILogger<ProcessCallbackAppService> _logger;
 
         private static readonly JsonSerializerOptions JsonOptions = new()
@@ -31,10 +33,12 @@ namespace FlowableWrapper.Application.Services
         public ProcessCallbackAppService(
             IElasticSearchService esService,
             IHttpClientFactory httpClientFactory,
+            IProcessSlotConfigProvider slotConfigProvider,
             ILogger<ProcessCallbackAppService> logger)
         {
             _esService = esService;
             _httpClientFactory = httpClientFactory;
+            _slotConfigProvider = slotConfigProvider;
             _logger = logger;
         }
 
@@ -68,8 +72,6 @@ namespace FlowableWrapper.Application.Services
         {
             var taskDefinitionKey = request.Variables
                 ?.GetValueOrDefault("callbackNodeKey")?.ToString();
-            var nodeCallbackUrl = request.Variables
-                ?.GetValueOrDefault("nodeCallbackUrl")?.ToString();
 
             if (string.IsNullOrWhiteSpace(taskDefinitionKey))
             {
@@ -80,21 +82,28 @@ namespace FlowableWrapper.Application.Services
                 return OkResponse($"{callbackType}: callbackNodeKey 为空，跳过");
             }
 
-            if (string.IsNullOrWhiteSpace(nodeCallbackUrl))
+            var metadata = await _esService.GetProcessMetadataAsync(request.ProcessInstanceId);
+            var callbackUrl = await ResolveNodeCallbackUrlAsync(
+                taskDefinitionKey,
+                metadata?.ProcessDefinitionKey ?? request.ProcessDefinitionKey,
+                metadata?.Callback?.Url);
+
+            if (string.IsNullOrWhiteSpace(callbackUrl))
             {
-                _logger.LogWarning(
-                    "[{CallbackType}] 节点 [{NodeKey}] 缺少 nodeCallbackUrl，已跳过。ProcessInstanceId={ProcessInstanceId}",
+                _logger.LogDebug(
+                    "[{CallbackType}] 节点 [{NodeKey}] 未配置回调 URL，已跳过。ProcessInstanceId={ProcessInstanceId}",
                     callbackType,
                     taskDefinitionKey,
                     request.ProcessInstanceId);
-                return OkResponse($"{callbackType}: nodeCallbackUrl 为空，跳过");
+                return OkResponse($"{callbackType}: 未配置回调 URL，跳过");
             }
 
             var context = await BuildNodeCallbackContextAsync(
                 request.ProcessInstanceId,
                 request.BusinessId,
                 request.ProcessDefinitionKey,
-                taskDefinitionKey);
+                taskDefinitionKey,
+                metadata);
 
             var payload = new NodeCompletedCallbackPayload
             {
@@ -109,9 +118,65 @@ namespace FlowableWrapper.Application.Services
                 TriggeredAt = DateTime.UtcNow
             };
 
-            await PostNodeCallbackSafeAsync(nodeCallbackUrl, payload, callbackType);
+            await PostNodeCallbackSafeAsync(callbackUrl, payload, callbackType, metadata);
 
             return OkResponse($"{callbackType}: 节点 [{taskDefinitionKey}] 回调已发送");
+        }
+
+        /// <summary>
+        /// Sends a reject notification to the business callback endpoint.
+        /// The notification is emitted by the process center after Flowable activity-state jump succeeds.
+        /// </summary>
+        public async Task SendRejectCallbackSafeAsync(
+            ProcessMetadataDocument metadata,
+            string rejectNodeKey,
+            string rejectTargetNodeKey,
+            AuditRecordSnapshot auditSnapshot)
+        {
+            if (metadata == null)
+            {
+                _logger.LogWarning("驳回通知：流程元数据为空，已跳过");
+                return;
+            }
+
+            var callbackUrl = await ResolveNodeCallbackUrlAsync(
+                rejectNodeKey,
+                metadata.ProcessDefinitionKey,
+                metadata.Callback?.Url);
+
+            if (string.IsNullOrWhiteSpace(callbackUrl))
+            {
+                _logger.LogDebug(
+                    "驳回通知：未配置回调 URL，跳过。BusinessId={BusinessId}",
+                    metadata.BusinessId);
+                return;
+            }
+
+            var payload = new NodeCompletedCallbackPayload
+            {
+                BusinessId = metadata.BusinessId,
+                ProcessInstanceId = metadata.ProcessInstanceId,
+                ProcessDefinitionKey = metadata.ProcessDefinitionKey,
+                BusinessType = metadata.BusinessType,
+                CallbackType = FlowableCallbackTypes.RejectOccurred,
+                TaskDefinitionKey = rejectNodeKey,
+                RejectTargetNodeKey = rejectTargetNodeKey,
+                LastAuditRecord = auditSnapshot,
+                TriggeredAt = DateTime.UtcNow
+            };
+
+            _logger.LogInformation(
+                "发送驳回通知: BusinessId={BusinessId}, RejectNode={RejectNode}, TargetNode={TargetNode}, Url={Url}",
+                metadata.BusinessId,
+                rejectNodeKey,
+                rejectTargetNodeKey,
+                callbackUrl);
+
+            await PostNodeCallbackSafeAsync(
+                callbackUrl,
+                payload,
+                FlowableCallbackTypes.RejectOccurred,
+                metadata);
         }
 
         private async Task<FlowableCallbackResponse> HandleProcessEndCallbackAsync(
@@ -167,7 +232,8 @@ namespace FlowableWrapper.Application.Services
             string processInstanceId,
             string businessId,
             string processDefinitionKey,
-            string taskDefinitionKey)
+            string taskDefinitionKey,
+            ProcessMetadataDocument? preloadedMetadata = null)
         {
             var context = new NodeCallbackContext
             {
@@ -176,7 +242,8 @@ namespace FlowableWrapper.Application.Services
 
             try
             {
-                var metadata = await _esService.GetProcessMetadataAsync(processInstanceId);
+                var metadata = preloadedMetadata
+                    ?? await _esService.GetProcessMetadataAsync(processInstanceId);
                 if (metadata != null)
                 {
                     context.ProcessDefinitionKey = string.IsNullOrWhiteSpace(processDefinitionKey)
@@ -231,17 +298,73 @@ namespace FlowableWrapper.Application.Services
             return context;
         }
 
+        private async Task<string?> ResolveNodeCallbackUrlAsync(
+            string taskDefinitionKey,
+            string? processDefinitionKey,
+            string? processCallbackUrl)
+        {
+            if (!string.IsNullOrWhiteSpace(processDefinitionKey))
+            {
+                try
+                {
+                    var semanticMap = await _slotConfigProvider
+                        .GetNodeSemanticMapAsync(processDefinitionKey);
+
+                    if (semanticMap != null
+                        && semanticMap.TryGetValue(taskDefinitionKey, out var nodeInfo)
+                        && !string.IsNullOrWhiteSpace(nodeInfo.CallbackUrl))
+                    {
+                        _logger.LogDebug(
+                            "使用节点级回调 URL: NodeKey={NodeKey}, Url={Url}",
+                            taskDefinitionKey,
+                            nodeInfo.CallbackUrl);
+                        return nodeInfo.CallbackUrl;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex,
+                        "读取节点级回调 URL 失败，将降级到流程级 URL: NodeKey={NodeKey}",
+                        taskDefinitionKey);
+                }
+            }
+
+            if (!string.IsNullOrWhiteSpace(processCallbackUrl))
+            {
+                _logger.LogDebug(
+                    "降级使用流程级回调 URL: NodeKey={NodeKey}, Url={Url}",
+                    taskDefinitionKey,
+                    processCallbackUrl);
+                return processCallbackUrl;
+            }
+
+            return null;
+        }
+
         private async Task PostNodeCallbackSafeAsync(
             string url,
             NodeCompletedCallbackPayload payload,
-            string callbackType)
+            string callbackType,
+            ProcessMetadataDocument? metadata = null)
         {
             try
             {
                 var httpClient = _httpClientFactory.CreateClient("BusinessCallback");
-                httpClient.Timeout = TimeSpan.FromSeconds(30);
+                var timeoutSeconds = metadata?.Callback?.TimeoutSeconds > 0
+                    ? metadata.Callback.TimeoutSeconds
+                    : 30;
+                httpClient.Timeout = TimeSpan.FromSeconds(timeoutSeconds);
 
                 using var httpRequest = new HttpRequestMessage(HttpMethod.Post, url);
+
+                if (metadata?.Callback?.Headers != null)
+                {
+                    foreach (var header in metadata.Callback.Headers)
+                        httpRequest.Headers.TryAddWithoutValidation(
+                            header.Key,
+                            header.Value);
+                }
+
                 httpRequest.Content = JsonContent.Create(payload, options: JsonOptions);
 
                 var response = await httpClient.SendAsync(httpRequest);

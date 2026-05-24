@@ -11,7 +11,6 @@
     "rejectCode": "TO_STARTER",
     "roleKey": "starter",
     "assigneeMode": "single",
-    "callbackTiming": null,
     "slots": [
       {
         "slotKey": "group_leader",
@@ -22,7 +21,8 @@
         "conditionalOn": null,
         "restrictToRecommended": false
       }
-    ]
+    ],
+    "callbackUrl": "https://httpbin.org/post?node=starter_submit"
   },
   {
     "taskDefinitionKey": "ut01_group_leader_confirm",
@@ -42,7 +42,6 @@
     "rejectCode": null,
     "roleKey": "group_leader",
     "assigneeMode": "single",
-    "callbackTiming": null,
     "slots": [
       {
         "slotKey": "inspection_office_reviewer",
@@ -53,7 +52,8 @@
         "conditionalOn": null,
         "restrictToRecommended": false
       }
-    ]
+    ],
+    "callbackUrl": "https://httpbin.org/post?node=group_leader_confirm"
   },
   {
     "taskDefinitionKey": "ut02_inspection_office_review",
@@ -73,7 +73,6 @@
     "rejectCode": null,
     "roleKey": "inspection_office_reviewer",
     "assigneeMode": "single",
-    "callbackTiming": null,
     "slots": [
       {
         "slotKey": "integrity_dept_reviewer",
@@ -84,7 +83,8 @@
         "conditionalOn": null,
         "restrictToRecommended": false
       }
-    ]
+    ],
+    "callbackUrl": "https://httpbin.org/post?node=inspection_office_review"
   },
   {
     "taskDefinitionKey": "ut03_integrity_dept_review",
@@ -104,7 +104,6 @@
     "rejectCode": null,
     "roleKey": "integrity_dept_reviewer",
     "assigneeMode": "single",
-    "callbackTiming": null,
     "slots": [
       {
         "slotKey": "integrity_head",
@@ -115,7 +114,8 @@
         "conditionalOn": null,
         "restrictToRecommended": false
       }
-    ]
+    ],
+    "callbackUrl": "https://httpbin.org/post?node=integrity_dept_review"
   },
   {
     "taskDefinitionKey": "ut04_integrity_head_handle",
@@ -135,7 +135,6 @@
     "rejectCode": null,
     "roleKey": "integrity_head",
     "assigneeMode": "single",
-    "callbackTiming": "on_complete",
     "slots": [
       {
         "slotKey": "feedback_person",
@@ -155,7 +154,8 @@
         "conditionalOn": "needPersonFeedback==false",
         "restrictToRecommended": false
       }
-    ]
+    ],
+    "callbackUrl": "https://httpbin.org/post?node=integrity_head_handle"
   },
   {
     "taskDefinitionKey": "ut05_person_feedback",
@@ -169,8 +169,8 @@
     "rejectCode": null,
     "roleKey": "feedback_person",
     "assigneeMode": "single",
-    "callbackTiming": null,
-    "slots": []
+    "slots": [],
+    "callbackUrl": null
   },
   {
     "taskDefinitionKey": "ut06_integrity_head_approve",
@@ -190,7 +190,6 @@
     "rejectCode": null,
     "roleKey": "integrity_head",
     "assigneeMode": "single",
-    "callbackTiming": null,
     "slots": [
       {
         "slotKey": "office_director_after_feedback",
@@ -201,7 +200,8 @@
         "conditionalOn": null,
         "restrictToRecommended": false
       }
-    ]
+    ],
+    "callbackUrl": "https://httpbin.org/post?node=integrity_head_approve"
   },
   {
     "taskDefinitionKey": "ut07_office_director_review",
@@ -221,7 +221,6 @@
     "rejectCode": null,
     "roleKey": "office_director",
     "assigneeMode": "single",
-    "callbackTiming": null,
     "slots": [
       {
         "slotKey": "secretary",
@@ -232,7 +231,8 @@
         "conditionalOn": null,
         "restrictToRecommended": false
       }
-    ]
+    ],
+    "callbackUrl": "https://httpbin.org/post?node=office_director_review"
   },
   {
     "taskDefinitionKey": "ut08_secretary_final_approve",
@@ -246,7 +246,7 @@
     "rejectCode": null,
     "roleKey": "secretary",
     "assigneeMode": "single",
-    "callbackTiming": "on_complete",
-    "slots": []
+    "slots": [],
+    "callbackUrl": "https://httpbin.org/post?node=secretary_final_approve"
   }
 ]

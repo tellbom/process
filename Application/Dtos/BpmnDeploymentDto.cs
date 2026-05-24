@@ -69,8 +69,8 @@ namespace FlowableWrapper.Application.Dtos
         /// <summary>Assignee mode: single / multiple. slotConfig overrides BPMN extensionElements when set.</summary>
         public string AssigneeMode { get; set; }
 
-        /// <summary>Callback timing. Phase 1 supports on_complete only. slotConfig overrides BPMN extensionElements when set.</summary>
-        public string CallbackTiming { get; set; }
+        /// <summary>Node-level callback URL. Empty value falls back to process-level callback.url.</summary>
+        public string CallbackUrl { get; set; }
     }
 
     /// <summary>
@@ -113,7 +113,7 @@ namespace FlowableWrapper.Application.Dtos
         public int RejectOptionCount { get; set; }
         public string RoleKey { get; set; }
         public string AssigneeMode { get; set; }
-        public string CallbackTiming { get; set; }
+        public string CallbackUrl { get; set; }
     }
 
 
@@ -134,6 +134,6 @@ namespace FlowableWrapper.Application.Dtos
         public List<SlotDefinition> Slots { get; set; } = new();
         public string RoleKey { get; set; }
         public string AssigneeMode { get; set; }
-        public string CallbackTiming { get; set; }
+        public string CallbackUrl { get; set; }
     }
 }
