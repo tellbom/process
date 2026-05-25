@@ -47,13 +47,13 @@ namespace FlowableWrapper.Application.Services
             ILogger<TaskExecutionAppService> logger,
             ProcessCallbackAppService callbackService)
         {
-            _runtimeService = runtimeService;
-            _taskService = taskService;
-            _esService = esService;
+            _runtimeService  = runtimeService;
+            _taskService     = taskService;
+            _esService       = esService;
             _slotConfigProvider = slotConfigProvider;
-            _slotConverter = slotConverter;
-            _currentUser = currentUser;
-            _logger = logger;
+            _slotConverter   = slotConverter;
+            _currentUser     = currentUser;
+            _logger          = logger;
             _callbackService = callbackService;
         }
 
@@ -112,19 +112,28 @@ namespace FlowableWrapper.Application.Services
             if (request.Action == ApprovalAction.Reject)
                 return await HandleRejectAsync(request, myTask, metadata, operatorId);
 
-            // ── Step 5 + 6: 组装变量 + 一次 CompleteAsync ─────────
+            // ── Step 5: 组装变量 ──────────────────────────────────
             var (variables, slotSnapshots) = await BuildCompletionVariablesAsync(
                 request, myTask, metadata, operatorId);
 
+            // ── Step 6: 写审计记录（先于 CompleteAsync）──────────
+            // 必须在 CompleteAsync 之前写入 ES：
+            // Flowable CompleteAsync 会同步执行 BPMN 中的 HTTP ServiceTask（节点回调）
+            // 回调触发时 ProcessCallbackAppService.BuildNodeContextAsync 会查询 ES 审计记录
+            // 若审计写在 CompleteAsync 之后，回调取到的 lastAuditRecord 始终为空
+            //
+            // 已知副作用：若 CompleteAsync 失败（Flowable 返回错误），
+            // 审计记录已写入但任务未完成，ES 中存在一条幽灵审计记录
+            // 此代价可接受（审计记录多余 vs 回调上下文永远为空，前者更轻）
+            await WriteAuditRecordSafeAsync(
+                metadata, myTask, request, operatorId, slotSnapshots);
+
+            // ── Step 7: CompleteAsync（触发 Flowable HTTP ServiceTask）──
             await _taskService.CompleteAsync(myTask.Id, variables);
 
             _logger.LogInformation(
                 "任务完成: TaskId={TaskId}, Action={Action}, 注入变量数={VarCount}",
                 myTask.Id, request.Action, variables.Count);
-
-            // ── Step 7: 写审计记录（失败不影响主流程）────────────
-            await WriteAuditRecordSafeAsync(
-                metadata, myTask, request, operatorId, slotSnapshots);
 
             return new CompleteTaskResponse { Success = true, Message = "审批通过" };
         }
@@ -193,8 +202,6 @@ namespace FlowableWrapper.Application.Services
 
                 semanticMap.TryGetValue(task.TaskDefinitionKey, out var nodeInfo);
 
-                var pageCode = nodeInfo?.PageCode;
-
                 result.Add(new PendingTaskDto
                 {
                     TaskId = task.Id,
@@ -202,16 +209,9 @@ namespace FlowableWrapper.Application.Services
                     BusinessId = meta.BusinessId,
                     BusinessType = meta.BusinessType,
                     NodeSemantic = nodeInfo?.NodeSemantic,
-                    PageCode = pageCode,
-                    PageUrl = BuildPageUrl(
-                        pageCode,
-                        meta.BusinessId,
-                        task.Id,
-                        meta.BusinessType,
-                        task.TaskDefinitionKey,
-                        task.ProcessInstanceId),
-                    CanReject = nodeInfo?.CanReject ?? false,
-                    RejectOptions = nodeInfo?.RejectOptions ?? new List<RejectOption>(),
+                    PageCode = nodeInfo?.PageCode,
+                    CanReject = nodeInfo.CanReject,
+                    RejectOptions = nodeInfo.RejectOptions,
                     RequiredSlots = nodeInfo?.Slots ?? new List<SlotDefinition>(),
                     // 前端通过 pageCode → COMPONENT_REGISTRY 找到表单组件，
                     // 表单组件自己知道要选哪些人
@@ -234,47 +234,6 @@ namespace FlowableWrapper.Application.Services
                 PageIndex = request.PageIndex,
                 PageSize = request.PageSize
             };
-        }
-
-        private static string BuildPageUrl(
-            string pageCode,
-            string businessId,
-            string taskId,
-            string businessType,
-            string nodeId,
-            string processInstanceId)
-        {
-            if (string.IsNullOrWhiteSpace(pageCode))
-                return null;
-
-            if (!Uri.TryCreate(pageCode, UriKind.Absolute, out var uri)
-                || (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
-            {
-                return null;
-            }
-
-            var fragmentIndex = pageCode.IndexOf('#');
-            var fragment = fragmentIndex >= 0 ? pageCode.Substring(fragmentIndex) : string.Empty;
-            var baseUrl = fragmentIndex >= 0 ? pageCode.Substring(0, fragmentIndex) : pageCode;
-            var separator = baseUrl.Contains('?') ? "&" : "?";
-
-            var query = string.Join("&", new[]
-            {
-                ToQueryPair("businessId", businessId),
-                ToQueryPair("taskId", taskId),
-                ToQueryPair("businessType", businessType),
-                ToQueryPair("nodeId", nodeId),
-                ToQueryPair("processInstanceId", processInstanceId)
-            });
-
-            return baseUrl + separator + query + fragment;
-        }
-
-        private static string ToQueryPair(string key, string value)
-        {
-            return Uri.EscapeDataString(key)
-                   + "="
-                   + Uri.EscapeDataString(value ?? string.Empty);
         }
 
         // ═══════════════════════════════════════════════════════════
@@ -449,16 +408,20 @@ namespace FlowableWrapper.Application.Services
                 new List<SlotSelectionSnapshot>(),
                 targetNode.TaskDefinitionKey);
 
+            // 驳回完成后主动通知业务系统
+            // 不经过 Flowable HTTP ServiceTask（ChangeActivityStateAsync 是强制跳转，不经过 sequenceFlow）
+            // 失败只记日志，不影响驳回结果
             var rejectAuditSnapshot = new AuditRecordSnapshot
             {
-                Action = "reject",
-                OperatorId = operatorId,
-                Comment = request.Comment ?? string.Empty,
-                RejectReason = request.RejectReason ?? string.Empty,
-                OperatedAt = DateTime.UtcNow,
+                Action       = "reject",
+                OperatorId   = operatorId,
+                Comment      = request.Comment,
+                RejectReason = request.RejectReason,
+                RejectCode   = request.RejectCode,
+                RejectTargetNodeKey = targetNode.TaskDefinitionKey,
+                OperatedAt   = DateTime.UtcNow,
                 SlotSelections = new List<SlotSelectionRecord>()
             };
-
             await _callbackService.SendRejectCallbackSafeAsync(
                 metadata,
                 currentTask.TaskDefinitionKey,
@@ -475,9 +438,19 @@ namespace FlowableWrapper.Application.Services
         // ═══════════════════════════════════════════════════════════
         // BuildCompletionVariablesAsync（仅通过路径使用）
         // ═══════════════════════════════════════════════════════════
+
         /// <summary>
-        /// Builds completion variables. NextSlotSelections is retained because it is the effective
-        /// next-assignee source for Flowable variables and audit snapshots.
+        /// 组装任务完成时的 Flowable 变量
+        ///
+        /// ── 关于 NextSlotSelections ──────────────────────────────────────
+        /// NextSlotSelections 是唯一最终生效的人员来源：
+        ///   - 全自动流程（AssigneeContract）：处理人已在启动时注入为 Flowable 变量，
+        ///     正常情况下无需传此字段（Flowable 自动从变量中绑定 assignee）
+        ///   - 半自动流程：前端读取 recommendedUsers 初始化选人区，用户确认后提交此字段
+        ///   - 旧流程：保持原有逐节点选人行为不变
+        ///
+        /// Phase 1 不加 [Obsolete]，不删除，不修改任何逻辑。
+        /// ──────────────────────────────────────────────────────────────────
         /// </summary>
         private async Task<(Dictionary<string, object> variables,
             List<SlotSelectionSnapshot> snapshots)>
@@ -620,7 +593,7 @@ namespace FlowableWrapper.Application.Services
                         .GetNodeSemanticMapAsync(metadata.ProcessDefinitionKey);
                     semanticMap.TryGetValue(task.TaskDefinitionKey, out var nodeInfo);
                     nodeSemantic = nodeInfo?.NodeSemantic;
-                    pageCode = nodeInfo?.PageCode;
+                    pageCode     = nodeInfo?.PageCode;
                 }
                 catch { }
 
@@ -628,21 +601,21 @@ namespace FlowableWrapper.Application.Services
 
                 var auditRecord = new ProcessAuditRecord
                 {
-                    Id = Guid.NewGuid().ToString(),
+                    Id                = Guid.NewGuid().ToString(),
                     ProcessInstanceId = metadata.ProcessInstanceId,
-                    BusinessId = metadata.BusinessId,
-                    BusinessType = metadata.BusinessType,
-                    TaskId = task.Id,
+                    BusinessId        = metadata.BusinessId,
+                    BusinessType      = metadata.BusinessType,
+                    TaskId            = task.Id,
                     TaskDefinitionKey = task.TaskDefinitionKey,
-                    NodeSemantic = nodeSemantic,
-                    PageCode = pageCode,
-                    Action = "reassign",
-                    OperatorId = operatorId,
-                    Comment = string.IsNullOrWhiteSpace(request.Reason)
-                        ? $"转派给 {string.Join(",", request.NewAssignees)}"
-                        : $"{request.Reason}（转派给 {string.Join(",", request.NewAssignees)}）",
-                    OperatedAt = DateTime.UtcNow,
-                    SlotSelections = new List<SlotSelectionRecord>()
+                    NodeSemantic      = nodeSemantic,
+                    PageCode          = pageCode,
+                    Action            = "reassign",
+                    OperatorId        = operatorId,
+                    Comment           = string.IsNullOrWhiteSpace(request.Reason)
+                                        ? $"转派给 {string.Join(",", request.NewAssignees)}"
+                                        : $"{request.Reason}（转派给 {string.Join(",", request.NewAssignees)}）",
+                    OperatedAt        = DateTime.UtcNow,
+                    SlotSelections    = new List<SlotSelectionRecord>()
                 };
 
                 await _esService.IndexAuditRecordAsync(auditRecord);
@@ -672,22 +645,23 @@ namespace FlowableWrapper.Application.Services
                 string nodeSemantic = null;
                 string pageCode = null;
                 List<SlotDefinition> currentSlotDefs = new List<SlotDefinition>();
+
                 try
                 {
                     var semanticMap = await _slotConfigProvider
                         .GetNodeSemanticMapAsync(metadata.ProcessDefinitionKey);
                     semanticMap.TryGetValue(task.TaskDefinitionKey, out var nodeInfo);
                     nodeSemantic = nodeInfo?.NodeSemantic;
-                    pageCode = nodeInfo?.PageCode;
+                    pageCode     = nodeInfo?.PageCode;
                     currentSlotDefs = nodeInfo?.Slots ?? new List<SlotDefinition>();
                 }
                 catch { }
 
-                var (hasOutOfRange, recommendedSnapshot, restrictSnapshot) =
-                    EvaluateRecommendedRange(
-                        request.NextSlotSelections,
-                        currentSlotDefs,
-                        metadata.RecommendedAssigneesSnapshot);
+                // ── 推荐范围越界审计（不拦截，只记录）────────────────
+                var (hasOutOfRange, recSnapshot, restrictSnapshot) = EvaluateRecommendedRange(
+                    request.NextSlotSelections,
+                    currentSlotDefs,
+                    metadata.RecommendedAssigneesSnapshot);
 
                 var auditRecord = new ProcessAuditRecord
                 {
@@ -713,8 +687,9 @@ namespace FlowableWrapper.Application.Services
                         Label = s.Label,
                         Users = s.Users
                     }).ToList(),
-                    HasOutOfRecommendedRange = hasOutOfRange,
-                    RecommendedUsersSnapshot = recommendedSnapshot,
+                    // ── 推荐范围审计字段 ─────────────────────────────
+                    HasOutOfRecommendedRange      = hasOutOfRange,
+                    RecommendedUsersSnapshot      = recSnapshot,
                     RestrictToRecommendedSnapshot = restrictSnapshot
                 };
 
@@ -732,57 +707,58 @@ namespace FlowableWrapper.Application.Services
             }
         }
 
+        /// <summary>
+        /// 评估本次提交是否有人员越出推荐范围
+        ///
+        /// 判定规则：
+        ///   - 只对 RestrictToRecommended = true 的 slot 做越界判定
+        ///   - RestrictToRecommended = false 的 slot 直接跳过（不适用）
+        ///   - 无推荐人快照时整体返回 null（不适用）
+        ///
+        /// 流程中心不拦截越界提交，只记录审计标记
+        /// 日志关键字 [RECOMMEND_RANGE_EXCEEDED] 用于运维告警
+        /// </summary>
         private (bool? hasOutOfRange,
                  Dictionary<string, List<string>> recommendedSnapshot,
                  Dictionary<string, bool> restrictSnapshot)
             EvaluateRecommendedRange(
                 List<SlotSelection> nextSlotSelections,
                 List<SlotDefinition> slotDefs,
-                Dictionary<string, List<string>> recommendedByRoleKey)
+                Dictionary<string, List<string>> recommendedSnapshot)
         {
-            if (recommendedByRoleKey == null || !recommendedByRoleKey.Any())
+            if (recommendedSnapshot == null || !recommendedSnapshot.Any())
                 return (null, new Dictionary<string, List<string>>(), new Dictionary<string, bool>());
 
             if (slotDefs == null || !slotDefs.Any())
                 return (null, new Dictionary<string, List<string>>(), new Dictionary<string, bool>());
 
-            // RecommendedAssigneesSnapshot is keyed by roleKey. For slot audit and range checks,
-            // only slots whose slotKey matches a recommended roleKey can be compared.
-            var recommendedBySlotKey = slotDefs
-                .Where(d => !string.IsNullOrWhiteSpace(d.SlotKey)
-                            && recommendedByRoleKey.TryGetValue(d.SlotKey, out var users)
-                            && users?.Any() == true)
-                .ToDictionary(
-                    d => d.SlotKey,
-                    d => new List<string>(recommendedByRoleKey[d.SlotKey]),
-                    StringComparer.OrdinalIgnoreCase);
-
-            if (!recommendedBySlotKey.Any())
-                return (null, new Dictionary<string, List<string>>(), new Dictionary<string, bool>());
-
+            // 构建 restrictSnapshot（只包含有推荐人快照的 slot）
             var restrictSnapshot = slotDefs
-                .Where(d => recommendedBySlotKey.ContainsKey(d.SlotKey))
+                .Where(d => recommendedSnapshot.ContainsKey(d.SlotKey))
                 .ToDictionary(d => d.SlotKey, d => d.RestrictToRecommended);
 
+            // 只检查 RestrictToRecommended = true 的 slot
             var restrictedSlots = slotDefs
                 .Where(d => d.RestrictToRecommended
-                            && recommendedBySlotKey.ContainsKey(d.SlotKey))
+                            && recommendedSnapshot.ContainsKey(d.SlotKey))
                 .ToList();
 
+            // 无受限 slot → 不适用（null）
             if (!restrictedSlots.Any())
-                return (null, recommendedBySlotKey, restrictSnapshot);
+                return (null, recommendedSnapshot, restrictSnapshot);
 
+            // NextSlotSelections 按 slotKey 建立查找字典
             var selectionDict = (nextSlotSelections ?? new List<SlotSelection>())
                 .GroupBy(s => s.SlotKey, StringComparer.OrdinalIgnoreCase)
                 .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
 
-            var hasOutOfRange = false;
+            bool hasOutOfRange = false;
 
             foreach (var slot in restrictedSlots)
             {
                 if (!selectionDict.TryGetValue(slot.SlotKey, out var selection)) continue;
                 if (selection.Users == null || !selection.Users.Any()) continue;
-                if (!recommendedBySlotKey.TryGetValue(slot.SlotKey, out var recommended)) continue;
+                if (!recommendedSnapshot.TryGetValue(slot.SlotKey, out var recommended)) continue;
 
                 var outOfRangeUsers = selection.Users
                     .Where(u => !recommended.Contains(u, StringComparer.OrdinalIgnoreCase))
@@ -792,15 +768,17 @@ namespace FlowableWrapper.Application.Services
                 {
                     hasOutOfRange = true;
                     _logger.LogWarning(
-                        "[RECOMMEND_RANGE_EXCEEDED] SlotKey={SlotKey} submitted users outside recommended range. OutOfRange=[{OutOfRange}], Recommended=[{Recommended}]",
+                        "[RECOMMEND_RANGE_EXCEEDED] SlotKey={SlotKey} 提交了推荐范围外人员。" +
+                        "OutOfRange=[{OutOfRange}], Recommended=[{Recommended}]",
                         slot.SlotKey,
                         string.Join(",", outOfRangeUsers),
                         string.Join(",", recommended));
                 }
             }
 
-            return (hasOutOfRange, recommendedBySlotKey, restrictSnapshot);
+            return (hasOutOfRange, recommendedSnapshot, restrictSnapshot);
         }
+
 
         private string ResolveOperatorId(string requestEmployeeId)
         {

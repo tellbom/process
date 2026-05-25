@@ -152,6 +152,27 @@ namespace FlowableWrapper.Application.Services
                 return;
             }
 
+            var nodeSemantic = string.Empty;
+            try
+            {
+                var semanticMap = await _slotConfigProvider
+                    .GetNodeSemanticMapAsync(metadata.ProcessDefinitionKey);
+                if (semanticMap.TryGetValue(rejectNodeKey, out var nodeInfo))
+                    nodeSemantic = nodeInfo?.NodeSemantic ?? string.Empty;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex,
+                    "Reject callback failed to resolve node semantic. BusinessId={BusinessId}, NodeKey={NodeKey}",
+                    metadata.BusinessId,
+                    rejectNodeKey);
+            }
+
+            if (auditSnapshot != null)
+            {
+                auditSnapshot.RejectTargetNodeKey = rejectTargetNodeKey;
+            }
+
             var payload = new NodeCompletedCallbackPayload
             {
                 BusinessId = metadata.BusinessId,
@@ -160,6 +181,7 @@ namespace FlowableWrapper.Application.Services
                 BusinessType = metadata.BusinessType,
                 CallbackType = FlowableCallbackTypes.RejectOccurred,
                 TaskDefinitionKey = rejectNodeKey,
+                NodeSemantic = nodeSemantic,
                 RejectTargetNodeKey = rejectTargetNodeKey,
                 LastAuditRecord = auditSnapshot,
                 TriggeredAt = DateTime.UtcNow
@@ -281,6 +303,8 @@ namespace FlowableWrapper.Application.Services
                         OperatorId = record.OperatorId,
                         Comment = record.Comment,
                         RejectReason = record.RejectReason,
+                        RejectCode = record.RejectCode,
+                        RejectTargetNodeKey = record.RejectTargetNodeKey,
                         OperatedAt = record.OperatedAt,
                         SlotSelections = record.SlotSelections
                             ?? new List<SlotSelectionRecord>()

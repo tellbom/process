@@ -420,6 +420,8 @@ namespace FlowableWrapper.Application.Services
                 OperatorId = record.OperatorId,
                 Comment = record.Comment,
                 RejectReason = record.RejectReason,
+                RejectCode = record.RejectCode,
+                RejectTargetNodeKey = record.RejectTargetNodeKey,
                 OperatedAt = record.OperatedAt,
                 SlotSelections = record.SlotSelections?.Select(s =>
                     new SlotSelectionRecordDto
@@ -427,7 +429,12 @@ namespace FlowableWrapper.Application.Services
                         SlotKey = s.SlotKey,
                         Label = s.Label,
                         Users = s.Users
-                    }).ToList() ?? new List<SlotSelectionRecordDto>()
+                    }).ToList() ?? new List<SlotSelectionRecordDto>(),
+                HasOutOfRecommendedRange = record.HasOutOfRecommendedRange,
+                RecommendedUsersSnapshot = record.RecommendedUsersSnapshot
+                    ?? new Dictionary<string, List<string>>(),
+                RestrictToRecommendedSnapshot = record.RestrictToRecommendedSnapshot
+                    ?? new Dictionary<string, bool>()
             };
         }
     }

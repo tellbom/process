@@ -65,6 +65,8 @@ namespace FlowableWrapper.Application.Dtos
         public string OperatorId { get; set; } = string.Empty;
         public string Comment { get; set; } = string.Empty;
         public string RejectReason { get; set; } = string.Empty;
+        public string RejectCode { get; set; } = string.Empty;
+        public string RejectTargetNodeKey { get; set; } = string.Empty;
         public DateTime OperatedAt { get; set; }
         public List<SlotSelectionRecord> SlotSelections { get; set; }
             = new List<SlotSelectionRecord>();

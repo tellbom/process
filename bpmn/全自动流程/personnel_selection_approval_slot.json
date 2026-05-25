@@ -19,10 +19,10 @@
         "variableName": "groupLeaderAssignee",
         "required": true,
         "conditionalOn": null,
-        "restrictToRecommended": false
+        "restrictToRecommended": true
       }
     ],
-    "callbackUrl": "https://httpbin.org/post?node=starter_submit"
+    "callbackUrl": "http://localhost:5012/api/test/node-callback"
   },
   {
     "taskDefinitionKey": "ut01_group_leader_confirm",
@@ -50,10 +50,10 @@
         "variableName": "inspectionOfficeReviewAssignee",
         "required": true,
         "conditionalOn": null,
-        "restrictToRecommended": false
+        "restrictToRecommended": true
       }
     ],
-    "callbackUrl": "https://httpbin.org/post?node=group_leader_confirm"
+    "callbackUrl": "http://localhost:5012/api/test/node-callback"
   },
   {
     "taskDefinitionKey": "ut02_inspection_office_review",
@@ -81,10 +81,10 @@
         "variableName": "integrityDeptReviewAssignee",
         "required": true,
         "conditionalOn": null,
-        "restrictToRecommended": false
+        "restrictToRecommended": true
       }
     ],
-    "callbackUrl": "https://httpbin.org/post?node=inspection_office_review"
+    "callbackUrl": "http://localhost:5012/api/test/node-callback"
   },
   {
     "taskDefinitionKey": "ut03_integrity_dept_review",
@@ -112,10 +112,10 @@
         "variableName": "integrityHeadAssignee",
         "required": true,
         "conditionalOn": null,
-        "restrictToRecommended": false
+        "restrictToRecommended": true
       }
     ],
-    "callbackUrl": "https://httpbin.org/post?node=integrity_dept_review"
+    "callbackUrl": "http://localhost:5012/api/test/node-callback"
   },
   {
     "taskDefinitionKey": "ut04_integrity_head_handle",
@@ -143,7 +143,7 @@
         "variableName": "feedbackPersonAssignee",
         "required": false,
         "conditionalOn": "needPersonFeedback==true",
-        "restrictToRecommended": false
+        "restrictToRecommended": true
       },
       {
         "slotKey": "office_director_self_handle",
@@ -152,10 +152,10 @@
         "variableName": "officeDirectorAssignee",
         "required": true,
         "conditionalOn": "needPersonFeedback==false",
-        "restrictToRecommended": false
+        "restrictToRecommended": true
       }
     ],
-    "callbackUrl": "https://httpbin.org/post?node=integrity_head_handle"
+    "callbackUrl": "http://localhost:5012/api/test/node-callback"
   },
   {
     "taskDefinitionKey": "ut05_person_feedback",
@@ -198,10 +198,10 @@
         "variableName": "officeDirectorAssignee",
         "required": true,
         "conditionalOn": null,
-        "restrictToRecommended": false
+        "restrictToRecommended": true
       }
     ],
-    "callbackUrl": "https://httpbin.org/post?node=integrity_head_approve"
+    "callbackUrl": "http://localhost:5012/api/test/node-callback"
   },
   {
     "taskDefinitionKey": "ut07_office_director_review",
@@ -229,10 +229,10 @@
         "variableName": "secretaryAssignee",
         "required": true,
         "conditionalOn": null,
-        "restrictToRecommended": false
+        "restrictToRecommended": true
       }
     ],
-    "callbackUrl": "https://httpbin.org/post?node=office_director_review"
+    "callbackUrl": "http://localhost:5012/api/test/node-callback"
   },
   {
     "taskDefinitionKey": "ut08_secretary_final_approve",
@@ -247,6 +247,6 @@
     "roleKey": "secretary",
     "assigneeMode": "single",
     "slots": [],
-    "callbackUrl": "https://httpbin.org/post?node=secretary_final_approve"
+    "callbackUrl": "http://localhost:5012/api/test/node-callback"
   }
 ]

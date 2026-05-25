@@ -172,6 +172,10 @@ namespace FlowableWrapper.Application.Dtos
         /// </summary>
         public string RejectReason { get; set; }
 
+        public string RejectCode { get; set; }
+
+        public string RejectTargetNodeKey { get; set; }
+
         /// <summary>
         /// 操作时间
         /// </summary>
@@ -182,6 +186,24 @@ namespace FlowableWrapper.Application.Dtos
         /// </summary>
         public List<SlotSelectionRecordDto> SlotSelections { get; set; }
             = new List<SlotSelectionRecordDto>();
+
+        /// <summary>
+        /// Whether any submitted slot users were outside the recommended range.
+        /// null means the range check was not applicable for this audit record.
+        /// </summary>
+        public bool? HasOutOfRecommendedRange { get; set; }
+
+        /// <summary>
+        /// Recommended users captured when the task was completed, keyed by slotKey.
+        /// </summary>
+        public Dictionary<string, List<string>> RecommendedUsersSnapshot { get; set; }
+            = new Dictionary<string, List<string>>();
+
+        /// <summary>
+        /// Restrict-to-recommended flags captured when the task was completed, keyed by slotKey.
+        /// </summary>
+        public Dictionary<string, bool> RestrictToRecommendedSnapshot { get; set; }
+            = new Dictionary<string, bool>();
     }
 
     /// <summary>
