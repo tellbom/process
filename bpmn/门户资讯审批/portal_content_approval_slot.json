@@ -2,7 +2,7 @@
   {
     "taskDefinitionKey": "ut01_starter_submit",
     "nodeSemantic": "PORTAL_CONTENT_STARTER_SUBMIT",
-    "pageCode": "PortalContent/StarterSubmitForm",
+    "pageCode": "https://httpbin.org/get?node=portal_content_starter_submit",
     "isStarterNode": true,
     "isConvergencePoint": false,
     "canReject": false,
@@ -16,8 +16,8 @@
         "slotKey": "portal_leader",
         "roleKey": "portal_content_leader",
         "label": "领导审批人",
-        "mode": "single",
-        "variableName": "portalLeaderAssignee",
+        "mode": "multiple",
+        "variableName": "portalLeaderAssigneeList",
         "required": true,
         "conditionalOn": null,
         "restrictToRecommended": true
@@ -28,7 +28,7 @@
   {
     "taskDefinitionKey": "ut02_leader_approve",
     "nodeSemantic": "PORTAL_CONTENT_LEADER_APPROVE",
-    "pageCode": "PortalContent/LeaderApproveForm",
+    "pageCode": "https://httpbin.org/get?node=portal_content_leader_approve",
     "isStarterNode": false,
     "isConvergencePoint": false,
     "canReject": true,
@@ -42,7 +42,7 @@
     "isRejectTarget": false,
     "rejectCode": null,
     "roleKey": "portal_content_leader",
-    "assigneeMode": "single",
+    "assigneeMode": "multiple",
     "slots": [],
     "callbackUrl": null
   }

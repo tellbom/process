@@ -22,12 +22,12 @@
       ST-03 通知业务系统流程已完成
 
     启动变量：
-      starterAssignee      : 发起人工号
-      portalLeaderAssignee : 领导审批人工号
+      starterAssignee            : 发起人工号
+      portalLeaderAssigneeList   : 领导审批人工号列表，UT-01 完成时通过 slot 写入
 
-    选人约束：
-      本流程不在节点内重新选择处理人。
-      领导审批人由启动变量 portalLeaderAssignee 预置，驳回回到发起人后再次提交仍使用原值。
+    或签规则：
+      UT-02 为并行多实例领导审批节点，portalLeaderAssigneeList 中每个人生成一个待办。
+      任意一名领导审批通过后 completionCondition 成立，其余领导待办由 Flowable 取消，流程进入完成通知。
   -->
   <process id="portal_content_approval"
            name="门户资讯审批"
@@ -45,14 +45,14 @@
               flowable:assignee="${starterAssignee}">
       <documentation>
         处理人: 启动时由业务系统传入 starterAssignee
-        前端表单: PortalContent/StarterSubmitForm
+        前端页面: https://httpbin.org/get?node=portal_content_starter_submit
         操作: 编辑新闻/公告内容并提交审批
         驳回落点: 领导审批驳回后回到此节点
-        slots: 无。领导审批人由启动变量 portalLeaderAssignee 预置，不允许发起人在驳回后改选
+        slots: 选择多个领导审批人 → portalLeaderAssigneeList。驳回后可重新选择领导审批人
       </documentation>
       <extensionElements>
         <flowable:field name="nodeSemantic" stringValue="PORTAL_CONTENT_STARTER_SUBMIT"/>
-        <flowable:field name="pageCode" stringValue="PortalContent/StarterSubmitForm"/>
+        <flowable:field name="pageCode" stringValue="https://httpbin.org/get?node=portal_content_starter_submit"/>
         <flowable:field name="isConvergencePoint" stringValue="false"/>
       </extensionElements>
     </userTask>
@@ -64,18 +64,23 @@
     <!-- UT-02 领导审批 -->
     <userTask id="ut02_leader_approve"
               name="领导审批"
-              flowable:assignee="${portalLeaderAssignee}">
+              flowable:assignee="${portalLeaderAssignee.asText()}">
       <documentation>
-        处理人: 启动时由业务系统传入 portalLeaderAssignee
-        前端表单: PortalContent/LeaderApproveForm
-        操作: 审核新闻/公告发布内容；可通过，也可驳回到发起人
+        处理人: UT-01 完成时通过 portalLeaderAssigneeList 生成多个领导待办
+        前端页面: https://httpbin.org/get?node=portal_content_leader_approve
+        操作: 审核新闻/公告发布内容；任一领导通过即结束或签；任一领导也可驳回到发起人
         slots: 无。审批通过后进入最终通知节点
       </documentation>
       <extensionElements>
         <flowable:field name="nodeSemantic" stringValue="PORTAL_CONTENT_LEADER_APPROVE"/>
-        <flowable:field name="pageCode" stringValue="PortalContent/LeaderApproveForm"/>
+        <flowable:field name="pageCode" stringValue="https://httpbin.org/get?node=portal_content_leader_approve"/>
         <flowable:field name="isConvergencePoint" stringValue="false"/>
       </extensionElements>
+      <multiInstanceLoopCharacteristics isSequential="false"
+                                        flowable:collection="${portalLeaderAssigneeList}"
+                                        flowable:elementVariable="portalLeaderAssignee">
+        <completionCondition>${nrOfCompletedInstances &gt;= 1}</completionCondition>
+      </multiInstanceLoopCharacteristics>
     </userTask>
 
     <sequenceFlow id="flow_ut02_to_st03"
