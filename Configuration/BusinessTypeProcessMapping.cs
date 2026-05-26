@@ -25,8 +25,7 @@ namespace FlowableWrapper.Configuration
 
         /// <summary>
         /// 根据 businessType 获取 processDefinitionKey
-        /// 若未配置映射则直接返回 businessType 本身（允许 businessType 与 key 相同）
-        /// 此功能废弃
+        /// 若未配置映射则直接返回 businessType 本身（允许通用流程中心直传流程定义 Key）
         /// </summary>
         public string GetProcessDefinitionKey(string businessType)
         {
@@ -37,7 +36,7 @@ namespace FlowableWrapper.Configuration
                 return key;
 
             // 兜底：businessType 即 processDefinitionKey
-            return businessType; ;
+            return businessType;
         }
     }
 }
