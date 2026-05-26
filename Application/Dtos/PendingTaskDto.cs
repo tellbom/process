@@ -70,6 +70,11 @@ namespace FlowableWrapper.Application.Dtos
         public string NodeSemantic { get; set; }
 
         /// <summary>
+        /// Current node role key. Recommendations are keyed by this value.
+        /// </summary>
+        public string RoleKey { get; set; }
+
+        /// <summary>
         /// 原始页面配置。
         /// 对组件化流程：可为组件编码，例如 SelectionApproval/IntegrityHeadHandleForm。
         /// 对 iframe 流程：可为业务系统 URL，例如 https://biz-system/form/approval。

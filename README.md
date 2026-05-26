@@ -283,6 +283,7 @@ Pending task responses include `recommendedUsers` keyed by `roleKey`, `restrictT
         "businessId": "SEMI_AUTO_001",
         "businessType": "personnel_selection_approval",
         "nodeSemantic": "GROUP_LEADER_CONFIRM",
+        "roleKey": "group_leader",
         "pageCode": "https://httpbin.org/get?node=group_leader_confirm",
         "pageUrl": "https://httpbin.org/get?node=group_leader_confirm&businessId=SEMI_AUTO_001&taskId=task-uuid-001&businessType=personnel_selection_approval&nodeId=ut01_group_leader_confirm&nodeSemantic=GROUP_LEADER_CONFIRM",
         "canReject": true,
@@ -463,6 +464,8 @@ Pending task responses include `recommendedUsers` keyed by `roleKey`, `restrictT
 ### 5.2 全自动流程通过（推荐人确认后作为 NextSlotSelections）
 
 `recommendedUsers` 按 `roleKey` 返回当前节点处理人推荐；`NextSlotSelections` 仍按 `slotKey` 提交下一节点处理人。若某个 `slotKey` 与目标节点 `roleKey` 同名，可用同名角色推荐人预填；否则需要用户选择或由前端维护显式映射。
+
+Pending task `roleKey` is node-level; `requiredSlots[]` entries do not contain `roleKey`. For slot candidate fallback, use `recommendedUsers[task.roleKey] ?? recommendedUsers[slot.slotKey] ?? []`.
 
 ```json
 {

@@ -225,6 +225,7 @@ namespace FlowableWrapper.Application.Services
                     BusinessId = meta.BusinessId,
                     BusinessType = meta.BusinessType,
                     NodeSemantic = nodeInfo?.NodeSemantic,
+                    RoleKey = nodeInfo?.RoleKey,
                     PageCode = nodeInfo?.PageCode,
                     PageUrl = BuildPageUrl(
                         nodeInfo?.PageCode,
