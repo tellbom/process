@@ -1,0 +1,198 @@
+[
+  {
+    "taskDefinitionKey": "ut01_starter_submit",
+    "nodeSemantic": "PC_EVAL_STARTER_SUBMIT",
+    "pageCode": "https://httpbin.org/get?node=pc_eval_starter_submit",
+    "isStarterNode": true,
+    "isConvergencePoint": false,
+    "canReject": false,
+    "rejectOptions": [],
+    "isRejectTarget": true,
+    "rejectCode": "TO_STARTER",
+    "roleKey": "pc_eval_starter",
+    "assigneeMode": "single",
+    "slots": [
+      {
+        "slotKey": "legal_reviewer",
+        "roleKey": "pc_eval_legal_reviewer",
+        "label": "法务复核人",
+        "mode": "single",
+        "variableName": "legalReviewerAssignee",
+        "required": false,
+        "conditionalOn": "needLegalReview==true",
+        "restrictToRecommended": true
+      },
+      {
+        "slotKey": "finance_reviewer",
+        "roleKey": "pc_eval_finance_reviewer",
+        "label": "财务审核人",
+        "mode": "single",
+        "variableName": "financeReviewerAssignee",
+        "required": true,
+        "conditionalOn": null,
+        "restrictToRecommended": true
+      },
+      {
+        "slotKey": "tech_reviewer",
+        "roleKey": "pc_eval_tech_reviewer",
+        "label": "技术审核人",
+        "mode": "single",
+        "variableName": "techReviewerAssignee",
+        "required": true,
+        "conditionalOn": null,
+        "restrictToRecommended": true
+      },
+      {
+        "slotKey": "committee_members",
+        "roleKey": "pc_eval_committee_member",
+        "label": "会签专家",
+        "mode": "multiple",
+        "variableName": "committeeAssigneeList",
+        "required": true,
+        "conditionalOn": null,
+        "restrictToRecommended": true
+      },
+      {
+        "slotKey": "quick_approvers",
+        "roleKey": "pc_eval_quick_approver",
+        "label": "或签领导",
+        "mode": "multiple",
+        "variableName": "quickApproverList",
+        "required": true,
+        "conditionalOn": null,
+        "restrictToRecommended": true
+      },
+      {
+        "slotKey": "archive_owner",
+        "roleKey": "pc_eval_archive_owner",
+        "label": "归档确认人",
+        "mode": "single",
+        "variableName": "archiveAssignee",
+        "required": true,
+        "conditionalOn": null,
+        "restrictToRecommended": true
+      }
+    ],
+    "callbackUrl": null
+  },
+  {
+    "taskDefinitionKey": "ut02_legal_review",
+    "nodeSemantic": "PC_EVAL_LEGAL_REVIEW",
+    "pageCode": "https://httpbin.org/get?node=pc_eval_legal_review",
+    "isStarterNode": false,
+    "isConvergencePoint": false,
+    "canReject": true,
+    "rejectOptions": [
+      {
+        "rejectCode": "TO_STARTER",
+        "label": "驳回发起人修改",
+        "description": "法务复核不通过，退回发起人重新提交"
+      }
+    ],
+    "isRejectTarget": false,
+    "rejectCode": null,
+    "roleKey": "pc_eval_legal_reviewer",
+    "assigneeMode": "single",
+    "slots": [],
+    "callbackUrl": null
+  },
+  {
+    "taskDefinitionKey": "ut03_finance_review",
+    "nodeSemantic": "PC_EVAL_FINANCE_REVIEW",
+    "pageCode": "https://httpbin.org/get?node=pc_eval_finance_review",
+    "isStarterNode": false,
+    "isConvergencePoint": false,
+    "canReject": true,
+    "rejectOptions": [
+      {
+        "rejectCode": "TO_STARTER",
+        "label": "驳回发起人修改",
+        "description": "财务审核不通过，退回发起人重新提交"
+      }
+    ],
+    "isRejectTarget": false,
+    "rejectCode": null,
+    "roleKey": "pc_eval_finance_reviewer",
+    "assigneeMode": "single",
+    "slots": [],
+    "callbackUrl": null
+  },
+  {
+    "taskDefinitionKey": "ut04_tech_review",
+    "nodeSemantic": "PC_EVAL_TECH_REVIEW",
+    "pageCode": "https://httpbin.org/get?node=pc_eval_tech_review",
+    "isStarterNode": false,
+    "isConvergencePoint": false,
+    "canReject": true,
+    "rejectOptions": [
+      {
+        "rejectCode": "TO_STARTER",
+        "label": "驳回发起人修改",
+        "description": "技术审核不通过，退回发起人重新提交"
+      }
+    ],
+    "isRejectTarget": false,
+    "rejectCode": null,
+    "roleKey": "pc_eval_tech_reviewer",
+    "assigneeMode": "single",
+    "slots": [],
+    "callbackUrl": null
+  },
+  {
+    "taskDefinitionKey": "ut05_committee_countersign",
+    "nodeSemantic": "PC_EVAL_COMMITTEE_COUNTERSIGN",
+    "pageCode": "https://httpbin.org/get?node=pc_eval_committee_countersign",
+    "isStarterNode": false,
+    "isConvergencePoint": false,
+    "canReject": true,
+    "rejectOptions": [
+      {
+        "rejectCode": "TO_STARTER",
+        "label": "驳回发起人修改",
+        "description": "会签专家审批不通过，退回发起人重新提交"
+      }
+    ],
+    "isRejectTarget": false,
+    "rejectCode": null,
+    "roleKey": "pc_eval_committee_member",
+    "assigneeMode": "multiple",
+    "slots": [],
+    "callbackUrl": null
+  },
+  {
+    "taskDefinitionKey": "ut06_quick_orsign",
+    "nodeSemantic": "PC_EVAL_QUICK_ORSIGN",
+    "pageCode": "https://httpbin.org/get?node=pc_eval_quick_orsign",
+    "isStarterNode": false,
+    "isConvergencePoint": false,
+    "canReject": true,
+    "rejectOptions": [
+      {
+        "rejectCode": "TO_STARTER",
+        "label": "驳回发起人修改",
+        "description": "或签领导审批不通过，退回发起人重新提交"
+      }
+    ],
+    "isRejectTarget": false,
+    "rejectCode": null,
+    "roleKey": "pc_eval_quick_approver",
+    "assigneeMode": "multiple",
+    "slots": [],
+    "callbackUrl": null
+  },
+  {
+    "taskDefinitionKey": "ut07_archive_confirm",
+    "nodeSemantic": "PC_EVAL_ARCHIVE_CONFIRM",
+    "pageCode": "https://httpbin.org/get?node=pc_eval_archive_confirm",
+    "isStarterNode": false,
+    "isConvergencePoint": true,
+    "canReject": false,
+    "rejectOptions": [],
+    "isRejectTarget": false,
+    "rejectCode": null,
+    "roleKey": "pc_eval_archive_owner",
+    "assigneeMode": "single",
+    "slots": [],
+    "callbackUrl": null
+  }
+]
