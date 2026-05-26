@@ -11,7 +11,18 @@
     "rejectCode": "TO_STARTER",
     "roleKey": "portal_content_starter",
     "assigneeMode": "single",
-    "slots": [],
+    "slots": [
+      {
+        "slotKey": "portal_leader",
+        "roleKey": "portal_content_leader",
+        "label": "领导审批人",
+        "mode": "single",
+        "variableName": "portalLeaderAssignee",
+        "required": true,
+        "conditionalOn": null,
+        "restrictToRecommended": true
+      }
+    ],
     "callbackUrl": null
   },
   {
@@ -25,7 +36,7 @@
       {
         "rejectCode": "TO_STARTER",
         "label": "驳回发起人修改",
-        "description": "领导审批不通过，退回发起人修改新闻/公告内容；不允许重新选择预置审批人"
+        "description": "领导审批不通过，退回发起人修改新闻/公告内容，并允许重新选择领导审批人"
       }
     ],
     "isRejectTarget": false,
