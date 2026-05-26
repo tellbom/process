@@ -259,6 +259,8 @@
 **GET** `/api/tasks/pending`
 `X-User-Id: EMP_001`
 
+Pending task responses include `recommendedUsers` keyed by `roleKey`, `restrictToRecommended` keyed by `slotKey`, and `pageUrl` when `pageCode` is an http/https URL.
+
 | 参数 | 类型 | 说明 |
 |---|---|---|
 | `employeeId` | string | 优先于 Header |
@@ -282,6 +284,7 @@
         "businessType": "personnel_selection_approval",
         "nodeSemantic": "GROUP_LEADER_CONFIRM",
         "pageCode": "https://httpbin.org/get?node=group_leader_confirm",
+        "pageUrl": "https://httpbin.org/get?node=group_leader_confirm&businessId=SEMI_AUTO_001&taskId=task-uuid-001&businessType=personnel_selection_approval&nodeId=ut01_group_leader_confirm&nodeSemantic=GROUP_LEADER_CONFIRM",
         "canReject": true,
         "rejectOptions": [
           { "rejectCode": "TO_STARTER", "label": "退回发起人重新提交" }
@@ -296,6 +299,12 @@
             "restrictToRecommended": false
           }
         ],
+        "recommendedUsers": {
+          "group_leader": ["EMP_001"]
+        },
+        "restrictToRecommended": {
+          "inspection_office_reviewer": false
+        },
         "createTime": "2024-01-15T08:30:00Z"
       }
     ],

@@ -113,6 +113,18 @@ namespace FlowableWrapper.Application.Dtos
         /// 当前节点驳回配置
         /// </summary>
         public List<RejectOption> RejectOptions { get; set; }
+
+        /// <summary>
+        /// Current node assignee recommendations. Key is roleKey, value is recommended user ids.
+        /// </summary>
+        public Dictionary<string, List<string>> RecommendedUsers { get; set; }
+            = new Dictionary<string, List<string>>();
+
+        /// <summary>
+        /// Selection restriction policy for downstream slots. Key is slotKey.
+        /// </summary>
+        public Dictionary<string, bool> RestrictToRecommended { get; set; }
+            = new Dictionary<string, bool>();
     }
 
     /// <summary>

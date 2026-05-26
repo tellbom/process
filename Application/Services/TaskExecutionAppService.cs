@@ -202,6 +202,22 @@ namespace FlowableWrapper.Application.Services
 
                 semanticMap.TryGetValue(task.TaskDefinitionKey, out var nodeInfo);
 
+                var recommendedUsers = new Dictionary<string, List<string>>();
+                if (!string.IsNullOrWhiteSpace(nodeInfo?.RoleKey)
+                    && meta.RecommendedAssigneesSnapshot?.TryGetValue(
+                        nodeInfo.RoleKey, out var recommended) == true
+                    && recommended?.Any() == true)
+                {
+                    recommendedUsers[nodeInfo.RoleKey] = recommended;
+                }
+
+                var restrictMap = new Dictionary<string, bool>();
+                if (nodeInfo?.Slots != null)
+                {
+                    foreach (var slot in nodeInfo.Slots)
+                        restrictMap[slot.SlotKey] = slot.RestrictToRecommended;
+                }
+
                 result.Add(new PendingTaskDto
                 {
                     TaskId = task.Id,
@@ -210,6 +226,13 @@ namespace FlowableWrapper.Application.Services
                     BusinessType = meta.BusinessType,
                     NodeSemantic = nodeInfo?.NodeSemantic,
                     PageCode = nodeInfo?.PageCode,
+                    PageUrl = BuildPageUrl(
+                        nodeInfo?.PageCode,
+                        meta.BusinessId,
+                        task.Id,
+                        meta.BusinessType,
+                        task.TaskDefinitionKey,
+                        nodeInfo?.NodeSemantic),
                     CanReject = nodeInfo.CanReject,
                     RejectOptions = nodeInfo.RejectOptions,
                     RequiredSlots = nodeInfo?.Slots ?? new List<SlotDefinition>(),
@@ -217,7 +240,9 @@ namespace FlowableWrapper.Application.Services
                     // 表单组件自己知道要选哪些人
                     IsAfterConvergencePoint = nodeInfo?.IsConvergencePoint ?? false,
                     CreateTime = task.CreateTime,
-                    Priority = task.Priority
+                    Priority = task.Priority,
+                    RecommendedUsers = recommendedUsers,
+                    RestrictToRecommended = restrictMap
                 });
             }
 
@@ -239,6 +264,47 @@ namespace FlowableWrapper.Application.Services
         // ═══════════════════════════════════════════════════════════
         // ReassignTaskAsync
         // ═══════════════════════════════════════════════════════════
+
+        private static string BuildPageUrl(
+            string pageCode,
+            string businessId,
+            string taskId,
+            string businessType,
+            string nodeId,
+            string nodeSemantic)
+        {
+            if (string.IsNullOrWhiteSpace(pageCode)
+                || !Uri.TryCreate(pageCode, UriKind.Absolute, out var uri)
+                || (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
+                return null;
+
+            var builder = new UriBuilder(uri);
+            var parameters = new List<string>();
+
+            if (!string.IsNullOrWhiteSpace(builder.Query))
+                parameters.Add(builder.Query.TrimStart('?'));
+
+            AddQueryParameter(parameters, "businessId", businessId);
+            AddQueryParameter(parameters, "taskId", taskId);
+            AddQueryParameter(parameters, "businessType", businessType);
+            AddQueryParameter(parameters, "nodeId", nodeId);
+            AddQueryParameter(parameters, "nodeSemantic", nodeSemantic);
+
+            builder.Query = string.Join("&", parameters);
+            return builder.Uri.ToString();
+        }
+
+        private static void AddQueryParameter(
+            List<string> parameters,
+            string key,
+            string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                return;
+
+            parameters.Add(
+                $"{Uri.EscapeDataString(key)}={Uri.EscapeDataString(value)}");
+        }
 
         public async Task ReassignTaskAsync(ReassignTaskRequest request)
         {
