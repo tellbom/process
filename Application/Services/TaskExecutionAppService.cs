@@ -128,12 +128,37 @@ namespace FlowableWrapper.Application.Services
             await WriteAuditRecordSafeAsync(
                 metadata, myTask, request, operatorId, slotSnapshots);
 
-            // ── Step 7: CompleteAsync（触发 Flowable HTTP ServiceTask）──
+            // ── Step 7: CompleteAsync（触发 Flowable 推进）──────────
             await _taskService.CompleteAsync(myTask.Id, variables);
 
             _logger.LogInformation(
                 "任务完成: TaskId={TaskId}, Action={Action}, 注入变量数={VarCount}",
                 myTask.Id, request.Action, variables.Count);
+
+            // ── Step 8a: 读取流程实例变量（含多实例上下文）──────────
+            // Flowable 多实例节点执行时自动写入 nrOfInstances / nrOfCompletedInstances /
+            // nrOfActiveInstances，需从实例变量中读取（不在 complete 时注入的 variables 中）
+            // 失败只记 Debug 日志，multiInstance 上下文降级为 enabled=false
+            Dictionary<string, object> processVariables = null;
+            try
+            {
+                processVariables = await _runtimeService
+                    .GetProcessVariablesAsync(myTask.ProcessInstanceId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex,
+                    "读取流程实例变量失败，multiInstance 上下文将为 enabled=false: TaskId={TaskId}",
+                    myTask.Id);
+            }
+
+            // ── Step 8b: 主动节点回调 ─────────────────────────────────
+            // 触发依据：slotConfig.callbackUrl 是否有值（流程中心不判断节点类型）
+            // 失败只记 Error 日志，不阻塞主流程返回
+            await _callbackService.SendNodeCompletedCallbackSafeAsync(
+                metadata,
+                myTask.TaskDefinitionKey,
+                processVariables);
 
             return new CompleteTaskResponse { Success = true, Message = "审批通过" };
         }

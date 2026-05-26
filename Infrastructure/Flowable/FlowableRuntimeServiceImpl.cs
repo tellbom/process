@@ -216,5 +216,66 @@ namespace FlowableWrapper.Infrastructure.Flowable
                 ? processDefinitionId.Substring(0, colonIndex)
                 : processDefinitionId;
         }
+
+        /// <summary>
+        /// 读取流程实例的所有变量
+        /// GET /runtime/process-instances/{id}/variables
+        ///
+        /// Flowable 返回格式（数组）：
+        ///   [{ "name": "nrOfInstances", "value": 3, "type": "integer" }, ...]
+        ///
+        /// 多实例节点执行时 Flowable 自动写入 nrOfInstances /
+        /// nrOfCompletedInstances / nrOfActiveInstances，由此读取。
+        /// 若流程已结束或网络失败，返回空字典（调用方捕获异常后降级）。
+        /// </summary>
+        public async Task<Dictionary<string, object>> GetProcessVariablesAsync(
+            string processInstanceId)
+        {
+            var url = $"{_baseUrl}/runtime/process-instances/{processInstanceId}/variables";
+            var response = await _httpClient.GetAsync(url);
+
+            // 404 = 流程已结束，变量不存在，视为空字典
+            if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+                return new Dictionary<string, object>();
+
+            await EnsureSuccessAsync(response,
+                $"runtime/process-instances/{processInstanceId}/variables");
+
+            var array = await response.Content
+                .ReadFromJsonAsync<JsonElement>();
+
+            var result = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
+
+            if (array.ValueKind != JsonValueKind.Array)
+                return result;
+
+            foreach (var item in array.EnumerateArray())
+            {
+                if (!item.TryGetProperty("name", out var nameProp)) continue;
+                var name = nameProp.GetString();
+                if (string.IsNullOrWhiteSpace(name)) continue;
+
+                object value = null;
+                if (item.TryGetProperty("value", out var valueProp))
+                {
+                    value = valueProp.ValueKind switch
+                    {
+                        JsonValueKind.True    => (object)true,
+                        JsonValueKind.False   => (object)false,
+                        JsonValueKind.Number when valueProp.TryGetInt64(out var l)
+                                              => (object)l,
+                        JsonValueKind.Number when valueProp.TryGetDouble(out var d)
+                                              => (object)d,
+                        JsonValueKind.String  => (object)(valueProp.GetString() ?? ""),
+                        JsonValueKind.Null    => null,
+                        _                     => (object)valueProp.GetRawText()
+                    };
+                }
+
+                result[name] = value;
+            }
+
+            return result;
+        }
     }
 }

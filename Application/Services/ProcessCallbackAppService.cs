@@ -124,6 +124,118 @@ namespace FlowableWrapper.Application.Services
         }
 
         /// <summary>
+        /// 从 Flowable 流程变量中构建多实例上下文
+        /// nrOfInstances / nrOfCompletedInstances / nrOfActiveInstances
+        /// 由 Flowable 引擎在多实例节点执行时自动写入，不是流程中心计算的
+        /// 非多实例节点这些变量不存在，返回 Enabled=false
+        /// </summary>
+        private static MultiInstanceContext BuildMultiInstanceContext(
+            Dictionary<string, object> variables)
+        {
+            if (variables == null || !variables.Any())
+                return new MultiInstanceContext { Enabled = false };
+
+            if (!variables.TryGetValue("nrOfInstances", out var nrOfInstancesObj)
+                || !int.TryParse(nrOfInstancesObj?.ToString(), out var nrOfInstances)
+                || nrOfInstances <= 0)
+                return new MultiInstanceContext { Enabled = false };
+
+            int.TryParse(
+                variables.GetValueOrDefault("nrOfCompletedInstances")?.ToString() ?? "0",
+                out var nrOfCompleted);
+            int.TryParse(
+                variables.GetValueOrDefault("nrOfActiveInstances")?.ToString() ?? "0",
+                out var nrOfActive);
+
+            return new MultiInstanceContext
+            {
+                Enabled                = true,
+                NrOfInstances          = nrOfInstances,
+                NrOfCompletedInstances = nrOfCompleted,
+                NrOfActiveInstances    = nrOfActive
+            };
+        }
+
+        /// <summary>
+        /// 主动发送节点完成回调（不依赖 Flowable HTTP ServiceTask）
+        ///
+        /// 触发条件（优先级）：
+        ///   1. slotConfig 当前节点 callbackUrl（节点级）
+        ///   2. metadata.Callback.Url（流程级降级）
+        ///   3. 两者均为空 → 跳过，不发送
+        ///
+        /// 时序保证：
+        ///   调用方已先执行 WriteAuditRecordSafeAsync（Step 6）
+        ///   BuildNodeCallbackContextAsync 查 ES 时能拿到完整 lastAuditRecord
+        ///
+        /// multiInstance 数据来源：
+        ///   从 Flowable 流程变量中读取 nrOfInstances / nrOfCompletedInstances / nrOfActiveInstances
+        ///   这些变量由 Flowable 引擎写入，不是流程中心计算的
+        ///   非多实例节点这些变量不存在，MultiInstanceContext.Enabled = false
+        ///
+        /// 失败处理：
+        ///   网络失败或业务系统非 2xx → 只记 Error 日志，不抛异常，不阻塞主流程
+        /// </summary>
+        public async Task SendNodeCompletedCallbackSafeAsync(
+            ProcessMetadataDocument metadata,
+            string taskDefinitionKey,
+            Dictionary<string, object> processVariables = null)
+        {
+            if (metadata == null)
+            {
+                _logger.LogWarning("节点完成通知：流程元数据为空，已跳过");
+                return;
+            }
+
+            var callbackUrl = await ResolveNodeCallbackUrlAsync(
+                taskDefinitionKey,
+                metadata.ProcessDefinitionKey,
+                metadata.Callback?.Url);
+
+            if (string.IsNullOrWhiteSpace(callbackUrl))
+            {
+                _logger.LogDebug(
+                    "节点 [{NodeKey}] 无回调 URL，跳过主动通知。BusinessId={BusinessId}",
+                    taskDefinitionKey, metadata.BusinessId);
+                return;
+            }
+
+            var context = await BuildNodeCallbackContextAsync(
+                metadata.ProcessInstanceId,
+                metadata.BusinessId,
+                metadata.ProcessDefinitionKey,
+                taskDefinitionKey,
+                metadata);
+
+            var multiInstance = BuildMultiInstanceContext(processVariables);
+
+            var payload = new NodeCompletedCallbackPayload
+            {
+                BusinessId           = metadata.BusinessId,
+                ProcessInstanceId    = metadata.ProcessInstanceId,
+                ProcessDefinitionKey = metadata.ProcessDefinitionKey,
+                BusinessType         = metadata.BusinessType,
+                CallbackType         = FlowableCallbackTypes.NodeCompleted,
+                TaskDefinitionKey    = taskDefinitionKey,
+                NodeSemantic         = context.NodeSemantic,
+                LastAuditRecord      = context.LastAuditRecord,
+                MultiInstance        = multiInstance,
+                TriggeredAt          = DateTime.UtcNow
+            };
+
+            _logger.LogInformation(
+                "发送节点完成主动回调: NodeKey={NodeKey}, Url={Url}, " +
+                "MultiInstance={Enabled}, BusinessId={BusinessId}",
+                taskDefinitionKey, callbackUrl,
+                multiInstance.Enabled, metadata.BusinessId);
+
+            await PostNodeCallbackSafeAsync(
+                callbackUrl, payload,
+                FlowableCallbackTypes.NodeCompleted,
+                metadata);
+        }
+
+        /// <summary>
         /// Sends a reject notification to the business callback endpoint.
         /// The notification is emitted by the process center after Flowable activity-state jump succeeds.
         /// </summary>
@@ -505,12 +617,11 @@ namespace FlowableWrapper.Application.Services
             }
         }
 
+        // NODE_COMPLETED 已改为由 TaskExecutionAppService.CompleteTaskAsync Step 8 主动推送，
+        // 不再经由 Flowable HTTP ServiceTask 回调到 /api/callback/flowable 路径。
+        // MULTI_INSTANCE_COMPLETED 和 PARALLEL_JOIN_COMPLETED 仍保留 Flowable HTTP ServiceTask 路径。
         private static bool IsNodeCallbackType(string? callbackType)
             => string.Equals(
-                   callbackType,
-                   FlowableCallbackTypes.NodeCompleted,
-                   StringComparison.OrdinalIgnoreCase)
-            || string.Equals(
                    callbackType,
                    FlowableCallbackTypes.MultiInstanceCompleted,
                    StringComparison.OrdinalIgnoreCase)

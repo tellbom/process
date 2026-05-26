@@ -28,5 +28,14 @@ namespace FlowableWrapper.Domain.Flowable
             string processInstanceId,
             List<string> cancelActivityIds,
             string startActivityId);
+
+        /// <summary>
+        /// 读取流程实例的所有变量
+        /// 对应 Flowable REST: GET /runtime/process-instances/{id}/variables
+        /// 多实例节点执行时 Flowable 引擎自动写入 nrOfInstances /
+        /// nrOfCompletedInstances / nrOfActiveInstances，通过此方法读取。
+        /// 若流程已结束或变量不存在，返回空字典。
+        /// </summary>
+        Task<Dictionary<string, object>> GetProcessVariablesAsync(string processInstanceId);
     }
 }
