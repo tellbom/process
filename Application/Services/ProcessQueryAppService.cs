@@ -369,24 +369,28 @@ namespace FlowableWrapper.Application.Services
                 var (task, candidates) = tc;
                 semanticMap.TryGetValue(task.TaskDefinitionKey, out var nodeInfo);
 
-                // ── 合并推荐人与选人范围限制 ──────────────────────
-                var recommendedUsers = new Dictionary<string, List<string>>();
+                // ── 按 slot 维度组装推荐人与选人范围限制 ──────────
+                // 查询链：nodeInfo.Slots -> slot.RoleKey -> snapshot -> slotRecommendedUsers[slot.SlotKey]
+                // Key 统一为 slotKey，与 PendingTaskDto.SlotRecommendedUsers 对齐
+                var slotRecommendedUsers = new Dictionary<string, List<string>>();
                 var restrictMap = new Dictionary<string, bool>();
-
-                // Recommended users are keyed by roleKey, which describes the current node assignee.
-                // Slots describe downstream assignee selections, so slotKey is intentionally not used here.
-                if (!string.IsNullOrWhiteSpace(nodeInfo?.RoleKey)
-                    && recommendedSnapshot.TryGetValue(nodeInfo.RoleKey, out var recommended)
-                    && recommended?.Any() == true)
-                {
-                    recommendedUsers[nodeInfo.RoleKey] = recommended;
-                }
 
                 if (nodeInfo?.Slots != null)
                 {
                     foreach (var slot in nodeInfo.Slots)
                     {
+                        if (string.IsNullOrWhiteSpace(slot.RoleKey))
+                            throw new BusinessException(
+                                $"节点 [{task.TaskDefinitionKey}] Slot [{slot.SlotKey}] roleKey 不能为空",
+                                "SLOT_ROLE_KEY_REQUIRED");
+
                         restrictMap[slot.SlotKey] = slot.RestrictToRecommended;
+
+                        if (recommendedSnapshot.TryGetValue(slot.RoleKey, out var slotUsers)
+                            && slotUsers?.Any() == true)
+                        {
+                            slotRecommendedUsers[slot.SlotKey] = slotUsers;
+                        }
                     }
                 }
 
@@ -400,7 +404,7 @@ namespace FlowableWrapper.Application.Services
                     Assignee          = task.Assignee,
                     CandidateUsers    = candidates,
                     CreateTime        = task.CreateTime,
-                    RecommendedUsers      = recommendedUsers,
+                    SlotRecommendedUsers  = slotRecommendedUsers,
                     RestrictToRecommended = restrictMap
                 };
             }).ToList();

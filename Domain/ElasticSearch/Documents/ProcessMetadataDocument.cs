@@ -146,21 +146,43 @@ namespace FlowableWrapper.Domain.ElasticSearch
     /// </summary>
     public class SlotDefinition
     {
-        /// <summary>选人槽位 Key，同一流程全局唯一</summary>
+        /// <summary>
+        /// 选人槽位 Key，同一流程全局唯一。
+        /// 前端按此 key 提交 nextSlotSelections，后端按此 key 返回 slotRecommendedUsers。
+        /// </summary>
         public string SlotKey { get; set; }
+
+        /// <summary>
+        /// 该 slot 的候选人推荐池来源角色 Key。
+        /// 与 NodeSemanticInfo.RoleKey 含义不同：
+        /// - NodeSemanticInfo.RoleKey：当前节点的处理人角色（谁来审批这个节点）。
+        /// - SlotDefinition.RoleKey：该 slot 选人时应从哪个角色池取推荐人，
+        ///   即 RecommendedAssigneesSnapshot[slot.RoleKey]。
+        /// 同一节点的多个 slot 可以引用不同的 roleKey。
+        /// </summary>
+        public string RoleKey { get; set; }
+
         /// <summary>前端展示标签</summary>
         public string Label { get; set; }
+
         /// <summary>single = 单人，multiple = 多人</summary>
         public string Mode { get; set; }
-        /// <summary>对应的 Flowable 变量名</summary>
+
+        /// <summary>
+        /// 对应的 Flowable 流程变量名。
+        /// 任务完成时后端将选人结果写入此变量，Flowable 引擎据此绑定下一节点 assignee。
+        /// 不暴露为前端提交 key，前端只感知 slotKey。
+        /// </summary>
         public string VariableName { get; set; }
+
         /// <summary>是否必填</summary>
         public bool Required { get; set; } = true;
+
         /// <summary>条件表达式，满足时才需要填写，如 needFeedback=true</summary>
         public string ConditionalOn { get; set; }
 
         /// <summary>
-        /// 是否限制只能从推荐范围内选人。Phase 1 后端不强拦截，仅在审计时记录是否越界。
+        /// 是否限制只能从推荐范围内选人。后端不强拦截，仅在审计时记录是否越界。
         /// </summary>
         public bool RestrictToRecommended { get; set; } = false;
     }

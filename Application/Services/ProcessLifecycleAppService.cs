@@ -470,17 +470,27 @@ namespace FlowableWrapper.Application.Services
             {
                 if (!slotLookup.TryGetValue(selection.SlotKey, out var def))
                 {
-                    _logger.LogWarning(
-                        "initialSlotSelections 中的 slotKey [{SlotKey}] 未在流程定义中注册，已忽略",
-                        selection.SlotKey);
-                    continue;
+                    throw new BusinessException(
+                        $"initialSlotSelections 中的 slotKey [{selection.SlotKey}] 未在流程定义中注册",
+                        "SLOT_UNKNOWN");
                 }
 
                 if (selection.Users == null || !selection.Users.Any())
                 {
-                    _logger.LogWarning("slotKey [{SlotKey}] 未传入用户，已忽略", selection.SlotKey);
-                    continue;
+                    throw new BusinessException(
+                        $"slotKey [{selection.SlotKey}] 未传入用户",
+                        "SLOT_REQUIRED");
                 }
+
+                if (string.IsNullOrWhiteSpace(def.RoleKey))
+                    throw new BusinessException(
+                        $"Slot [{def.Label}]（{def.SlotKey}）roleKey 不能为空",
+                        "SLOT_ROLE_KEY_REQUIRED");
+
+                if (string.IsNullOrWhiteSpace(def.VariableName))
+                    throw new BusinessException(
+                        $"Slot [{def.Label}]（{def.SlotKey}）variableName 不能为空",
+                        "SLOT_VARIABLE_NAME_REQUIRED");
 
                 // 转换变量
                 if (def.Mode == "single")

@@ -1,4 +1,4 @@
-[
+﻿[
   {
     "taskDefinitionKey": "ut00_starter_submit",
     "nodeSemantic": "STARTER_SUBMIT",
@@ -12,6 +12,7 @@
     "slots": [
       {
         "slotKey": "dept_head",
+        "roleKey": "dept_head",
         "label": "相关部门一把手",
         "mode": "single",
         "variableName": "deptHeadAssignee",
@@ -39,6 +40,7 @@
     "slots": [
       {
         "slotKey": "feedback_assignee",
+        "roleKey": "feedback_assignee",
         "label": "反馈人",
         "mode": "single",
         "variableName": "feedbackAssignee",
@@ -47,6 +49,7 @@
       },
       {
         "slotKey": "company_leader_path_a",
+        "roleKey": "company_leader",
         "label": "公司分管领导（自处理路径）",
         "mode": "single",
         "variableName": "companyLeaderAssignee",
@@ -74,6 +77,7 @@
     "slots": [
       {
         "slotKey": "company_leader_path_b",
+        "roleKey": "company_leader",
         "label": "公司分管领导（反馈路径）",
         "mode": "single",
         "variableName": "companyLeaderAssignee",
@@ -101,6 +105,7 @@
     "slots": [
       {
         "slotKey": "chief_leader",
+        "roleKey": "chief_leader",
         "label": "巡察主管领导",
         "mode": "single",
         "variableName": "chiefLeaderAssignee",
@@ -122,3 +127,4 @@
     "slots": []
   }
 ]
+

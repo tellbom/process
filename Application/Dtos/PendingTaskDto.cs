@@ -120,13 +120,17 @@ namespace FlowableWrapper.Application.Dtos
         public List<RejectOption> RejectOptions { get; set; }
 
         /// <summary>
-        /// Current node assignee recommendations. Key is roleKey, value is recommended user ids.
+        /// 当前节点各 slot 的推荐候选人，Key = slotKey，Value = 推荐人员工号列表。
+        /// 来源：RecommendedAssigneesSnapshot[slot.RoleKey]，结果按 slot.SlotKey 索引。
+        /// 前端按 slotKey 读取对应推荐人初始化选人区。
+        /// 无推荐配置或当前节点无 slot 时为空字典。
         /// </summary>
-        public Dictionary<string, List<string>> RecommendedUsers { get; set; }
+        public Dictionary<string, List<string>> SlotRecommendedUsers { get; set; }
             = new Dictionary<string, List<string>>();
 
         /// <summary>
-        /// Selection restriction policy for downstream slots. Key is slotKey.
+        /// 各 slot 的选人范围限制标志，Key = slotKey。
+        /// true = 仅建议从推荐范围内选人（后端记录越界审计，不强拦截）。
         /// </summary>
         public Dictionary<string, bool> RestrictToRecommended { get; set; }
             = new Dictionary<string, bool>();

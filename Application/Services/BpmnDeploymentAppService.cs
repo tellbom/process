@@ -296,11 +296,13 @@ namespace FlowableWrapper.Application.Services
 
                 var key = node.TaskDefinitionKey;
 
-                // Slot 校验：slotKey 全局唯一、variableName 必填、mode 合法
+                // Slot 校验：slotKey 全局唯一、roleKey/variableName 必填、mode 合法
                 foreach (var slot in node.Slots ?? new List<SlotDefinition>())
                 {
                     if (string.IsNullOrWhiteSpace(slot.SlotKey))
                     { errors.Add($"节点 [{key}] 存在 slotKey 为空的 Slot"); continue; }
+                    if (string.IsNullOrWhiteSpace(slot.RoleKey))
+                        errors.Add($"节点 [{key}] Slot [{slot.SlotKey}] roleKey 不能为空");
                     if (string.IsNullOrWhiteSpace(slot.VariableName))
                         errors.Add($"节点 [{key}] Slot [{slot.SlotKey}] variableName 不能为空");
                     if (slot.Mode != "single" && slot.Mode != "multiple")

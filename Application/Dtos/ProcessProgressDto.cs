@@ -116,16 +116,17 @@ namespace FlowableWrapper.Application.Dtos
         public DateTime CreateTime { get; set; }
 
         /// <summary>
-        /// Recommended users for the current node, keyed by roleKey.
-        /// roleKey describes who handles the current node; slotKey describes who this node selects next.
-        /// Empty dictionary means no recommended users are configured for this node.
+        /// 当前节点各 slot 的推荐候选人，Key = slotKey，Value = 推荐人员工号列表。
+        /// 来源：RecommendedAssigneesSnapshot[slot.RoleKey]，结果按 slot.SlotKey 返回。
+        /// 与 PendingTaskDto.SlotRecommendedUsers 结构完全一致，前端可统一消费。
+        /// 无推荐配置或当前节点无 slot 时为空字典。
         /// </summary>
-        public Dictionary<string, List<string>> RecommendedUsers { get; set; }
+        public Dictionary<string, List<string>> SlotRecommendedUsers { get; set; }
             = new Dictionary<string, List<string>>();
 
         /// <summary>
-        /// Restrict-to-recommended flags for the current node, keyed by slotKey.
-        /// This is intentionally separate from RecommendedUsers because the restriction belongs to slots.
+        /// 各 slot 的选人范围限制标志，Key = slotKey。
+        /// true = 仅建议从推荐范围内选人（后端记录越界审计，不强拦截）。
         /// </summary>
         public Dictionary<string, bool> RestrictToRecommended { get; set; }
             = new Dictionary<string, bool>();

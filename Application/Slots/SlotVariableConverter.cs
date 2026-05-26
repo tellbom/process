@@ -58,6 +58,16 @@ namespace FlowableWrapper.Application.Slots
 
             foreach (var def in slotDefs)
             {
+                if (string.IsNullOrWhiteSpace(def.RoleKey))
+                    throw new BusinessException(
+                        $"Slot [{def.Label}]（{def.SlotKey}）roleKey 不能为空",
+                        "SLOT_ROLE_KEY_REQUIRED");
+
+                if (string.IsNullOrWhiteSpace(def.VariableName))
+                    throw new BusinessException(
+                        $"Slot [{def.Label}]（{def.SlotKey}）variableName 不能为空",
+                        "SLOT_VARIABLE_NAME_REQUIRED");
+
                 // ── 1. 判断条件 Slot 是否激活 ──────────────────────
                 if (!string.IsNullOrWhiteSpace(def.ConditionalOn))
                 {
@@ -127,9 +137,9 @@ namespace FlowableWrapper.Application.Slots
             {
                 if (!definedKeys.Contains(sel.SlotKey))
                 {
-                    _logger.LogWarning(
-                        "前端提交了未定义的 slotKey [{SlotKey}]，已忽略",
-                        sel.SlotKey);
+                    throw new BusinessException(
+                        $"前端提交了未定义的 slotKey [{sel.SlotKey}]",
+                        "SLOT_UNKNOWN");
                 }
             }
 

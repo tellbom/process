@@ -1,4 +1,4 @@
-[
+﻿[
   {
     "taskDefinitionKey": "ut00_starter_submit",
     "nodeSemantic": "STARTER_SUBMIT",
@@ -12,6 +12,7 @@
     "slots": [
       {
         "slotKey": "dept_head",
+        "roleKey": "dept_head",
         "label": "相关部门一把手",
         "mode": "single",
         "variableName": "deptHeadAssignee",
@@ -39,6 +40,7 @@
     "slots": [
       {
         "slotKey": "feedback_person",
+        "roleKey": "feedback_person",
         "label": "下属反馈人",
         "mode": "single",
         "variableName": "feedbackPersonAssignee",
@@ -47,6 +49,7 @@
       },
       {
         "slotKey": "inspection_office_verifier_path_a",
+        "roleKey": "inspection_office_verifier",
         "label": "巡察办核实人（自处理路径）",
         "mode": "single",
         "variableName": "inspectionOfficeAssignee",
@@ -74,6 +77,7 @@
     "slots": [
       {
         "slotKey": "dept_head_approver",
+        "roleKey": "dept_head",
         "label": "一把手审批人",
         "mode": "single",
         "variableName": "deptHeadAssignee",
@@ -101,6 +105,7 @@
     "slots": [
       {
         "slotKey": "inspection_office_verifier_path_b",
+        "roleKey": "inspection_office_verifier",
         "label": "巡察办核实人（指派路径）",
         "mode": "single",
         "variableName": "inspectionOfficeAssignee",

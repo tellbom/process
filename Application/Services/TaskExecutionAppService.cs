@@ -227,20 +227,26 @@ namespace FlowableWrapper.Application.Services
 
                 semanticMap.TryGetValue(task.TaskDefinitionKey, out var nodeInfo);
 
-                var recommendedUsers = new Dictionary<string, List<string>>();
-                if (!string.IsNullOrWhiteSpace(nodeInfo?.RoleKey)
-                    && meta.RecommendedAssigneesSnapshot?.TryGetValue(
-                        nodeInfo.RoleKey, out var recommended) == true
-                    && recommended?.Any() == true)
-                {
-                    recommendedUsers[nodeInfo.RoleKey] = recommended;
-                }
-
+                var slotRecommendedUsers = new Dictionary<string, List<string>>();
                 var restrictMap = new Dictionary<string, bool>();
                 if (nodeInfo?.Slots != null)
                 {
                     foreach (var slot in nodeInfo.Slots)
+                    {
+                        if (string.IsNullOrWhiteSpace(slot.RoleKey))
+                            throw new BusinessException(
+                                $"节点 [{task.TaskDefinitionKey}] Slot [{slot.SlotKey}] roleKey 不能为空",
+                                "SLOT_ROLE_KEY_REQUIRED");
+
                         restrictMap[slot.SlotKey] = slot.RestrictToRecommended;
+
+                        if (meta.RecommendedAssigneesSnapshot?.TryGetValue(
+                                slot.RoleKey, out var slotRecommended) == true
+                            && slotRecommended?.Any() == true)
+                        {
+                            slotRecommendedUsers[slot.SlotKey] = slotRecommended;
+                        }
+                    }
                 }
 
                 result.Add(new PendingTaskDto
@@ -267,7 +273,7 @@ namespace FlowableWrapper.Application.Services
                     IsAfterConvergencePoint = nodeInfo?.IsConvergencePoint ?? false,
                     CreateTime = task.CreateTime,
                     Priority = task.Priority,
-                    RecommendedUsers = recommendedUsers,
+                    SlotRecommendedUsers = slotRecommendedUsers,
                     RestrictToRecommended = restrictMap
                 });
             }
@@ -824,20 +830,38 @@ namespace FlowableWrapper.Application.Services
             if (slotDefs == null || !slotDefs.Any())
                 return (null, new Dictionary<string, List<string>>(), new Dictionary<string, bool>());
 
-            // 构建 restrictSnapshot（只包含有推荐人快照的 slot）
-            var restrictSnapshot = slotDefs
-                .Where(d => recommendedSnapshot.ContainsKey(d.SlotKey))
-                .ToDictionary(d => d.SlotKey, d => d.RestrictToRecommended);
+            var restrictSnapshot = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
+            var slotRecommendedSnapshot = new Dictionary<string, List<string>>(
+                StringComparer.OrdinalIgnoreCase);
+
+            foreach (var slot in slotDefs)
+            {
+                if (string.IsNullOrWhiteSpace(slot.RoleKey))
+                    throw new BusinessException(
+                        $"Slot [{slot.Label}]（{slot.SlotKey}）roleKey 不能为空",
+                        "SLOT_ROLE_KEY_REQUIRED");
+
+                restrictSnapshot[slot.SlotKey] = slot.RestrictToRecommended;
+
+                if (recommendedSnapshot.TryGetValue(slot.RoleKey, out var recommended)
+                    && recommended?.Any() == true)
+                {
+                    slotRecommendedSnapshot[slot.SlotKey] = recommended;
+                }
+            }
+
+            if (!slotRecommendedSnapshot.Any())
+                return (null, slotRecommendedSnapshot, restrictSnapshot);
 
             // 只检查 RestrictToRecommended = true 的 slot
             var restrictedSlots = slotDefs
                 .Where(d => d.RestrictToRecommended
-                            && recommendedSnapshot.ContainsKey(d.SlotKey))
+                            && slotRecommendedSnapshot.ContainsKey(d.SlotKey))
                 .ToList();
 
             // 无受限 slot → 不适用（null）
             if (!restrictedSlots.Any())
-                return (null, recommendedSnapshot, restrictSnapshot);
+                return (null, slotRecommendedSnapshot, restrictSnapshot);
 
             // NextSlotSelections 按 slotKey 建立查找字典
             var selectionDict = (nextSlotSelections ?? new List<SlotSelection>())
@@ -850,7 +874,7 @@ namespace FlowableWrapper.Application.Services
             {
                 if (!selectionDict.TryGetValue(slot.SlotKey, out var selection)) continue;
                 if (selection.Users == null || !selection.Users.Any()) continue;
-                if (!recommendedSnapshot.TryGetValue(slot.SlotKey, out var recommended)) continue;
+                if (!slotRecommendedSnapshot.TryGetValue(slot.SlotKey, out var recommended)) continue;
 
                 var outOfRangeUsers = selection.Users
                     .Where(u => !recommended.Contains(u, StringComparer.OrdinalIgnoreCase))
@@ -868,7 +892,7 @@ namespace FlowableWrapper.Application.Services
                 }
             }
 
-            return (hasOutOfRange, recommendedSnapshot, restrictSnapshot);
+            return (hasOutOfRange, slotRecommendedSnapshot, restrictSnapshot);
         }
 
 
