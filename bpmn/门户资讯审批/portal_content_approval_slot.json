@@ -1,0 +1,38 @@
+[
+  {
+    "taskDefinitionKey": "ut01_starter_submit",
+    "nodeSemantic": "PORTAL_CONTENT_STARTER_SUBMIT",
+    "pageCode": "PortalContent/StarterSubmitForm",
+    "isStarterNode": true,
+    "isConvergencePoint": false,
+    "canReject": false,
+    "rejectOptions": [],
+    "isRejectTarget": true,
+    "rejectCode": "TO_STARTER",
+    "roleKey": "portal_content_starter",
+    "assigneeMode": "single",
+    "slots": [],
+    "callbackUrl": null
+  },
+  {
+    "taskDefinitionKey": "ut02_leader_approve",
+    "nodeSemantic": "PORTAL_CONTENT_LEADER_APPROVE",
+    "pageCode": "PortalContent/LeaderApproveForm",
+    "isStarterNode": false,
+    "isConvergencePoint": false,
+    "canReject": true,
+    "rejectOptions": [
+      {
+        "rejectCode": "TO_STARTER",
+        "label": "驳回发起人修改",
+        "description": "领导审批不通过，退回发起人修改新闻/公告内容；不允许重新选择预置审批人"
+      }
+    ],
+    "isRejectTarget": false,
+    "rejectCode": null,
+    "roleKey": "portal_content_leader",
+    "assigneeMode": "single",
+    "slots": [],
+    "callbackUrl": null
+  }
+]

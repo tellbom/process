@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xmlns:flowable="http://flowable.org/bpmn"
+             xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+             xmlns:omgdc="http://www.omg.org/spec/DD/20100524/DC"
+             xmlns:omgdi="http://www.omg.org/spec/DD/20100524/DI"
+             typeLanguage="http://www.w3.org/2001/XMLSchema"
+             expressionLanguage="http://www.w3.org/1999/XPath"
+             targetNamespace="http://www.flowable.org/processdef">
+
+  <!--
+    流程：门户资讯审批
+    ProcessDefinitionKey : portal_content_approval
+    BusinessType         : portal_content_approval
+
+    场景：用户发布新闻/公告前提交审批，领导可驳回至发起人重新编辑。
+
+    节点：
+      UT-01 发起人提交
+      UT-02 领导审批
+      ST-03 通知业务系统流程已完成
+
+    启动变量：
+      starterAssignee      : 发起人工号
+      portalLeaderAssignee : 领导审批人工号
+
+    选人约束：
+      本流程不在节点内重新选择处理人。
+      领导审批人由启动变量 portalLeaderAssignee 预置，驳回回到发起人后再次提交仍使用原值。
+  -->
+  <process id="portal_content_approval"
+           name="门户资讯审批"
+           isExecutable="true">
+
+    <startEvent id="start_event" name="开始"/>
+
+    <sequenceFlow id="flow_start_to_ut01"
+                  sourceRef="start_event"
+                  targetRef="ut01_starter_submit"/>
+
+    <!-- UT-01 发起人提交（驳回落点） -->
+    <userTask id="ut01_starter_submit"
+              name="发起人提交"
+              flowable:assignee="${starterAssignee}">
+      <documentation>
+        处理人: 启动时由业务系统传入 starterAssignee
+        前端表单: PortalContent/StarterSubmitForm
+        操作: 编辑新闻/公告内容并提交审批
+        驳回落点: 领导审批驳回后回到此节点
+        slots: 无。领导审批人由启动变量 portalLeaderAssignee 预置，不允许发起人在驳回后改选
+      </documentation>
+      <extensionElements>
+        <flowable:field name="nodeSemantic" stringValue="PORTAL_CONTENT_STARTER_SUBMIT"/>
+        <flowable:field name="pageCode" stringValue="PortalContent/StarterSubmitForm"/>
+        <flowable:field name="isConvergencePoint" stringValue="false"/>
+      </extensionElements>
+    </userTask>
+
+    <sequenceFlow id="flow_ut01_to_ut02"
+                  sourceRef="ut01_starter_submit"
+                  targetRef="ut02_leader_approve"/>
+
+    <!-- UT-02 领导审批 -->
+    <userTask id="ut02_leader_approve"
+              name="领导审批"
+              flowable:assignee="${portalLeaderAssignee}">
+      <documentation>
+        处理人: 启动时由业务系统传入 portalLeaderAssignee
+        前端表单: PortalContent/LeaderApproveForm
+        操作: 审核新闻/公告发布内容；可通过，也可驳回到发起人
+        slots: 无。审批通过后进入最终通知节点
+      </documentation>
+      <extensionElements>
+        <flowable:field name="nodeSemantic" stringValue="PORTAL_CONTENT_LEADER_APPROVE"/>
+        <flowable:field name="pageCode" stringValue="PortalContent/LeaderApproveForm"/>
+        <flowable:field name="isConvergencePoint" stringValue="false"/>
+      </extensionElements>
+    </userTask>
+
+    <sequenceFlow id="flow_ut02_to_st03"
+                  sourceRef="ut02_leader_approve"
+                  targetRef="st03_framework_callback"/>
+
+    <!-- ST-03 通知业务系统流程已完成 -->
+    <serviceTask id="st03_framework_callback"
+                 name="通知业务系统流程已完成"
+                 flowable:type="http">
+      <documentation>
+        框架标准完成回调节点，引擎 POST frameworkCallbackUrl。
+        流程中心接收后更新流程状态，并按启动 callback.url 通知业务系统。
+      </documentation>
+      <extensionElements>
+        <flowable:field name="requestMethod">
+          <flowable:string>POST</flowable:string>
+        </flowable:field>
+        <flowable:field name="requestUrl">
+          <flowable:expression>${frameworkCallbackUrl}</flowable:expression>
+        </flowable:field>
+        <flowable:field name="requestHeaders">
+          <flowable:string>Content-Type: application/json</flowable:string>
+        </flowable:field>
+        <flowable:field name="requestBody">
+          <flowable:expression>{"processInstanceId":"${execution.processInstanceId}","businessId":"${businessId}","processDefinitionKey":"${processDefinitionKey}"}</flowable:expression>
+        </flowable:field>
+        <flowable:field name="saveResponseParameters">
+          <flowable:string>false</flowable:string>
+        </flowable:field>
+      </extensionElements>
+    </serviceTask>
+
+    <sequenceFlow id="flow_st03_to_end"
+                  sourceRef="st03_framework_callback"
+                  targetRef="end_event"/>
+
+    <endEvent id="end_event" name="结束"/>
+
+  </process>
+
+  <bpmndi:BPMNDiagram id="BPMNDiagram_portal_content_approval">
+    <bpmndi:BPMNPlane id="BPMNPlane_portal_content_approval"
+                      bpmnElement="portal_content_approval">
+
+      <bpmndi:BPMNShape id="shape_start_event" bpmnElement="start_event">
+        <omgdc:Bounds x="92" y="102" width="36" height="36"/>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="shape_ut01" bpmnElement="ut01_starter_submit">
+        <omgdc:Bounds x="180" y="80" width="160" height="80"/>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="shape_ut02" bpmnElement="ut02_leader_approve">
+        <omgdc:Bounds x="400" y="80" width="160" height="80"/>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="shape_st03" bpmnElement="st03_framework_callback">
+        <omgdc:Bounds x="620" y="80" width="180" height="80"/>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="shape_end_event" bpmnElement="end_event">
+        <omgdc:Bounds x="860" y="102" width="36" height="36"/>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNEdge id="edge_flow_start_to_ut01" bpmnElement="flow_start_to_ut01">
+        <omgdi:waypoint x="128" y="120"/>
+        <omgdi:waypoint x="180" y="120"/>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="edge_flow_ut01_to_ut02" bpmnElement="flow_ut01_to_ut02">
+        <omgdi:waypoint x="340" y="120"/>
+        <omgdi:waypoint x="400" y="120"/>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="edge_flow_ut02_to_st03" bpmnElement="flow_ut02_to_st03">
+        <omgdi:waypoint x="560" y="120"/>
+        <omgdi:waypoint x="620" y="120"/>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="edge_flow_st03_to_end" bpmnElement="flow_st03_to_end">
+        <omgdi:waypoint x="800" y="120"/>
+        <omgdi:waypoint x="860" y="120"/>
+      </bpmndi:BPMNEdge>
+
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</definitions>

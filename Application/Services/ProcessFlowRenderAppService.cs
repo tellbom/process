@@ -607,7 +607,12 @@ namespace FlowableWrapper.Application.Services
 
             // 查已结束的
             var (items, _) = await _esService.QueryProcessListAsync(
-                new ProcessListRequest { PageIndex = 1, PageSize = 1 });
+                new ProcessListRequest
+                {
+                    BusinessId = businessId,
+                    PageIndex = 1,
+                    PageSize = 1
+                });
             meta = items.FirstOrDefault(m =>
                 string.Equals(m.BusinessId, businessId, StringComparison.OrdinalIgnoreCase));
 
