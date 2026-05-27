@@ -1,7 +1,6 @@
 using FlowableWrapper.Domain.ElasticSearch;
 using System;
 using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
 
 namespace FlowableWrapper.Application.Dtos
 {
@@ -19,7 +18,6 @@ namespace FlowableWrapper.Application.Dtos
     /// </summary>
     public class GetPendingTasksRequest
     {
-        [Required(ErrorMessage = "employeeId 不能为空")]
         public string EmployeeId   { get; set; }
         public string? BusinessType { get; set; }
         public int PageIndex       { get; set; } = 1;

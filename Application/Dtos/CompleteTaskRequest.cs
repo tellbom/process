@@ -29,8 +29,8 @@ namespace FlowableWrapper.Application.Dtos
         /// </summary>
         public string? TaskId { get; set; }
 
-        /// <summary>操作人工号，不传则读 Header X-User-Id</summary>
-        public string EmployeeId { get; set; }
+        /// <summary>操作人工号（可选，不传则使用当前 JWT 用户）</summary>
+        public string? EmployeeId { get; set; }
 
         /// <summary>1=通过，2=驳回</summary>
         [Required(ErrorMessage = "action 不能为空")]
@@ -107,9 +107,9 @@ namespace FlowableWrapper.Application.Dtos
         public string Reason { get; set; }
 
         /// <summary>
-        /// 操作人工号（可选，不传则读 Header X-User-Id）
+        /// 操作人工号（可选，不传则使用当前 JWT 用户）
         /// </summary>
-        public string OperatorId { get; set; }
+        public string? OperatorId { get; set; }
     }
 
     /// <summary>

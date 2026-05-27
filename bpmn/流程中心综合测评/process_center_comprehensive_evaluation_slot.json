@@ -43,31 +43,11 @@
         "restrictToRecommended": true
       },
       {
-        "slotKey": "committee_members",
-        "roleKey": "pc_eval_committee_member",
-        "label": "会签专家",
-        "mode": "multiple",
-        "variableName": "committeeAssigneeList",
-        "required": true,
-        "conditionalOn": null,
-        "restrictToRecommended": true
-      },
-      {
-        "slotKey": "quick_approvers",
-        "roleKey": "pc_eval_quick_approver",
-        "label": "或签领导",
-        "mode": "multiple",
-        "variableName": "quickApproverList",
-        "required": true,
-        "conditionalOn": null,
-        "restrictToRecommended": true
-      },
-      {
-        "slotKey": "archive_owner",
-        "roleKey": "pc_eval_archive_owner",
-        "label": "归档确认人",
+        "slotKey": "summary_confirmer",
+        "roleKey": "pc_eval_summary_confirmer",
+        "label": "汇总确认人",
         "mode": "single",
-        "variableName": "archiveAssignee",
+        "variableName": "summaryConfirmerAssignee",
         "required": true,
         "conditionalOn": null,
         "restrictToRecommended": true
@@ -139,7 +119,39 @@
     "callbackUrl": null
   },
   {
-    "taskDefinitionKey": "ut05_committee_countersign",
+    "taskDefinitionKey": "ut05_summary_confirm",
+    "nodeSemantic": "PC_EVAL_SUMMARY_CONFIRM",
+    "pageCode": "https://httpbin.org/get?node=pc_eval_summary_confirm",
+    "isStarterNode": false,
+    "isConvergencePoint": true,
+    "canReject": true,
+    "rejectOptions": [
+      {
+        "rejectCode": "TO_STARTER",
+        "label": "驳回发起人修改",
+        "description": "并行审核汇总后不通过，退回发起人重新提交"
+      }
+    ],
+    "isRejectTarget": false,
+    "rejectCode": null,
+    "roleKey": "pc_eval_summary_confirmer",
+    "assigneeMode": "single",
+    "slots": [
+      {
+        "slotKey": "committee_members",
+        "roleKey": "pc_eval_committee_member",
+        "label": "会签专家",
+        "mode": "multiple",
+        "variableName": "committeeAssigneeList",
+        "required": true,
+        "conditionalOn": null,
+        "restrictToRecommended": true
+      }
+    ],
+    "callbackUrl": null
+  },
+  {
+    "taskDefinitionKey": "ut06_committee_countersign",
     "nodeSemantic": "PC_EVAL_COMMITTEE_COUNTERSIGN",
     "pageCode": "https://httpbin.org/get?node=pc_eval_committee_countersign",
     "isStarterNode": false,
@@ -156,11 +168,22 @@
     "rejectCode": null,
     "roleKey": "pc_eval_committee_member",
     "assigneeMode": "multiple",
-    "slots": [],
+    "slots": [
+      {
+        "slotKey": "quick_approvers",
+        "roleKey": "pc_eval_quick_approver",
+        "label": "或签领导",
+        "mode": "multiple",
+        "variableName": "quickApproverList",
+        "required": true,
+        "conditionalOn": null,
+        "restrictToRecommended": true
+      }
+    ],
     "callbackUrl": null
   },
   {
-    "taskDefinitionKey": "ut06_quick_orsign",
+    "taskDefinitionKey": "ut07_quick_orsign",
     "nodeSemantic": "PC_EVAL_QUICK_ORSIGN",
     "pageCode": "https://httpbin.org/get?node=pc_eval_quick_orsign",
     "isStarterNode": false,
@@ -177,11 +200,22 @@
     "rejectCode": null,
     "roleKey": "pc_eval_quick_approver",
     "assigneeMode": "multiple",
-    "slots": [],
+    "slots": [
+      {
+        "slotKey": "archive_owner",
+        "roleKey": "pc_eval_archive_owner",
+        "label": "归档确认人",
+        "mode": "single",
+        "variableName": "archiveAssignee",
+        "required": true,
+        "conditionalOn": null,
+        "restrictToRecommended": true
+      }
+    ],
     "callbackUrl": null
   },
   {
-    "taskDefinitionKey": "ut07_archive_confirm",
+    "taskDefinitionKey": "ut08_archive_confirm",
     "nodeSemantic": "PC_EVAL_ARCHIVE_CONFIRM",
     "pageCode": "https://httpbin.org/get?node=pc_eval_archive_confirm",
     "isStarterNode": false,

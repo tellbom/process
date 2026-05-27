@@ -14,26 +14,17 @@
     ProcessDefinitionKey : process_center_comprehensive_evaluation
     BusinessType         : process_center_comprehensive_evaluation
 
-    业务场景：综合事项审批，用于流程中心能力收官测评。
+    场景：综合事项审批，用于流程中心能力收官测评。
+
+    逐段选人模型：
+      1. 发起人只选择第一段处理人：法务、财务、技术、汇总确认人。
+      2. 汇总确认人选择会签专家。
+      3. 会签专家全部完成后，当前会签节点选择或签领导。
+      4. 或签领导任一人完成后，当前或签节点选择归档确认人。
+      5. 归档确认后进入最终 HttpTask，通知业务系统流程已完成。
 
     覆盖能力：
-      1. 单人执行节点：发起人、法务复核、财务审核、技术审核、归档确认
-      2. 排他网关：是否需要法务复核
-      3. 并行网关：财务审核与技术审核并行执行并汇聚
-      4. 会签：专家委员会全部成员审批完成后继续
-      5. 或签：快速决策组任意一人审批完成后继续
-      6. 最终 HttpTask：通知流程中心/业务系统流程已完成
-
-    启动变量：
-      starterAssignee : 发起人工号
-
-    发起人节点一次性选择下游处理人变量：
-      legalReviewerAssignee   : 法务复核人（needLegalReview=true 时使用）
-      financeReviewerAssignee : 财务审核人
-      techReviewerAssignee    : 技术审核人
-      committeeAssigneeList   : 会签专家列表
-      quickApproverList       : 或签领导列表
-      archiveAssignee         : 归档确认人
+      单人节点、排他网关、并行网关、会签、或签、最终完成回调 HttpTask。
   -->
   <process id="process_center_comprehensive_evaluation"
            name="流程中心综合测评"
@@ -45,15 +36,12 @@
                   sourceRef="start_event"
                   targetRef="ut01_starter_submit"/>
 
-    <!-- UT-01 发起人提交（单人节点，驳回落点） -->
     <userTask id="ut01_starter_submit"
               name="发起人提交"
               flowable:assignee="${starterAssignee}">
       <documentation>
-        处理人: 启动时传入 starterAssignee
-        前端页面: https://httpbin.org/get?node=pc_eval_starter_submit
-        操作: 填写综合事项并一次性选择后续所有处理人
-        slots: 法务、财务、技术、会签专家、或签领导、归档人
+        发起人填写综合事项，并选择第一段处理人。
+        slots: legal_reviewer、finance_reviewer、tech_reviewer、summary_confirmer
       </documentation>
       <extensionElements>
         <flowable:field name="nodeSemantic" stringValue="PC_EVAL_STARTER_SUBMIT"/>
@@ -66,10 +54,9 @@
                   sourceRef="ut01_starter_submit"
                   targetRef="eg01_need_legal_review"/>
 
-    <!-- EG-01 排他网关：是否需要法务复核 -->
     <exclusiveGateway id="eg01_need_legal_review"
                       name="是否需要法务复核"
-                      default="flow_eg01_to_pg01"/>
+                      default="flow_eg01_to_eg02"/>
 
     <sequenceFlow id="flow_eg01_to_ut02"
                   sourceRef="eg01_need_legal_review"
@@ -77,18 +64,15 @@
       <conditionExpression xsi:type="tFormalExpression"><![CDATA[${needLegalReview == true}]]></conditionExpression>
     </sequenceFlow>
 
-    <sequenceFlow id="flow_eg01_to_pg01"
+    <sequenceFlow id="flow_eg01_to_eg02"
                   sourceRef="eg01_need_legal_review"
-                  targetRef="pg01_parallel_split"/>
+                  targetRef="eg02_after_legal_merge"/>
 
-    <!-- UT-02 法务复核（单人节点，可被排他网关跳过） -->
     <userTask id="ut02_legal_review"
               name="法务复核"
               flowable:assignee="${legalReviewerAssignee}">
       <documentation>
-        处理人: UT-01 完成时通过 legalReviewerAssignee 写入
-        前端页面: https://httpbin.org/get?node=pc_eval_legal_review
-        操作: 法务风险复核，可驳回至发起人
+        法务风险复核。此节点不选择下一段人员。
       </documentation>
       <extensionElements>
         <flowable:field name="nodeSemantic" stringValue="PC_EVAL_LEGAL_REVIEW"/>
@@ -97,11 +81,17 @@
       </extensionElements>
     </userTask>
 
-    <sequenceFlow id="flow_ut02_to_pg01"
+    <sequenceFlow id="flow_ut02_to_eg02"
                   sourceRef="ut02_legal_review"
+                  targetRef="eg02_after_legal_merge"/>
+
+    <exclusiveGateway id="eg02_after_legal_merge"
+                      name="法务路径汇合"/>
+
+    <sequenceFlow id="flow_eg02_to_pg01"
+                  sourceRef="eg02_after_legal_merge"
                   targetRef="pg01_parallel_split"/>
 
-    <!-- PG-01 并行拆分 -->
     <parallelGateway id="pg01_parallel_split" name="并行审核拆分"/>
 
     <sequenceFlow id="flow_pg01_to_ut03"
@@ -111,14 +101,11 @@
                   sourceRef="pg01_parallel_split"
                   targetRef="ut04_tech_review"/>
 
-    <!-- UT-03 财务审核（单人节点） -->
     <userTask id="ut03_finance_review"
               name="财务审核"
               flowable:assignee="${financeReviewerAssignee}">
       <documentation>
-        处理人: UT-01 完成时通过 financeReviewerAssignee 写入
-        前端页面: https://httpbin.org/get?node=pc_eval_finance_review
-        操作: 财务可行性审核，可驳回至发起人
+        财务可行性审核。此节点不选择下一段人员。
       </documentation>
       <extensionElements>
         <flowable:field name="nodeSemantic" stringValue="PC_EVAL_FINANCE_REVIEW"/>
@@ -127,14 +114,11 @@
       </extensionElements>
     </userTask>
 
-    <!-- UT-04 技术审核（单人节点） -->
     <userTask id="ut04_tech_review"
               name="技术审核"
               flowable:assignee="${techReviewerAssignee}">
       <documentation>
-        处理人: UT-01 完成时通过 techReviewerAssignee 写入
-        前端页面: https://httpbin.org/get?node=pc_eval_tech_review
-        操作: 技术可行性审核，可驳回至发起人
+        技术可行性审核。此节点不选择下一段人员。
       </documentation>
       <extensionElements>
         <flowable:field name="nodeSemantic" stringValue="PC_EVAL_TECH_REVIEW"/>
@@ -150,21 +134,36 @@
                   sourceRef="ut04_tech_review"
                   targetRef="pg02_parallel_join"/>
 
-    <!-- PG-02 并行汇聚 -->
-    <parallelGateway id="pg02_parallel_join" name="并行审核汇聚"/>
+    <parallelGateway id="pg02_parallel_join" name="并行审核汇合"/>
 
     <sequenceFlow id="flow_pg02_to_ut05"
                   sourceRef="pg02_parallel_join"
-                  targetRef="ut05_committee_countersign"/>
+                  targetRef="ut05_summary_confirm"/>
 
-    <!-- UT-05 专家委员会会签：全部完成后继续 -->
-    <userTask id="ut05_committee_countersign"
+    <userTask id="ut05_summary_confirm"
+              name="汇总确认"
+              flowable:assignee="${summaryConfirmerAssignee}">
+      <documentation>
+        汇总法务、财务、技术审核结果，并选择会签专家。
+        slots: committee_members
+      </documentation>
+      <extensionElements>
+        <flowable:field name="nodeSemantic" stringValue="PC_EVAL_SUMMARY_CONFIRM"/>
+        <flowable:field name="pageCode" stringValue="https://httpbin.org/get?node=pc_eval_summary_confirm"/>
+        <flowable:field name="isConvergencePoint" stringValue="true"/>
+      </extensionElements>
+    </userTask>
+
+    <sequenceFlow id="flow_ut05_to_ut06"
+                  sourceRef="ut05_summary_confirm"
+                  targetRef="ut06_committee_countersign"/>
+
+    <userTask id="ut06_committee_countersign"
               name="专家委员会会签"
               flowable:assignee="${committeeAssignee.asText()}">
       <documentation>
-        处理人: committeeAssigneeList 中每个人生成一个待办
-        前端页面: https://httpbin.org/get?node=pc_eval_committee_countersign
-        操作: 全部专家完成审批后继续，可驳回至发起人
+        committeeAssigneeList 中每个人生成一个待办。全部专家完成后继续，并在完成当前节点时选择或签领导。
+        slots: quick_approvers
       </documentation>
       <extensionElements>
         <flowable:field name="nodeSemantic" stringValue="PC_EVAL_COMMITTEE_COUNTERSIGN"/>
@@ -178,18 +177,16 @@
       </multiInstanceLoopCharacteristics>
     </userTask>
 
-    <sequenceFlow id="flow_ut05_to_ut06"
-                  sourceRef="ut05_committee_countersign"
-                  targetRef="ut06_quick_orsign"/>
+    <sequenceFlow id="flow_ut06_to_ut07"
+                  sourceRef="ut06_committee_countersign"
+                  targetRef="ut07_quick_orsign"/>
 
-    <!-- UT-06 快速决策或签：任意一人完成后继续 -->
-    <userTask id="ut06_quick_orsign"
+    <userTask id="ut07_quick_orsign"
               name="快速决策或签"
               flowable:assignee="${quickApprover.asText()}">
       <documentation>
-        处理人: quickApproverList 中每个人生成一个待办
-        前端页面: https://httpbin.org/get?node=pc_eval_quick_orsign
-        操作: 任意一名领导通过后继续，可驳回至发起人
+        quickApproverList 中每个人生成一个待办。任意一名领导通过后继续，并在完成当前节点时选择归档确认人。
+        slots: archive_owner
       </documentation>
       <extensionElements>
         <flowable:field name="nodeSemantic" stringValue="PC_EVAL_QUICK_ORSIGN"/>
@@ -203,18 +200,15 @@
       </multiInstanceLoopCharacteristics>
     </userTask>
 
-    <sequenceFlow id="flow_ut06_to_ut07"
-                  sourceRef="ut06_quick_orsign"
-                  targetRef="ut07_archive_confirm"/>
+    <sequenceFlow id="flow_ut07_to_ut08"
+                  sourceRef="ut07_quick_orsign"
+                  targetRef="ut08_archive_confirm"/>
 
-    <!-- UT-07 单人归档确认 -->
-    <userTask id="ut07_archive_confirm"
+    <userTask id="ut08_archive_confirm"
               name="归档确认"
               flowable:assignee="${archiveAssignee}">
       <documentation>
-        处理人: UT-01 完成时通过 archiveAssignee 写入
-        前端页面: https://httpbin.org/get?node=pc_eval_archive_confirm
-        操作: 单人归档确认，完成后通知业务系统
+        单人归档确认，完成后进入最终通知节点。
       </documentation>
       <extensionElements>
         <flowable:field name="nodeSemantic" stringValue="PC_EVAL_ARCHIVE_CONFIRM"/>
@@ -223,12 +217,11 @@
       </extensionElements>
     </userTask>
 
-    <sequenceFlow id="flow_ut07_to_st08"
-                  sourceRef="ut07_archive_confirm"
-                  targetRef="st08_framework_callback"/>
+    <sequenceFlow id="flow_ut08_to_st09"
+                  sourceRef="ut08_archive_confirm"
+                  targetRef="st09_framework_callback"/>
 
-    <!-- ST-08 通知业务系统流程已完成 -->
-    <serviceTask id="st08_framework_callback"
+    <serviceTask id="st09_framework_callback"
                  name="通知业务系统流程已完成"
                  flowable:type="http">
       <documentation>
@@ -254,8 +247,8 @@
       </extensionElements>
     </serviceTask>
 
-    <sequenceFlow id="flow_st08_to_end"
-                  sourceRef="st08_framework_callback"
+    <sequenceFlow id="flow_st09_to_end"
+                  sourceRef="st09_framework_callback"
                   targetRef="end_event"/>
 
     <endEvent id="end_event" name="结束"/>
@@ -278,6 +271,9 @@
       <bpmndi:BPMNShape id="shape_ut02" bpmnElement="ut02_legal_review">
         <omgdc:Bounds x="470" y="78" width="160" height="80"/>
       </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_eg02" bpmnElement="eg02_after_legal_merge" isMarkerVisible="true">
+        <omgdc:Bounds x="610" y="193" width="50" height="50"/>
+      </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="shape_pg01" bpmnElement="pg01_parallel_split" isMarkerVisible="true">
         <omgdc:Bounds x="690" y="193" width="50" height="50"/>
       </bpmndi:BPMNShape>
@@ -290,20 +286,23 @@
       <bpmndi:BPMNShape id="shape_pg02" bpmnElement="pg02_parallel_join" isMarkerVisible="true">
         <omgdc:Bounds x="1020" y="193" width="50" height="50"/>
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="shape_ut05" bpmnElement="ut05_committee_countersign">
-        <omgdc:Bounds x="1120" y="178" width="180" height="80"/>
+      <bpmndi:BPMNShape id="shape_ut05" bpmnElement="ut05_summary_confirm">
+        <omgdc:Bounds x="1120" y="178" width="160" height="80"/>
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="shape_ut06" bpmnElement="ut06_quick_orsign">
-        <omgdc:Bounds x="1360" y="178" width="180" height="80"/>
+      <bpmndi:BPMNShape id="shape_ut06" bpmnElement="ut06_committee_countersign">
+        <omgdc:Bounds x="1340" y="178" width="180" height="80"/>
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="shape_ut07" bpmnElement="ut07_archive_confirm">
-        <omgdc:Bounds x="1600" y="178" width="160" height="80"/>
+      <bpmndi:BPMNShape id="shape_ut07" bpmnElement="ut07_quick_orsign">
+        <omgdc:Bounds x="1580" y="178" width="180" height="80"/>
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="shape_st08" bpmnElement="st08_framework_callback">
-        <omgdc:Bounds x="1820" y="178" width="190" height="80"/>
+      <bpmndi:BPMNShape id="shape_ut08" bpmnElement="ut08_archive_confirm">
+        <omgdc:Bounds x="1820" y="178" width="160" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_st09" bpmnElement="st09_framework_callback">
+        <omgdc:Bounds x="2040" y="178" width="190" height="80"/>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="shape_end_event" bpmnElement="end_event">
-        <omgdc:Bounds x="2070" y="200" width="36" height="36"/>
+        <omgdc:Bounds x="2290" y="200" width="36" height="36"/>
       </bpmndi:BPMNShape>
 
       <bpmndi:BPMNEdge id="edge_flow_start_to_ut01" bpmnElement="flow_start_to_ut01">
@@ -319,14 +318,18 @@
         <omgdi:waypoint x="395" y="118"/>
         <omgdi:waypoint x="470" y="118"/>
       </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="edge_flow_eg01_to_pg01" bpmnElement="flow_eg01_to_pg01">
+      <bpmndi:BPMNEdge id="edge_flow_eg01_to_eg02" bpmnElement="flow_eg01_to_eg02">
         <omgdi:waypoint x="420" y="218"/>
-        <omgdi:waypoint x="690" y="218"/>
+        <omgdi:waypoint x="610" y="218"/>
       </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="edge_flow_ut02_to_pg01" bpmnElement="flow_ut02_to_pg01">
+      <bpmndi:BPMNEdge id="edge_flow_ut02_to_eg02" bpmnElement="flow_ut02_to_eg02">
         <omgdi:waypoint x="630" y="118"/>
-        <omgdi:waypoint x="715" y="118"/>
-        <omgdi:waypoint x="715" y="193"/>
+        <omgdi:waypoint x="635" y="118"/>
+        <omgdi:waypoint x="635" y="193"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_flow_eg02_to_pg01" bpmnElement="flow_eg02_to_pg01">
+        <omgdi:waypoint x="660" y="218"/>
+        <omgdi:waypoint x="690" y="218"/>
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="edge_flow_pg01_to_ut03" bpmnElement="flow_pg01_to_ut03">
         <omgdi:waypoint x="740" y="218"/>
@@ -353,20 +356,24 @@
         <omgdi:waypoint x="1120" y="218"/>
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="edge_flow_ut05_to_ut06" bpmnElement="flow_ut05_to_ut06">
-        <omgdi:waypoint x="1300" y="218"/>
-        <omgdi:waypoint x="1360" y="218"/>
+        <omgdi:waypoint x="1280" y="218"/>
+        <omgdi:waypoint x="1340" y="218"/>
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="edge_flow_ut06_to_ut07" bpmnElement="flow_ut06_to_ut07">
-        <omgdi:waypoint x="1540" y="218"/>
-        <omgdi:waypoint x="1600" y="218"/>
+        <omgdi:waypoint x="1520" y="218"/>
+        <omgdi:waypoint x="1580" y="218"/>
       </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="edge_flow_ut07_to_st08" bpmnElement="flow_ut07_to_st08">
+      <bpmndi:BPMNEdge id="edge_flow_ut07_to_ut08" bpmnElement="flow_ut07_to_ut08">
         <omgdi:waypoint x="1760" y="218"/>
         <omgdi:waypoint x="1820" y="218"/>
       </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="edge_flow_st08_to_end" bpmnElement="flow_st08_to_end">
-        <omgdi:waypoint x="2010" y="218"/>
-        <omgdi:waypoint x="2070" y="218"/>
+      <bpmndi:BPMNEdge id="edge_flow_ut08_to_st09" bpmnElement="flow_ut08_to_st09">
+        <omgdi:waypoint x="1980" y="218"/>
+        <omgdi:waypoint x="2040" y="218"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_flow_st09_to_end" bpmnElement="flow_st09_to_end">
+        <omgdi:waypoint x="2230" y="218"/>
+        <omgdi:waypoint x="2290" y="218"/>
       </bpmndi:BPMNEdge>
 
     </bpmndi:BPMNPlane>

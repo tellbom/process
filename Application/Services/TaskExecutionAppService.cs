@@ -171,16 +171,21 @@ namespace FlowableWrapper.Application.Services
             GetPendingTasksRequest request)
         {
             if (request == null) throw new ArgumentNullException(nameof(request));
-            if (string.IsNullOrWhiteSpace(request.EmployeeId))
-                throw new BusinessException("employeeId 不能为空");
+
+            var employeeId = !string.IsNullOrWhiteSpace(request.EmployeeId)
+                ? request.EmployeeId
+                : _currentUser.UserId;
+
+            if (string.IsNullOrWhiteSpace(employeeId))
+                throw new BusinessException("无法确定当前登录用户，请先完成认证");
 
             var assigneeTasks = await _taskService.QueryTasksAsync(new FlowableTaskQuery
             {
-                Assignee = request.EmployeeId
+                Assignee = employeeId
             });
             var candidateTasks = await _taskService.QueryTasksAsync(new FlowableTaskQuery
             {
-                CandidateUser = request.EmployeeId
+                CandidateUser = employeeId
             });
 
             var allTasks = assigneeTasks
@@ -904,7 +909,7 @@ namespace FlowableWrapper.Application.Services
 
             if (string.IsNullOrWhiteSpace(operatorId))
                 throw new BusinessException(
-                    "无法确定操作人，请传入 employeeId 或在 Header 中携带 X-User-Id");
+                    "无法确定操作人，请先完成认证");
 
             return operatorId;
         }

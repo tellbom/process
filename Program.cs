@@ -9,8 +9,13 @@ using FlowableWrapper.Domain.Services;
 using FlowableWrapper.Infrastructure.CurrentUser;
 using FlowableWrapper.Infrastructure.ElasticSearch;
 using FlowableWrapper.Infrastructure.Flowable;
+using FlowableWrapper.Infrastructure.Security;
 using FlowableWrapper.Infrastructure.Slots;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
 using process.Domain.DistributedLock;
 using process.Infrastructure.DistributedLock;
 using StackExchange.Redis;
@@ -31,6 +36,42 @@ builder.Services.Configure<BusinessTypeProcessMapping>(
 
 builder.Services.Configure<RedisOptions>(
     builder.Configuration.GetSection("Redis"));
+
+builder.Services.Configure<JwtOptions>(
+    builder.Configuration.GetSection(JwtOptions.SectionName));
+
+var jwtSection = builder.Configuration.GetSection(JwtOptions.SectionName);
+var jwtMode = jwtSection["Mode"] ?? "Oidc";
+var authBuilder = builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme);
+
+if (string.Equals(jwtMode, "TrustedJwt", StringComparison.OrdinalIgnoreCase))
+{
+    authBuilder.AddScheme<AuthenticationSchemeOptions, TrustedJwtAuthenticationHandler>(
+        JwtBearerDefaults.AuthenticationScheme, _ => { });
+}
+else
+{
+    authBuilder.AddJwtBearer(options =>
+    {
+        options.Authority = jwtSection["Authority"];
+        options.RequireHttpsMetadata = bool.Parse(jwtSection["RequireHttpsMetadata"] ?? "true");
+        options.MapInboundClaims = false;
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateAudience = false
+        };
+    });
+}
+
+builder.Services.AddAuthorization(options =>
+{
+    var authenticatedUserPolicy = new AuthorizationPolicyBuilder(JwtBearerDefaults.AuthenticationScheme)
+        .RequireAuthenticatedUser()
+        .Build();
+
+    options.DefaultPolicy = authenticatedUserPolicy;
+    options.FallbackPolicy = authenticatedUserPolicy;
+});
 
 builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
 {
@@ -152,9 +193,8 @@ if (app.Environment.IsDevelopment())
 app.UseCors();
 app.UseRouting();
 
-// TODO: Phase N — Keycloak JWT 接入后加入
-// app.UseAuthentication();
-// app.UseAuthorization();
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapControllers();
 
