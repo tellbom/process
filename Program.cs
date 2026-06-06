@@ -198,4 +198,7 @@ app.UseAuthorization();
 
 app.MapControllers();
 
+await app.Services.GetRequiredService<IElasticSearchService>()
+    .InitializeIndexesAsync();
+
 app.Run();

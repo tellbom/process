@@ -9,6 +9,8 @@ namespace FlowableWrapper.Domain.Services
     public interface IElasticSearchService
     {
         // ── 流程元数据 ────────────────────────────────────────────
+        Task InitializeIndexesAsync();
+
         Task IndexProcessMetadataAsync(ProcessMetadataDocument document);
 
         Task<ProcessMetadataDocument> GetProcessMetadataAsync(string processInstanceId);

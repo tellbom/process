@@ -43,6 +43,48 @@ namespace FlowableWrapper.Infrastructure.ElasticSearch
             _client = new ElasticClient(settings);
         }
 
+        public async Task InitializeIndexesAsync()
+        {
+            await EnsureIndexAsync<ProcessMetadataDocument>(_options.IndexName);
+            await EnsureIndexAsync<ProcessDefinitionSemanticDocument>(_options.SemanticIndexName);
+            await EnsureIndexAsync<ProcessAuditRecord>(_options.AuditIndexName);
+        }
+
+        private async Task EnsureIndexAsync<TDocument>(string indexName)
+            where TDocument : class
+        {
+            var existsResponse = await _client.Indices.ExistsAsync(indexName);
+            if (!existsResponse.IsValid)
+            {
+                _logger.LogError(
+                    "检查 ES 索引失败: Index={Index}, Error={Error}",
+                    indexName,
+                    existsResponse.DebugInformation);
+                throw new Exception($"检查 ES 索引失败: {existsResponse.DebugInformation}");
+            }
+
+            if (existsResponse.Exists)
+            {
+                _logger.LogInformation("ES 索引已存在: {Index}", indexName);
+                return;
+            }
+
+            var createResponse = await _client.Indices.CreateAsync(
+                indexName,
+                c => c.Map<TDocument>(m => m.AutoMap()));
+
+            if (!createResponse.IsValid)
+            {
+                _logger.LogError(
+                    "创建 ES 索引失败: Index={Index}, Error={Error}",
+                    indexName,
+                    createResponse.DebugInformation);
+                throw new Exception($"创建 ES 索引失败: {createResponse.DebugInformation}");
+            }
+
+            _logger.LogInformation("ES 索引创建成功: {Index}", indexName);
+        }
+
         // ═══════════════════════════════════════════════════════════
         // 流程元数据
         // ═══════════════════════════════════════════════════════════
