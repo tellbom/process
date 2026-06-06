@@ -18,7 +18,7 @@ namespace FlowableWrapper.Application.Dtos
     /// </summary>
     public class GetPendingTasksRequest
     {
-        public string EmployeeId   { get; set; }
+        public string? EmployeeId   { get; set; }
         public string? BusinessType { get; set; }
         public int PageIndex       { get; set; } = 1;
         public int PageSize        { get; set; } = 20;

@@ -5,6 +5,8 @@ VisualStudioVersion = 17.3.32929.385
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "process", "process.csproj", "{3DA26A1B-D954-40B0-A290-ACDA456BB610}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FlowableWrapper.Test", "Test\FlowableWrapper.Test.csproj", "{2668C64F-2A77-4F79-8CDF-57409A8305E3}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +17,10 @@ Global
 		{3DA26A1B-D954-40B0-A290-ACDA456BB610}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{3DA26A1B-D954-40B0-A290-ACDA456BB610}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{3DA26A1B-D954-40B0-A290-ACDA456BB610}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2668C64F-2A77-4F79-8CDF-57409A8305E3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2668C64F-2A77-4F79-8CDF-57409A8305E3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2668C64F-2A77-4F79-8CDF-57409A8305E3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2668C64F-2A77-4F79-8CDF-57409A8305E3}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

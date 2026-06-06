@@ -85,7 +85,7 @@ namespace FlowableWrapper.Application.Dtos
         public string? BusinessId { get; set; }
         public string? BusinessType { get; set; }
         public string? Status { get; set; }
-        public string CreatedBy { get; set; }
+        public string? CreatedBy { get; set; }
         public DateTime? CreatedTimeFrom { get; set; }
         public DateTime? CreatedTimeTo { get; set; }
         public int PageIndex { get; set; } = 1;
