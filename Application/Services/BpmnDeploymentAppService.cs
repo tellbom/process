@@ -211,6 +211,7 @@ namespace FlowableWrapper.Application.Services
                 fields.TryGetValue("roleKey", out var roleKey);
                 fields.TryGetValue("assigneeMode", out var assigneeMode);
                 fields.TryGetValue("callbackUrl", out var callbackUrl);
+                var callbackUrlSpecified = fields.ContainsKey("callbackUrl");
 
                 result[taskId] = new NodeSemanticInfo
                 {
@@ -220,7 +221,8 @@ namespace FlowableWrapper.Application.Services
                     IsConvergencePoint = isConvergencePoint,
                     RoleKey = roleKey,
                     AssigneeMode = assigneeMode,
-                    CallbackUrl = callbackUrl
+                    CallbackUrl = callbackUrl,
+                    CallbackUrlSpecified = callbackUrlSpecified
                 };
             }
 
@@ -259,13 +261,42 @@ namespace FlowableWrapper.Application.Services
             if (string.IsNullOrWhiteSpace(json)) return new List<NodeSlotConfig>();
             try
             {
-                return JsonSerializer.Deserialize<List<NodeSlotConfig>>(json, JsonOpts)
-                       ?? new List<NodeSlotConfig>();
+                using var doc = JsonDocument.Parse(json);
+                if (doc.RootElement.ValueKind != JsonValueKind.Array)
+                    throw new BusinessException("slotConfigJson 必须是数组");
+
+                var result = new List<NodeSlotConfig>();
+                foreach (var element in doc.RootElement.EnumerateArray())
+                {
+                    var node = element.Deserialize<NodeSlotConfig>(JsonOpts);
+                    if (node == null) continue;
+                    node.CallbackUrlSpecified = HasJsonProperty(element, "callbackUrl");
+                    result.Add(node);
+                }
+
+                return result;
             }
+            catch (BusinessException) { throw; }
             catch (Exception ex)
             {
                 throw new BusinessException($"slotConfigJson 解析失败: {ex.Message}");
             }
+        }
+
+        private static bool HasJsonProperty(JsonElement element, string propertyName)
+        {
+            if (element.ValueKind != JsonValueKind.Object) return false;
+
+            foreach (var property in element.EnumerateObject())
+            {
+                if (string.Equals(
+                    property.Name,
+                    propertyName,
+                    StringComparison.OrdinalIgnoreCase))
+                    return true;
+            }
+
+            return false;
         }
 
         private void ValidateSlotConfig(
@@ -403,8 +434,12 @@ namespace FlowableWrapper.Application.Services
                     info.RoleKey = node.RoleKey;
                 if (!string.IsNullOrWhiteSpace(node.AssigneeMode))
                     info.AssigneeMode = node.AssigneeMode;
-                if (!string.IsNullOrWhiteSpace(node.CallbackUrl))
+
+                if (node.CallbackUrlSpecified)
+                {
                     info.CallbackUrl = node.CallbackUrl;
+                    info.CallbackUrlSpecified = true;
+                }
             }
         }
     }

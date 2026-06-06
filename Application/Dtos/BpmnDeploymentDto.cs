@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 using FlowableWrapper.Domain.ElasticSearch;
 using Microsoft.AspNetCore.Http;
 
@@ -69,8 +70,11 @@ namespace FlowableWrapper.Application.Dtos
         /// <summary>Assignee mode: single / multiple. slotConfig overrides BPMN extensionElements when set.</summary>
         public string AssigneeMode { get; set; }
 
-        /// <summary>Node-level callback URL. Empty value falls back to process-level callback.url.</summary>
+        /// <summary>Node-level callback URL. Explicit null/empty value disables fallback to process-level callback.url.</summary>
         public string CallbackUrl { get; set; }
+
+        [JsonIgnore]
+        public bool CallbackUrlSpecified { get; set; }
     }
 
     /// <summary>

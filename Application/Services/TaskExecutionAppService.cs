@@ -153,7 +153,7 @@ namespace FlowableWrapper.Application.Services
             }
 
             // ── Step 8b: 主动节点回调 ─────────────────────────────────
-            // 触发依据：slotConfig.callbackUrl 是否有值（流程中心不判断节点类型）
+            // 触发依据：slotConfig.callbackUrl 的三态配置（有效 URL / 显式禁用 / 未声明降级）
             // 失败只记 Error 日志，不阻塞主流程返回
             await _callbackService.SendNodeCompletedCallbackSafeAsync(
                 metadata,

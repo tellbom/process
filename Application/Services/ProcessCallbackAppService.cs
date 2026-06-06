@@ -160,9 +160,9 @@ namespace FlowableWrapper.Application.Services
         /// 主动发送节点完成回调（不依赖 Flowable HTTP ServiceTask）
         ///
         /// 触发条件（优先级）：
-        ///   1. slotConfig 当前节点 callbackUrl（节点级）
-        ///   2. metadata.Callback.Url（流程级降级）
-        ///   3. 两者均为空 → 跳过，不发送
+        ///   1. slotConfig 当前节点 callbackUrl 有有效 URL → 发节点级 URL
+        ///   2. slotConfig 当前节点 callbackUrl 显式 null/空 → 跳过，不降级
+        ///   3. slotConfig 未声明 callbackUrl → metadata.Callback.Url 流程级兼容降级
         ///
         /// 时序保证：
         ///   调用方已先执行 WriteAuditRecordSafeAsync（Step 6）
@@ -447,14 +447,24 @@ namespace FlowableWrapper.Application.Services
                         .GetNodeSemanticMapAsync(processDefinitionKey);
 
                     if (semanticMap != null
-                        && semanticMap.TryGetValue(taskDefinitionKey, out var nodeInfo)
-                        && !string.IsNullOrWhiteSpace(nodeInfo.CallbackUrl))
+                        && semanticMap.TryGetValue(taskDefinitionKey, out var nodeInfo))
                     {
-                        _logger.LogDebug(
-                            "使用节点级回调 URL: NodeKey={NodeKey}, Url={Url}",
-                            taskDefinitionKey,
-                            nodeInfo.CallbackUrl);
-                        return nodeInfo.CallbackUrl;
+                        if (!string.IsNullOrWhiteSpace(nodeInfo.CallbackUrl))
+                        {
+                            _logger.LogDebug(
+                                "使用节点级回调 URL: NodeKey={NodeKey}, Url={Url}",
+                                taskDefinitionKey,
+                                nodeInfo.CallbackUrl);
+                            return nodeInfo.CallbackUrl;
+                        }
+
+                        if (nodeInfo.CallbackUrlSpecified)
+                        {
+                            _logger.LogDebug(
+                                "节点 [{NodeKey}] 显式禁用回调，跳过流程级 URL 降级",
+                                taskDefinitionKey);
+                            return null;
+                        }
                     }
                 }
                 catch (Exception ex)

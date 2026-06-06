@@ -75,7 +75,7 @@
 | `pageCode` | string | 前端渲染地址 |
 | `roleKey` | string | 业务角色 Key，对应 AssigneeContract.roles[].roleKey |
 | `assigneeMode` | string | `single` / `multiple` |
-| `callbackUrl` | string | 节点级回调 URL（可选，空时降级到 callback.url） |
+| `callbackUrl` | string | 节点级回调 URL；显式 null/空表示禁用节点通知，未声明才降级到 callback.url |
 | `canReject` | bool | 当前节点是否可驳回 |
 | `rejectOptions` | array | 驳回目标列表，含 `rejectCode` / `label` / `description` |
 | `isRejectTarget` | bool | 是否可作为驳回落点 |
@@ -145,7 +145,7 @@
 | `initialSlotSelections` | 首节点选人 → 生成 Flowable 启动变量（执行路径） |
 | `assigneeContract` | 按 roleKey 传推荐人 → 写入 RecommendedAssigneesSnapshot（展示用，不影响执行） |
 | `businessVariables` | 网关条件变量、starterAssignee 等 → 直接注入 Flowable |
-| `callback.url` | 流程级回调地址，节点无专属 callbackUrl 时降级使用 |
+| `callback.url` | 流程级回调地址，仅在节点未声明 callbackUrl 时作为兼容降级使用 |
 
 `RecommendedAssigneesSnapshot` 的 Key 是业务角色 `roleKey`，由 `assigneeContract.roles[]` 固化而来。当前节点自己的 `roleKey` 表示“谁处理当前节点”；slot 里的 `roleKey` 表示“这个选人槽从哪个推荐池取候选人”。两者字段名相同但主体不同，不能用当前节点 `roleKey` 代替 slot 推荐人组装。
 
@@ -673,7 +673,7 @@ Pending task responses include `slotRecommendedUsers` keyed by `slotKey`, `restr
 
 ### 9.2 节点完成回调（流程中心 → 业务系统）
 
-节点完成后，流程中心在 `CompleteTaskAsync` 成功调用 Flowable `CompleteAsync` 之后主动发送业务回调。触发依据是当前节点 slotConfig 中的 `callbackUrl`；为空时降级使用启动时 `callback.url`；两者都为空则跳过。
+节点完成后，流程中心在 `CompleteTaskAsync` 成功调用 Flowable `CompleteAsync` 之后主动发送业务回调。触发依据是当前节点 slotConfig 中的 `callbackUrl`：有效 URL 发送节点级回调；显式 null/空直接跳过；未声明时才降级使用启动时 `callback.url`。
 
 | callbackType | 触发时机 | BPMN ServiceTask 挂载位置 |
 |---|---|---|
@@ -708,16 +708,17 @@ Pending task responses include `slotRecommendedUsers` keyed by `slotKey`, `restr
 
 **callbackUrl 解析规则**：
 ```
-1. slotConfig 中节点的 callbackUrl（节点级，优先）
-2. 启动时 callback.url（流程级，降级）
-3. 两者均为空 → 跳过，返回 200
+1. slotConfig 中节点的 callbackUrl 为有效 URL → 发送节点级回调
+2. slotConfig 中节点显式声明 callbackUrl 为 null/空 → 跳过，返回 200，不降级
+3. slotConfig 中节点未声明 callbackUrl → 启动时 callback.url 流程级兼容降级
+4. 未声明节点 callbackUrl 且流程级 callback.url 为空 → 跳过，返回 200
 ```
 
 **错误场景**：
 
 | 场景 | 预期 |
 |---|---|
-| 节点 `callbackUrl` 与流程 `callback.url` 均为空 | 跳过节点回调，主流程继续 |
+| 节点显式声明 `callbackUrl` 为 null/空 | 跳过节点回调，不降级，主流程继续 |
 | 节点回调非 2xx 或异常 | 记录 Error，不阻塞已完成的 Flowable 任务 |
 | ES 元数据不存在 | 500（触发 Flowable 重试） |
 | 流程结束通知失败（非 2xx） | 500（触发 Flowable 重试） |

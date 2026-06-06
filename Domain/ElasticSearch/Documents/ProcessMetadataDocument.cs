@@ -122,9 +122,15 @@ namespace FlowableWrapper.Domain.ElasticSearch
 
         /// <summary>
         /// 节点级回调 URL。节点完成后流程中心固定以 POST 方式发送 NodeCompletedCallbackPayload。
-        /// 为空时降级使用流程实例 metadata.Callback.Url；两者均为空则跳过节点回调。
+        /// CallbackUrlSpecified=true 且为空时跳过节点回调，不降级到流程级 callback.url。
         /// </summary>
         public string CallbackUrl { get; set; }
+
+        /// <summary>
+        /// slotConfig/BPMN 中是否显式声明过 callbackUrl。
+        /// 未声明时可兼容降级到流程级 callback.url；显式 null/空字符串表示禁用节点级通知。
+        /// </summary>
+        public bool CallbackUrlSpecified { get; set; }
     }
 
     /// <summary>
