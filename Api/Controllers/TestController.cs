@@ -1,4 +1,5 @@
 using FlowableWrapper.Application.Dtos;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Collections.Concurrent;
 
@@ -37,6 +38,7 @@ public sealed class TestController : ControllerBase
         });
     }
 
+    [AllowAnonymous]
     [HttpPost("node-callback")]
     public IActionResult NodeCallback([FromBody] NodeCompletedCallbackPayload request)
     {
@@ -50,6 +52,7 @@ public sealed class TestController : ControllerBase
         });
     }
 
+    [AllowAnonymous]
     [HttpPost("process-callback")]
     public IActionResult ProcessCallback([FromBody] BusinessCallbackPayload request)
     {

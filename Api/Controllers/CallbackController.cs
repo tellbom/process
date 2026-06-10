@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using FlowableWrapper.Api.Filters;
 using FlowableWrapper.Application.Dtos;
 using FlowableWrapper.Application.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 
@@ -51,6 +52,7 @@ namespace FlowableWrapper.Api.Controllers
         ///                      "processDefinitionKey":"${processDefinitionKey}"
         ///                    }
         /// </summary>
+        [AllowAnonymous]
         [HttpPost("flowable")]
         public async Task<ActionResult<FlowableCallbackResponse>> HandleFlowableCallback(
             [FromBody] FlowableCallbackRequest request)

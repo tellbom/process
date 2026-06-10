@@ -411,15 +411,14 @@ namespace FlowableWrapper.Application.Services
                     context.NodeSemantic = record.NodeSemantic;
                     context.LastAuditRecord = new AuditRecordSnapshot
                     {
-                        Action = record.Action,
-                        OperatorId = record.OperatorId,
-                        Comment = record.Comment,
-                        RejectReason = record.RejectReason,
-                        RejectCode = record.RejectCode,
-                        RejectTargetNodeKey = record.RejectTargetNodeKey,
+                        Action = record.Action ?? string.Empty,
+                        OperatorId = record.OperatorId ?? string.Empty,
+                        Comment = record.Comment ?? string.Empty,
+                        RejectReason = record.RejectReason ?? string.Empty,
+                        RejectCode = record.RejectCode ?? string.Empty,
+                        RejectTargetNodeKey = record.RejectTargetNodeKey ?? string.Empty,
                         OperatedAt = record.OperatedAt,
-                        SlotSelections = record.SlotSelections
-                            ?? new List<SlotSelectionRecord>()
+                        SlotSelections = NormalizeSlotSelections(record.SlotSelections)
                     };
                 }
             }
@@ -432,6 +431,20 @@ namespace FlowableWrapper.Application.Services
             }
 
             return context;
+        }
+
+        private static List<SlotSelectionRecord> NormalizeSlotSelections(
+            List<SlotSelectionRecord>? slotSelections)
+        {
+            if (slotSelections == null || !slotSelections.Any())
+                return new List<SlotSelectionRecord>();
+
+            return slotSelections.Select(s => new SlotSelectionRecord
+            {
+                SlotKey = s?.SlotKey ?? string.Empty,
+                Label = s?.Label ?? string.Empty,
+                Users = s?.Users ?? new List<string>()
+            }).ToList();
         }
 
         private async Task<string?> ResolveNodeCallbackUrlAsync(
