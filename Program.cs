@@ -40,6 +40,9 @@ builder.Services.Configure<RedisOptions>(
 builder.Services.Configure<JwtOptions>(
     builder.Configuration.GetSection(JwtOptions.SectionName));
 
+builder.Services.Configure<ProcessNotificationOptions>(
+    builder.Configuration.GetSection(ProcessNotificationOptions.SectionName));
+
 var jwtSection = builder.Configuration.GetSection(JwtOptions.SectionName);
 var jwtMode = jwtSection["Mode"] ?? "Oidc";
 var authBuilder = builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme);
@@ -143,6 +146,18 @@ builder.Services.AddHttpClient("BusinessCallback", client =>
 {
     client.Timeout = TimeSpan.FromSeconds(30);
 });
+
+builder.Services.AddHttpClient("ProcessMessageCenter", (sp, client) =>
+{
+    var options = sp.GetRequiredService<IOptions<ProcessNotificationOptions>>().Value;
+    client.Timeout = TimeSpan.FromSeconds(options.TimeoutSeconds);
+});
+
+builder.Services.AddHttpClient("ProcessNotificationAuth", (sp, client) =>
+{
+    var options = sp.GetRequiredService<IOptions<ProcessNotificationOptions>>().Value;
+    client.Timeout = TimeSpan.FromSeconds(options.TimeoutSeconds);
+});
 //
 // 如果后续引入 Polly 做 HTTP 重试（可选，当前由 Flowable 重试机制兜底），
 // 可以在此处添加：
@@ -150,6 +165,7 @@ builder.Services.AddHttpClient("BusinessCallback", client =>
 
 // Phase 9 — 查询
 builder.Services.AddScoped<ProcessQueryAppService>();
+builder.Services.AddScoped<ProcessNotificationService>();
 
 // Phase 10 — 流程图渲染
 builder.Services.AddScoped<ProcessFlowRenderAppService>();

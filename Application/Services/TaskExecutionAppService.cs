@@ -36,6 +36,7 @@ namespace FlowableWrapper.Application.Services
         private readonly ICurrentUser _currentUser;
         private readonly ILogger<TaskExecutionAppService> _logger;
         private readonly ProcessCallbackAppService _callbackService;
+        private readonly ProcessNotificationService _notificationService;
 
         public TaskExecutionAppService(
             IFlowableRuntimeService runtimeService,
@@ -45,7 +46,8 @@ namespace FlowableWrapper.Application.Services
             SlotVariableConverter slotConverter,
             ICurrentUser currentUser,
             ILogger<TaskExecutionAppService> logger,
-            ProcessCallbackAppService callbackService)
+            ProcessCallbackAppService callbackService,
+            ProcessNotificationService notificationService)
         {
             _runtimeService  = runtimeService;
             _taskService     = taskService;
@@ -55,6 +57,7 @@ namespace FlowableWrapper.Application.Services
             _currentUser     = currentUser;
             _logger          = logger;
             _callbackService = callbackService;
+            _notificationService = notificationService;
         }
 
         // ═══════════════════════════════════════════════════════════
@@ -129,6 +132,9 @@ namespace FlowableWrapper.Application.Services
                 metadata, myTask, request, operatorId, slotSnapshots);
 
             // ── Step 7: CompleteAsync（触发 Flowable 推进）──────────
+            var activeTaskIdsBeforeComplete = await GetActiveTaskIdsSafeAsync(
+                metadata.ProcessInstanceId);
+
             await _taskService.CompleteAsync(myTask.Id, variables);
 
             _logger.LogInformation(
@@ -159,6 +165,10 @@ namespace FlowableWrapper.Application.Services
                 metadata,
                 myTask.TaskDefinitionKey,
                 processVariables);
+
+            await _notificationService.SendNextStepNotificationSafeAsync(
+                metadata,
+                activeTaskIdsBeforeComplete);
 
             return new CompleteTaskResponse { Success = true, Message = "审批通过" };
         }
@@ -531,6 +541,11 @@ namespace FlowableWrapper.Application.Services
                 targetNode.TaskDefinitionKey,
                 rejectAuditSnapshot);
 
+            await _notificationService.SendRejectNotificationSafeAsync(
+                metadata,
+                allActiveTasks.Select(t => t.Id).ToList(),
+                request.RejectReason);
+
             return new CompleteTaskResponse
             {
                 Success = true,
@@ -606,6 +621,30 @@ namespace FlowableWrapper.Application.Services
         // ═══════════════════════════════════════════════════════════
         // 私有辅助方法
         // ═══════════════════════════════════════════════════════════
+
+        private async Task<HashSet<string>> GetActiveTaskIdsSafeAsync(string processInstanceId)
+        {
+            try
+            {
+                var activeTasks = await _taskService.QueryTasksAsync(new FlowableTaskQuery
+                {
+                    ProcessInstanceId = processInstanceId
+                });
+
+                return activeTasks
+                    .Where(t => !string.IsNullOrWhiteSpace(t.Id))
+                    .Select(t => t.Id)
+                    .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(
+                    ex,
+                    "Failed to snapshot Flowable active tasks before notification. ProcessInstanceId={ProcessInstanceId}",
+                    processInstanceId);
+                return new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            }
+        }
 
         private async Task<FlowableTask> ResolveTaskByIdAsync(
             string taskId,
