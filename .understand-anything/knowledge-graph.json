@@ -1,0 +1,5860 @@
+{
+  "version": "1.0.0",
+  "project": {
+    "name": "流程中心 (Process Center)",
+    "languages": [
+      "C#",
+      "JSON",
+      "Markdown",
+      "YAML",
+      "HTML",
+      "CSS",
+      "JavaScript",
+      "Shell",
+      "PowerShell",
+      "BPMN XML"
+    ],
+    "frameworks": [
+      "ASP.NET Core 6.0",
+      "Flowable 7.2",
+      "Elasticsearch",
+      "Redis"
+    ],
+    "description": "基于 .NET 6.0 和 Flowable 7.2 的流程引擎服务中心，提供 BPMN 流程部署、流程启动、节点审批/驳回/加签、Slot 三键分离（slotKey/roleKey/variableName）、Elasticsearch 流程元数据审计及 Redis 分布式锁等能力。",
+    "analyzedAt": "2026-06-18T08:01:48.462185+00:00",
+    "gitCommitHash": "0feb86758976bc942b3a8a72818dfe189506e194"
+  },
+  "nodes": [
+    {
+      "id": "config:.specify/extensions.yml",
+      "type": "config",
+      "name": "extensions.yml",
+      "filePath": ".specify/extensions.yml",
+      "summary": "YAML 配置文件: .specify/extensions.yml",
+      "tags": [
+        "config",
+        "yaml"
+      ],
+      "sizeLines": 148,
+      "language": "yaml",
+      "fileCategory": "config",
+      "complexity": "moderate"
+    },
+    {
+      "id": "config:.specify/feature.json",
+      "type": "config",
+      "name": "feature.json",
+      "filePath": ".specify/feature.json",
+      "summary": "JSON 配置文件: .specify/feature.json",
+      "tags": [
+        "config",
+        "json"
+      ],
+      "sizeLines": 3,
+      "language": "json",
+      "fileCategory": "config",
+      "complexity": "moderate"
+    },
+    {
+      "id": "config:.specify/init-options.json",
+      "type": "config",
+      "name": "init-options.json",
+      "filePath": ".specify/init-options.json",
+      "summary": "JSON 配置文件: .specify/init-options.json",
+      "tags": [
+        "config",
+        "json"
+      ],
+      "sizeLines": 9,
+      "language": "json",
+      "fileCategory": "config",
+      "complexity": "moderate"
+    },
+    {
+      "id": "config:.specify/integration.json",
+      "type": "config",
+      "name": "integration.json",
+      "filePath": ".specify/integration.json",
+      "summary": "JSON 配置文件: .specify/integration.json",
+      "tags": [
+        "config",
+        "json"
+      ],
+      "sizeLines": 4,
+      "language": "json",
+      "fileCategory": "config",
+      "complexity": "moderate"
+    },
+    {
+      "id": "document:.specify/extensions/git/README.md",
+      "type": "document",
+      "name": "README.md",
+      "filePath": ".specify/extensions/git/README.md",
+      "summary": "文档文件: .specify/extensions/git/README.md",
+      "tags": [
+        "docs",
+        "markdown"
+      ],
+      "sizeLines": 100,
+      "language": "markdown",
+      "fileCategory": "docs",
+      "complexity": "moderate"
+    },
+    {
+      "id": "config:.specify/extensions/git/config-template.yml",
+      "type": "config",
+      "name": "config-template.yml",
+      "filePath": ".specify/extensions/git/config-template.yml",
+      "summary": "YAML 配置文件: .specify/extensions/git/config-template.yml",
+      "tags": [
+        "config",
+        "yaml"
+      ],
+      "sizeLines": 62,
+      "language": "yaml",
+      "fileCategory": "config",
+      "complexity": "moderate"
+    },
+    {
+      "id": "config:.specify/extensions/git/extension.yml",
+      "type": "config",
+      "name": "extension.yml",
+      "filePath": ".specify/extensions/git/extension.yml",
+      "summary": "YAML 配置文件: .specify/extensions/git/extension.yml",
+      "tags": [
+        "config",
+        "yaml"
+      ],
+      "sizeLines": 140,
+      "language": "yaml",
+      "fileCategory": "config",
+      "complexity": "moderate"
+    },
+    {
+      "id": "config:.specify/extensions/git/git-config.yml",
+      "type": "config",
+      "name": "git-config.yml",
+      "filePath": ".specify/extensions/git/git-config.yml",
+      "summary": "YAML 配置文件: .specify/extensions/git/git-config.yml",
+      "tags": [
+        "config",
+        "yaml"
+      ],
+      "sizeLines": 62,
+      "language": "yaml",
+      "fileCategory": "config",
+      "complexity": "moderate"
+    },
+    {
+      "id": "document:.specify/extensions/git/commands/speckit.git.commit.md",
+      "type": "document",
+      "name": "speckit.git.commit.md",
+      "filePath": ".specify/extensions/git/commands/speckit.git.commit.md",
+      "summary": "文档文件: .specify/extensions/git/commands/speckit.git.commit.md",
+      "tags": [
+        "docs",
+        "markdown"
+      ],
+      "sizeLines": 48,
+      "language": "markdown",
+      "fileCategory": "docs",
+      "complexity": "moderate"
+    },
+    {
+      "id": "document:.specify/extensions/git/commands/speckit.git.feature.md",
+      "type": "document",
+      "name": "speckit.git.feature.md",
+      "filePath": ".specify/extensions/git/commands/speckit.git.feature.md",
+      "summary": "文档文件: .specify/extensions/git/commands/speckit.git.feature.md",
+      "tags": [
+        "docs",
+        "markdown"
+      ],
+      "sizeLines": 67,
+      "language": "markdown",
+      "fileCategory": "docs",
+      "complexity": "moderate"
+    },
+    {
+      "id": "document:.specify/extensions/git/commands/speckit.git.initialize.md",
+      "type": "document",
+      "name": "speckit.git.initialize.md",
+      "filePath": ".specify/extensions/git/commands/speckit.git.initialize.md",
+      "summary": "文档文件: .specify/extensions/git/commands/speckit.git.initialize.md",
+      "tags": [
+        "docs",
+        "markdown"
+      ],
+      "sizeLines": 49,
+      "language": "markdown",
+      "fileCategory": "docs",
+      "complexity": "moderate"
+    },
+    {
+      "id": "document:.specify/extensions/git/commands/speckit.git.remote.md",
+      "type": "document",
+      "name": "speckit.git.remote.md",
+      "filePath": ".specify/extensions/git/commands/speckit.git.remote.md",
+      "summary": "文档文件: .specify/extensions/git/commands/speckit.git.remote.md",
+      "tags": [
+        "docs",
+        "markdown"
+      ],
+      "sizeLines": 45,
+      "language": "markdown",
+      "fileCategory": "docs",
+      "complexity": "moderate"
+    },
+    {
+      "id": "document:.specify/extensions/git/commands/speckit.git.validate.md",
+      "type": "document",
+      "name": "speckit.git.validate.md",
+      "filePath": ".specify/extensions/git/commands/speckit.git.validate.md",
+      "summary": "文档文件: .specify/extensions/git/commands/speckit.git.validate.md",
+      "tags": [
+        "docs",
+        "markdown"
+      ],
+      "sizeLines": 49,
+      "language": "markdown",
+      "fileCategory": "docs",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.specify/extensions/git/scripts/bash/auto-commit.sh",
+      "type": "file",
+      "name": "auto-commit.sh",
+      "filePath": ".specify/extensions/git/scripts/bash/auto-commit.sh",
+      "summary": "Shell 脚本: .specify/extensions/git/scripts/bash/auto-commit.sh",
+      "tags": [
+        "script",
+        "shell"
+      ],
+      "sizeLines": 140,
+      "language": "shell",
+      "fileCategory": "script",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.specify/extensions/git/scripts/bash/create-new-feature.sh",
+      "type": "file",
+      "name": "create-new-feature.sh",
+      "filePath": ".specify/extensions/git/scripts/bash/create-new-feature.sh",
+      "summary": "Shell 脚本: .specify/extensions/git/scripts/bash/create-new-feature.sh",
+      "tags": [
+        "script",
+        "shell"
+      ],
+      "sizeLines": 453,
+      "language": "shell",
+      "fileCategory": "script",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.specify/extensions/git/scripts/bash/git-common.sh",
+      "type": "file",
+      "name": "git-common.sh",
+      "filePath": ".specify/extensions/git/scripts/bash/git-common.sh",
+      "summary": "Shell 脚本: .specify/extensions/git/scripts/bash/git-common.sh",
+      "tags": [
+        "script",
+        "shell"
+      ],
+      "sizeLines": 54,
+      "language": "shell",
+      "fileCategory": "script",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.specify/extensions/git/scripts/bash/initialize-repo.sh",
+      "type": "file",
+      "name": "initialize-repo.sh",
+      "filePath": ".specify/extensions/git/scripts/bash/initialize-repo.sh",
+      "summary": "Shell 脚本: .specify/extensions/git/scripts/bash/initialize-repo.sh",
+      "tags": [
+        "script",
+        "shell"
+      ],
+      "sizeLines": 54,
+      "language": "shell",
+      "fileCategory": "script",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.specify/extensions/git/scripts/powershell/auto-commit.ps1",
+      "type": "file",
+      "name": "auto-commit.ps1",
+      "filePath": ".specify/extensions/git/scripts/powershell/auto-commit.ps1",
+      "summary": "PowerShell 脚本: .specify/extensions/git/scripts/powershell/auto-commit.ps1",
+      "tags": [
+        "script",
+        "powershell"
+      ],
+      "sizeLines": 169,
+      "language": "powershell",
+      "fileCategory": "script",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.specify/extensions/git/scripts/powershell/create-new-feature.ps1",
+      "type": "file",
+      "name": "create-new-feature.ps1",
+      "filePath": ".specify/extensions/git/scripts/powershell/create-new-feature.ps1",
+      "summary": "PowerShell 脚本: .specify/extensions/git/scripts/powershell/create-new-feature.ps1",
+      "tags": [
+        "script",
+        "powershell"
+      ],
+      "sizeLines": 403,
+      "language": "powershell",
+      "fileCategory": "script",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.specify/extensions/git/scripts/powershell/git-common.ps1",
+      "type": "file",
+      "name": "git-common.ps1",
+      "filePath": ".specify/extensions/git/scripts/powershell/git-common.ps1",
+      "summary": "PowerShell 脚本: .specify/extensions/git/scripts/powershell/git-common.ps1",
+      "tags": [
+        "script",
+        "powershell"
+      ],
+      "sizeLines": 51,
+      "language": "powershell",
+      "fileCategory": "script",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.specify/extensions/git/scripts/powershell/initialize-repo.ps1",
+      "type": "file",
+      "name": "initialize-repo.ps1",
+      "filePath": ".specify/extensions/git/scripts/powershell/initialize-repo.ps1",
+      "summary": "PowerShell 脚本: .specify/extensions/git/scripts/powershell/initialize-repo.ps1",
+      "tags": [
+        "script",
+        "powershell"
+      ],
+      "sizeLines": 69,
+      "language": "powershell",
+      "fileCategory": "script",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.specify/scripts/powershell/check-prerequisites.ps1",
+      "type": "file",
+      "name": "check-prerequisites.ps1",
+      "filePath": ".specify/scripts/powershell/check-prerequisites.ps1",
+      "summary": ".specify/scripts/powershell/check-prerequisites.ps1",
+      "tags": [
+        "script",
+        "powershell"
+      ],
+      "sizeLines": 148,
+      "language": "powershell",
+      "fileCategory": "script",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.specify/scripts/powershell/common.ps1",
+      "type": "file",
+      "name": "common.ps1",
+      "filePath": ".specify/scripts/powershell/common.ps1",
+      "summary": ".specify/scripts/powershell/common.ps1",
+      "tags": [
+        "script",
+        "powershell"
+      ],
+      "sizeLines": 642,
+      "language": "powershell",
+      "fileCategory": "script",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.specify/scripts/powershell/create-new-feature.ps1",
+      "type": "file",
+      "name": "create-new-feature.ps1",
+      "filePath": ".specify/scripts/powershell/create-new-feature.ps1",
+      "summary": ".specify/scripts/powershell/create-new-feature.ps1",
+      "tags": [
+        "script",
+        "powershell"
+      ],
+      "sizeLines": 382,
+      "language": "powershell",
+      "fileCategory": "script",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.specify/scripts/powershell/setup-plan.ps1",
+      "type": "file",
+      "name": "setup-plan.ps1",
+      "filePath": ".specify/scripts/powershell/setup-plan.ps1",
+      "summary": ".specify/scripts/powershell/setup-plan.ps1",
+      "tags": [
+        "script",
+        "powershell"
+      ],
+      "sizeLines": 63,
+      "language": "powershell",
+      "fileCategory": "script",
+      "complexity": "moderate"
+    },
+    {
+      "id": "document:.specify/templates/checklist-template.md",
+      "type": "document",
+      "name": "checklist-template.md",
+      "filePath": ".specify/templates/checklist-template.md",
+      "summary": ".specify/templates/checklist-template.md",
+      "tags": [
+        "docs",
+        "markdown"
+      ],
+      "sizeLines": 40,
+      "language": "markdown",
+      "fileCategory": "docs",
+      "complexity": "moderate"
+    },
+    {
+      "id": "document:.specify/templates/constitution-template.md",
+      "type": "document",
+      "name": "constitution-template.md",
+      "filePath": ".specify/templates/constitution-template.md",
+      "summary": ".specify/templates/constitution-template.md",
+      "tags": [
+        "docs",
+        "markdown"
+      ],
+      "sizeLines": 50,
+      "language": "markdown",
+      "fileCategory": "docs",
+      "complexity": "moderate"
+    },
+    {
+      "id": "document:.specify/templates/plan-template.md",
+      "type": "document",
+      "name": "plan-template.md",
+      "filePath": ".specify/templates/plan-template.md",
+      "summary": ".specify/templates/plan-template.md",
+      "tags": [
+        "docs",
+        "markdown"
+      ],
+      "sizeLines": 104,
+      "language": "markdown",
+      "fileCategory": "docs",
+      "complexity": "moderate"
+    },
+    {
+      "id": "document:.specify/templates/spec-template.md",
+      "type": "document",
+      "name": "spec-template.md",
+      "filePath": ".specify/templates/spec-template.md",
+      "summary": ".specify/templates/spec-template.md",
+      "tags": [
+        "docs",
+        "markdown"
+      ],
+      "sizeLines": 128,
+      "language": "markdown",
+      "fileCategory": "docs",
+      "complexity": "moderate"
+    },
+    {
+      "id": "document:.specify/templates/tasks-template.md",
+      "type": "document",
+      "name": "tasks-template.md",
+      "filePath": ".specify/templates/tasks-template.md",
+      "summary": ".specify/templates/tasks-template.md",
+      "tags": [
+        "docs",
+        "markdown"
+      ],
+      "sizeLines": 251,
+      "language": "markdown",
+      "fileCategory": "docs",
+      "complexity": "moderate"
+    },
+    {
+      "id": "document:AGENTS.md",
+      "type": "document",
+      "name": "AGENTS.md",
+      "filePath": "AGENTS.md",
+      "summary": "AGENTS.md",
+      "tags": [
+        "docs",
+        "markdown"
+      ],
+      "sizeLines": 4,
+      "language": "markdown",
+      "fileCategory": "docs",
+      "complexity": "moderate"
+    },
+    {
+      "id": "document:CLAUDE.md",
+      "type": "document",
+      "name": "CLAUDE.md",
+      "filePath": "CLAUDE.md",
+      "summary": "CLAUDE.md",
+      "tags": [
+        "docs",
+        "markdown"
+      ],
+      "sizeLines": 65,
+      "language": "markdown",
+      "fileCategory": "docs",
+      "complexity": "moderate"
+    },
+    {
+      "id": "document:README.md",
+      "type": "document",
+      "name": "README.md",
+      "filePath": "README.md",
+      "summary": "README.md",
+      "tags": [
+        "docs",
+        "markdown"
+      ],
+      "sizeLines": 821,
+      "language": "markdown",
+      "fileCategory": "docs",
+      "complexity": "moderate"
+    },
+    {
+      "id": "config:appsettings.Development.json",
+      "type": "config",
+      "name": "appsettings.Development.json",
+      "filePath": "appsettings.Development.json",
+      "summary": "appsettings.Development.json",
+      "tags": [
+        "config",
+        "json"
+      ],
+      "sizeLines": 9,
+      "language": "json",
+      "fileCategory": "config",
+      "complexity": "moderate"
+    },
+    {
+      "id": "config:appsettings.json",
+      "type": "config",
+      "name": "appsettings.json",
+      "filePath": "appsettings.json",
+      "summary": "appsettings.json",
+      "tags": [
+        "config",
+        "json"
+      ],
+      "sizeLines": 57,
+      "language": "json",
+      "fileCategory": "config",
+      "complexity": "moderate"
+    },
+    {
+      "id": "config:process.csproj",
+      "type": "config",
+      "name": "process.csproj",
+      "filePath": "process.csproj",
+      "summary": "process.csproj",
+      "tags": [
+        "config",
+        "csproj"
+      ],
+      "sizeLines": 21,
+      "language": "csproj",
+      "fileCategory": "config",
+      "complexity": "moderate"
+    },
+    {
+      "id": "config:process.sln",
+      "type": "config",
+      "name": "process.sln",
+      "filePath": "process.sln",
+      "summary": "process.sln",
+      "tags": [
+        "config",
+        "sln"
+      ],
+      "sizeLines": 31,
+      "language": "sln",
+      "fileCategory": "config",
+      "complexity": "moderate"
+    },
+    {
+      "id": "config:artifacts/deploy-response.json",
+      "type": "config",
+      "name": "deploy-response.json",
+      "filePath": "artifacts/deploy-response.json",
+      "summary": "artifacts/deploy-response.json",
+      "tags": [
+        "config",
+        "json"
+      ],
+      "sizeLines": 1,
+      "language": "json",
+      "fileCategory": "config",
+      "complexity": "moderate"
+    },
+    {
+      "id": "config:artifacts/start-response-2.json",
+      "type": "config",
+      "name": "start-response-2.json",
+      "filePath": "artifacts/start-response-2.json",
+      "summary": "artifacts/start-response-2.json",
+      "tags": [
+        "config",
+        "json"
+      ],
+      "sizeLines": 14,
+      "language": "json",
+      "fileCategory": "config",
+      "complexity": "moderate"
+    },
+    {
+      "id": "config:artifacts/start-response-3.json",
+      "type": "config",
+      "name": "start-response-3.json",
+      "filePath": "artifacts/start-response-3.json",
+      "summary": "artifacts/start-response-3.json",
+      "tags": [
+        "config",
+        "json"
+      ],
+      "sizeLines": 14,
+      "language": "json",
+      "fileCategory": "config",
+      "complexity": "moderate"
+    },
+    {
+      "id": "config:artifacts/start-response.json",
+      "type": "config",
+      "name": "start-response.json",
+      "filePath": "artifacts/start-response.json",
+      "summary": "artifacts/start-response.json",
+      "tags": [
+        "config",
+        "json"
+      ],
+      "sizeLines": 14,
+      "language": "json",
+      "fileCategory": "config",
+      "complexity": "moderate"
+    },
+    {
+      "id": "config:artifacts/workflow-callback-test-2.json",
+      "type": "config",
+      "name": "workflow-callback-test-2.json",
+      "filePath": "artifacts/workflow-callback-test-2.json",
+      "summary": "artifacts/workflow-callback-test-2.json",
+      "tags": [
+        "config",
+        "json"
+      ],
+      "sizeLines": 305,
+      "language": "json",
+      "fileCategory": "config",
+      "complexity": "moderate"
+    },
+    {
+      "id": "config:artifacts/workflow-callback-test-3.json",
+      "type": "config",
+      "name": "workflow-callback-test-3.json",
+      "filePath": "artifacts/workflow-callback-test-3.json",
+      "summary": "artifacts/workflow-callback-test-3.json",
+      "tags": [
+        "config",
+        "json"
+      ],
+      "sizeLines": 885,
+      "language": "json",
+      "fileCategory": "config",
+      "complexity": "moderate"
+    },
+    {
+      "id": "document:specs/mian/plan.md",
+      "type": "document",
+      "name": "plan.md",
+      "filePath": "specs/mian/plan.md",
+      "summary": "specs/mian/plan.md",
+      "tags": [
+        "docs",
+        "markdown"
+      ],
+      "sizeLines": 76,
+      "language": "markdown",
+      "fileCategory": "docs",
+      "complexity": "moderate"
+    },
+    {
+      "id": "document:specs/mian/process_center_patch_plan_v1.md",
+      "type": "document",
+      "name": "process_center_patch_plan_v1.md",
+      "filePath": "specs/mian/process_center_patch_plan_v1.md",
+      "summary": "specs/mian/process_center_patch_plan_v1.md",
+      "tags": [
+        "docs",
+        "markdown"
+      ],
+      "sizeLines": 923,
+      "language": "markdown",
+      "fileCategory": "docs",
+      "complexity": "moderate"
+    },
+    {
+      "id": "document:specs/mian/spec.md",
+      "type": "document",
+      "name": "spec.md",
+      "filePath": "specs/mian/spec.md",
+      "summary": "specs/mian/spec.md",
+      "tags": [
+        "docs",
+        "markdown"
+      ],
+      "sizeLines": 59,
+      "language": "markdown",
+      "fileCategory": "docs",
+      "complexity": "moderate"
+    },
+    {
+      "id": "document:specs/mian/tasks.md",
+      "type": "document",
+      "name": "tasks.md",
+      "filePath": "specs/mian/tasks.md",
+      "summary": "specs/mian/tasks.md",
+      "tags": [
+        "docs",
+        "markdown"
+      ],
+      "sizeLines": 205,
+      "language": "markdown",
+      "fileCategory": "docs",
+      "complexity": "moderate"
+    },
+    {
+      "id": "document:.agents/skills/speckit-analyze/SKILL.md",
+      "type": "document",
+      "name": "SKILL.md",
+      "filePath": ".agents/skills/speckit-analyze/SKILL.md",
+      "summary": "文档: SKILL.md",
+      "tags": [
+        "docs",
+        "markdown"
+      ],
+      "sizeLines": 255,
+      "language": "markdown",
+      "fileCategory": "docs",
+      "complexity": "moderate"
+    },
+    {
+      "id": "document:.agents/skills/speckit-checklist/SKILL.md",
+      "type": "document",
+      "name": "SKILL.md",
+      "filePath": ".agents/skills/speckit-checklist/SKILL.md",
+      "summary": "文档: SKILL.md",
+      "tags": [
+        "docs",
+        "markdown"
+      ],
+      "sizeLines": 367,
+      "language": "markdown",
+      "fileCategory": "docs",
+      "complexity": "moderate"
+    },
+    {
+      "id": "document:.agents/skills/speckit-clarify/SKILL.md",
+      "type": "document",
+      "name": "SKILL.md",
+      "filePath": ".agents/skills/speckit-clarify/SKILL.md",
+      "summary": "文档: SKILL.md",
+      "tags": [
+        "docs",
+        "markdown"
+      ],
+      "sizeLines": 249,
+      "language": "markdown",
+      "fileCategory": "docs",
+      "complexity": "moderate"
+    },
+    {
+      "id": "document:.agents/skills/speckit-constitution/SKILL.md",
+      "type": "document",
+      "name": "SKILL.md",
+      "filePath": ".agents/skills/speckit-constitution/SKILL.md",
+      "summary": "文档: SKILL.md",
+      "tags": [
+        "docs",
+        "markdown"
+      ],
+      "sizeLines": 152,
+      "language": "markdown",
+      "fileCategory": "docs",
+      "complexity": "moderate"
+    },
+    {
+      "id": "document:.agents/skills/speckit-git-commit/SKILL.md",
+      "type": "document",
+      "name": "SKILL.md",
+      "filePath": ".agents/skills/speckit-git-commit/SKILL.md",
+      "summary": "文档: SKILL.md",
+      "tags": [
+        "docs",
+        "markdown"
+      ],
+      "sizeLines": 52,
+      "language": "markdown",
+      "fileCategory": "docs",
+      "complexity": "moderate"
+    },
+    {
+      "id": "document:.agents/skills/speckit-git-feature/SKILL.md",
+      "type": "document",
+      "name": "SKILL.md",
+      "filePath": ".agents/skills/speckit-git-feature/SKILL.md",
+      "summary": "文档: SKILL.md",
+      "tags": [
+        "docs",
+        "markdown"
+      ],
+      "sizeLines": 71,
+      "language": "markdown",
+      "fileCategory": "docs",
+      "complexity": "moderate"
+    },
+    {
+      "id": "document:.agents/skills/speckit-git-initialize/SKILL.md",
+      "type": "document",
+      "name": "SKILL.md",
+      "filePath": ".agents/skills/speckit-git-initialize/SKILL.md",
+      "summary": "文档: SKILL.md",
+      "tags": [
+        "docs",
+        "markdown"
+      ],
+      "sizeLines": 53,
+      "language": "markdown",
+      "fileCategory": "docs",
+      "complexity": "moderate"
+    },
+    {
+      "id": "document:.agents/skills/speckit-git-remote/SKILL.md",
+      "type": "document",
+      "name": "SKILL.md",
+      "filePath": ".agents/skills/speckit-git-remote/SKILL.md",
+      "summary": "文档: SKILL.md",
+      "tags": [
+        "docs",
+        "markdown"
+      ],
+      "sizeLines": 49,
+      "language": "markdown",
+      "fileCategory": "docs",
+      "complexity": "moderate"
+    },
+    {
+      "id": "document:.agents/skills/speckit-git-validate/SKILL.md",
+      "type": "document",
+      "name": "SKILL.md",
+      "filePath": ".agents/skills/speckit-git-validate/SKILL.md",
+      "summary": "文档: SKILL.md",
+      "tags": [
+        "docs",
+        "markdown"
+      ],
+      "sizeLines": 53,
+      "language": "markdown",
+      "fileCategory": "docs",
+      "complexity": "moderate"
+    },
+    {
+      "id": "document:.agents/skills/speckit-implement/SKILL.md",
+      "type": "document",
+      "name": "SKILL.md",
+      "filePath": ".agents/skills/speckit-implement/SKILL.md",
+      "summary": "文档: SKILL.md",
+      "tags": [
+        "docs",
+        "markdown"
+      ],
+      "sizeLines": 204,
+      "language": "markdown",
+      "fileCategory": "docs",
+      "complexity": "moderate"
+    },
+    {
+      "id": "document:.agents/skills/speckit-plan/SKILL.md",
+      "type": "document",
+      "name": "SKILL.md",
+      "filePath": ".agents/skills/speckit-plan/SKILL.md",
+      "summary": "文档: SKILL.md",
+      "tags": [
+        "docs",
+        "markdown"
+      ],
+      "sizeLines": 147,
+      "language": "markdown",
+      "fileCategory": "docs",
+      "complexity": "moderate"
+    },
+    {
+      "id": "document:.agents/skills/speckit-specify/SKILL.md",
+      "type": "document",
+      "name": "SKILL.md",
+      "filePath": ".agents/skills/speckit-specify/SKILL.md",
+      "summary": "文档: SKILL.md",
+      "tags": [
+        "docs",
+        "markdown"
+      ],
+      "sizeLines": 325,
+      "language": "markdown",
+      "fileCategory": "docs",
+      "complexity": "moderate"
+    },
+    {
+      "id": "document:.agents/skills/speckit-tasks/SKILL.md",
+      "type": "document",
+      "name": "SKILL.md",
+      "filePath": ".agents/skills/speckit-tasks/SKILL.md",
+      "summary": "文档: SKILL.md",
+      "tags": [
+        "docs",
+        "markdown"
+      ],
+      "sizeLines": 197,
+      "language": "markdown",
+      "fileCategory": "docs",
+      "complexity": "moderate"
+    },
+    {
+      "id": "document:.agents/skills/speckit-taskstoissues/SKILL.md",
+      "type": "document",
+      "name": "SKILL.md",
+      "filePath": ".agents/skills/speckit-taskstoissues/SKILL.md",
+      "summary": "文档: SKILL.md",
+      "tags": [
+        "docs",
+        "markdown"
+      ],
+      "sizeLines": 101,
+      "language": "markdown",
+      "fileCategory": "docs",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.specify/extensions/.registry",
+      "type": "file",
+      "name": ".registry",
+      "filePath": ".specify/extensions/.registry",
+      "summary": ".specify/extensions/.registry",
+      "tags": [
+        "code"
+      ],
+      "sizeLines": 29,
+      "language": "unknown",
+      "fileCategory": "code",
+      "complexity": "moderate"
+    },
+    {
+      "id": "config:.specify/integrations/codex.manifest.json",
+      "type": "config",
+      "name": "codex.manifest.json",
+      "filePath": ".specify/integrations/codex.manifest.json",
+      "summary": "JSON 配置: codex.manifest.json",
+      "tags": [
+        "config",
+        "json"
+      ],
+      "sizeLines": 16,
+      "language": "json",
+      "fileCategory": "config",
+      "complexity": "moderate"
+    },
+    {
+      "id": "config:.specify/integrations/speckit.manifest.json",
+      "type": "config",
+      "name": "speckit.manifest.json",
+      "filePath": ".specify/integrations/speckit.manifest.json",
+      "summary": "JSON 配置: speckit.manifest.json",
+      "tags": [
+        "config",
+        "json"
+      ],
+      "sizeLines": 16,
+      "language": "json",
+      "fileCategory": "config",
+      "complexity": "moderate"
+    },
+    {
+      "id": "document:.specify/memory/constitution.md",
+      "type": "document",
+      "name": "constitution.md",
+      "filePath": ".specify/memory/constitution.md",
+      "summary": "文档: constitution.md",
+      "tags": [
+        "docs",
+        "markdown"
+      ],
+      "sizeLines": 50,
+      "language": "markdown",
+      "fileCategory": "docs",
+      "complexity": "moderate"
+    },
+    {
+      "id": "config:.specify/workflows/speckit/workflow.yml",
+      "type": "config",
+      "name": "workflow.yml",
+      "filePath": ".specify/workflows/speckit/workflow.yml",
+      "summary": ".specify/workflows/speckit/workflow.yml",
+      "tags": [
+        "config",
+        "yaml"
+      ],
+      "sizeLines": 63,
+      "language": "yaml",
+      "fileCategory": "config",
+      "complexity": "moderate"
+    },
+    {
+      "id": "config:.specify/workflows/workflow-registry.json",
+      "type": "config",
+      "name": "workflow-registry.json",
+      "filePath": ".specify/workflows/workflow-registry.json",
+      "summary": "JSON 配置: workflow-registry.json",
+      "tags": [
+        "config",
+        "json"
+      ],
+      "sizeLines": 12,
+      "language": "json",
+      "fileCategory": "config",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:.understand-anything/.understandignore",
+      "type": "file",
+      "name": ".understandignore",
+      "filePath": ".understand-anything/.understandignore",
+      "summary": ".understand-anything/.understandignore",
+      "tags": [
+        "code"
+      ],
+      "sizeLines": 8,
+      "language": "unknown",
+      "fileCategory": "code",
+      "complexity": "moderate"
+    },
+    {
+      "id": "config:.understand-anything/config.json",
+      "type": "config",
+      "name": "config.json",
+      "filePath": ".understand-anything/config.json",
+      "summary": "JSON 配置: config.json",
+      "tags": [
+        "config",
+        "json"
+      ],
+      "sizeLines": 1,
+      "language": "json",
+      "fileCategory": "config",
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Api/Controllers/BpmnController.cs:BpmnController",
+      "type": "class",
+      "name": "BpmnController",
+      "filePath": "Api/Controllers/BpmnController.cs",
+      "summary": "类 BpmnController（基类: ControllerBase）",
+      "tags": [
+        "ControllerBase",
+        "Controllers"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:Api/Controllers/BpmnController.cs",
+      "type": "file",
+      "name": "BpmnController.cs",
+      "filePath": "Api/Controllers/BpmnController.cs",
+      "summary": "C# 类文件（BpmnController）",
+      "tags": [
+        "code",
+        "csharp",
+        "ControllerBase",
+        "Controllers",
+        "FlowableWrapper",
+        "HttpApi"
+      ],
+      "sizeLines": 60,
+      "language": "csharp",
+      "fileCategory": "code",
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Api/Controllers/CallbackController.cs:CallbackController",
+      "type": "class",
+      "name": "CallbackController",
+      "filePath": "Api/Controllers/CallbackController.cs",
+      "summary": "类 CallbackController（基类: ControllerBase）",
+      "tags": [
+        "ControllerBase",
+        "Controllers"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:Api/Controllers/CallbackController.cs",
+      "type": "file",
+      "name": "CallbackController.cs",
+      "filePath": "Api/Controllers/CallbackController.cs",
+      "summary": "C# 类文件（CallbackController）",
+      "tags": [
+        "code",
+        "csharp",
+        "ControllerBase",
+        "Controllers",
+        "FlowableWrapper",
+        "Api"
+      ],
+      "sizeLines": 84,
+      "language": "csharp",
+      "fileCategory": "code",
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Api/Controllers/ProcessController.cs:ProcessController",
+      "type": "class",
+      "name": "ProcessController",
+      "filePath": "Api/Controllers/ProcessController.cs",
+      "summary": "类 ProcessController（基类: ControllerBase）",
+      "tags": [
+        "ControllerBase",
+        "Controllers"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:Api/Controllers/ProcessController.cs",
+      "type": "file",
+      "name": "ProcessController.cs",
+      "filePath": "Api/Controllers/ProcessController.cs",
+      "summary": "C# 类文件（ProcessController）",
+      "tags": [
+        "code",
+        "csharp",
+        "ControllerBase",
+        "Controllers",
+        "FlowableWrapper",
+        "Api"
+      ],
+      "sizeLines": 63,
+      "language": "csharp",
+      "fileCategory": "code",
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Api/Controllers/ProcessFlowRenderController.cs:ProcessFlowRenderController",
+      "type": "class",
+      "name": "ProcessFlowRenderController",
+      "filePath": "Api/Controllers/ProcessFlowRenderController.cs",
+      "summary": "类 ProcessFlowRenderController（基类: ControllerBase）",
+      "tags": [
+        "ControllerBase",
+        "Controllers"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:Api/Controllers/ProcessFlowRenderController.cs",
+      "type": "file",
+      "name": "ProcessFlowRenderController.cs",
+      "filePath": "Api/Controllers/ProcessFlowRenderController.cs",
+      "summary": "C# 类文件（ProcessFlowRenderController）",
+      "tags": [
+        "code",
+        "csharp",
+        "ControllerBase",
+        "Controllers",
+        "FlowableWrapper",
+        "Api"
+      ],
+      "sizeLines": 48,
+      "language": "csharp",
+      "fileCategory": "code",
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Api/Controllers/ProcessQueryController.cs:ProcessQueryController",
+      "type": "class",
+      "name": "ProcessQueryController",
+      "filePath": "Api/Controllers/ProcessQueryController.cs",
+      "summary": "类 ProcessQueryController（基类: ControllerBase）",
+      "tags": [
+        "ControllerBase",
+        "Controllers"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:Api/Controllers/ProcessQueryController.cs",
+      "type": "file",
+      "name": "ProcessQueryController.cs",
+      "filePath": "Api/Controllers/ProcessQueryController.cs",
+      "summary": "C# 类文件（ProcessQueryController）",
+      "tags": [
+        "code",
+        "csharp",
+        "ControllerBase",
+        "Controllers",
+        "FlowableWrapper",
+        "Api"
+      ],
+      "sizeLines": 99,
+      "language": "csharp",
+      "fileCategory": "code",
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Api/Controllers/TaskController.cs:TaskController",
+      "type": "class",
+      "name": "TaskController",
+      "filePath": "Api/Controllers/TaskController.cs",
+      "summary": "类 TaskController（基类: ControllerBase）",
+      "tags": [
+        "ControllerBase",
+        "Controllers"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:Api/Controllers/TaskController.cs",
+      "type": "file",
+      "name": "TaskController.cs",
+      "filePath": "Api/Controllers/TaskController.cs",
+      "summary": "C# 类文件（TaskController）",
+      "tags": [
+        "code",
+        "csharp",
+        "ControllerBase",
+        "Controllers",
+        "FlowableWrapper",
+        "Api"
+      ],
+      "sizeLines": 74,
+      "language": "csharp",
+      "fileCategory": "code",
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Api/Controllers/TestController.cs:TestController",
+      "type": "class",
+      "name": "TestController",
+      "filePath": "Api/Controllers/TestController.cs",
+      "summary": "类 TestController（基类: ControllerBase）",
+      "tags": [
+        "ControllerBase",
+        "Controllers"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Api/Controllers/TestController.cs:TestCallbackRecord",
+      "type": "class",
+      "name": "TestCallbackRecord",
+      "filePath": "Api/Controllers/TestController.cs",
+      "summary": "类 TestCallbackRecord",
+      "tags": [
+        "Controllers"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:Api/Controllers/TestController.cs",
+      "type": "file",
+      "name": "TestController.cs",
+      "filePath": "Api/Controllers/TestController.cs",
+      "summary": "C# 类文件（TestController, TestCallbackRecord）",
+      "tags": [
+        "code",
+        "csharp",
+        "ControllerBase",
+        "Controllers",
+        "FlowableWrapper",
+        "Api"
+      ],
+      "sizeLines": 104,
+      "language": "csharp",
+      "fileCategory": "code",
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Api/Filters/ApiResult.cs:ApiResult",
+      "type": "class",
+      "name": "ApiResult",
+      "filePath": "Api/Filters/ApiResult.cs",
+      "summary": "类 ApiResult（基类: ApiResult<object>）",
+      "tags": [
+        "ApiResult<object>",
+        "Filters"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:Api/Filters/ApiResult.cs",
+      "type": "file",
+      "name": "ApiResult.cs",
+      "filePath": "Api/Filters/ApiResult.cs",
+      "summary": "C# 类文件（ApiResult, ApiResult）",
+      "tags": [
+        "code",
+        "csharp",
+        "ApiResult<object>",
+        "Filters",
+        "FlowableWrapper",
+        "Api"
+      ],
+      "sizeLines": 28,
+      "language": "csharp",
+      "fileCategory": "code",
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Api/Filters/GlobalExceptionFilter.cs:GlobalExceptionFilter",
+      "type": "class",
+      "name": "GlobalExceptionFilter",
+      "filePath": "Api/Filters/GlobalExceptionFilter.cs",
+      "summary": "类 GlobalExceptionFilter（基类: IExceptionFilter）",
+      "tags": [
+        "IExceptionFilter",
+        "Filters"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Api/Filters/GlobalExceptionFilter.cs:ApiErrorResponse",
+      "type": "class",
+      "name": "ApiErrorResponse",
+      "filePath": "Api/Filters/GlobalExceptionFilter.cs",
+      "summary": "类 ApiErrorResponse",
+      "tags": [
+        "Filters"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:Api/Filters/GlobalExceptionFilter.cs",
+      "type": "file",
+      "name": "GlobalExceptionFilter.cs",
+      "filePath": "Api/Filters/GlobalExceptionFilter.cs",
+      "summary": "C# 类文件（GlobalExceptionFilter, ApiErrorResponse）",
+      "tags": [
+        "code",
+        "csharp",
+        "IExceptionFilter",
+        "Filters",
+        "FlowableWrapper",
+        "Api"
+      ],
+      "sizeLines": 66,
+      "language": "csharp",
+      "fileCategory": "code",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:Application/Dtos/ApprovalAction.cs",
+      "type": "file",
+      "name": "ApprovalAction.cs",
+      "filePath": "Application/Dtos/ApprovalAction.cs",
+      "summary": "C# 源文件: ApprovalAction.cs",
+      "tags": [
+        "code",
+        "csharp",
+        "FlowableWrapper",
+        "Application",
+        "Dtos"
+      ],
+      "sizeLines": 18,
+      "language": "csharp",
+      "fileCategory": "code",
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Application/Dtos/BpmnDeploymentDto.cs:BpmnDeployRequest",
+      "type": "class",
+      "name": "BpmnDeployRequest",
+      "filePath": "Application/Dtos/BpmnDeploymentDto.cs",
+      "summary": "类 BpmnDeployRequest",
+      "tags": [
+        "Dtos"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Application/Dtos/BpmnDeploymentDto.cs:NodeSlotConfig",
+      "type": "class",
+      "name": "NodeSlotConfig",
+      "filePath": "Application/Dtos/BpmnDeploymentDto.cs",
+      "summary": "类 NodeSlotConfig",
+      "tags": [
+        "Dtos"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Application/Dtos/BpmnDeploymentDto.cs:RejectOptionConfig",
+      "type": "class",
+      "name": "RejectOptionConfig",
+      "filePath": "Application/Dtos/BpmnDeploymentDto.cs",
+      "summary": "类 RejectOptionConfig",
+      "tags": [
+        "Dtos"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Application/Dtos/BpmnDeploymentDto.cs:BpmnDeploymentResponse",
+      "type": "class",
+      "name": "BpmnDeploymentResponse",
+      "filePath": "Application/Dtos/BpmnDeploymentDto.cs",
+      "summary": "类 BpmnDeploymentResponse",
+      "tags": [
+        "Dtos"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Application/Dtos/BpmnDeploymentDto.cs:NodeSemanticSummary",
+      "type": "class",
+      "name": "NodeSemanticSummary",
+      "filePath": "Application/Dtos/BpmnDeploymentDto.cs",
+      "summary": "类 NodeSemanticSummary",
+      "tags": [
+        "Dtos"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Application/Dtos/BpmnDeploymentDto.cs:ProcessDefinitionNodeDto",
+      "type": "class",
+      "name": "ProcessDefinitionNodeDto",
+      "filePath": "Application/Dtos/BpmnDeploymentDto.cs",
+      "summary": "类 ProcessDefinitionNodeDto",
+      "tags": [
+        "Dtos"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:Application/Dtos/BpmnDeploymentDto.cs",
+      "type": "file",
+      "name": "BpmnDeploymentDto.cs",
+      "filePath": "Application/Dtos/BpmnDeploymentDto.cs",
+      "summary": "C# 类文件（BpmnDeployRequest, NodeSlotConfig, RejectOptionConfig, BpmnDeploymentResponse, NodeSemanticSummary, ProcessDefinitionNodeDto）",
+      "tags": [
+        "code",
+        "csharp",
+        "Dtos",
+        "FlowableWrapper",
+        "Application"
+      ],
+      "sizeLines": 143,
+      "language": "csharp",
+      "fileCategory": "code",
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Application/Dtos/CompleteTaskRequest.cs:CompleteTaskRequest",
+      "type": "class",
+      "name": "CompleteTaskRequest",
+      "filePath": "Application/Dtos/CompleteTaskRequest.cs",
+      "summary": "类 CompleteTaskRequest",
+      "tags": [
+        "Dtos"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Application/Dtos/CompleteTaskRequest.cs:CompleteTaskResponse",
+      "type": "class",
+      "name": "CompleteTaskResponse",
+      "filePath": "Application/Dtos/CompleteTaskRequest.cs",
+      "summary": "类 CompleteTaskResponse",
+      "tags": [
+        "Dtos"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Application/Dtos/CompleteTaskRequest.cs:ReassignTaskRequest",
+      "type": "class",
+      "name": "ReassignTaskRequest",
+      "filePath": "Application/Dtos/CompleteTaskRequest.cs",
+      "summary": "类 ReassignTaskRequest",
+      "tags": [
+        "Dtos"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Application/Dtos/CompleteTaskRequest.cs:TerminateProcessRequest",
+      "type": "class",
+      "name": "TerminateProcessRequest",
+      "filePath": "Application/Dtos/CompleteTaskRequest.cs",
+      "summary": "类 TerminateProcessRequest",
+      "tags": [
+        "Dtos"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:Application/Dtos/CompleteTaskRequest.cs",
+      "type": "file",
+      "name": "CompleteTaskRequest.cs",
+      "filePath": "Application/Dtos/CompleteTaskRequest.cs",
+      "summary": "C# 类文件（CompleteTaskRequest, CompleteTaskResponse, ReassignTaskRequest, TerminateProcessRequest）",
+      "tags": [
+        "code",
+        "csharp",
+        "Dtos",
+        "FlowableWrapper",
+        "Application"
+      ],
+      "sizeLines": 126,
+      "language": "csharp",
+      "fileCategory": "code",
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Application/Dtos/FlowableCallbackDto.cs:FlowableCallbackRequest",
+      "type": "class",
+      "name": "FlowableCallbackRequest",
+      "filePath": "Application/Dtos/FlowableCallbackDto.cs",
+      "summary": "类 FlowableCallbackRequest",
+      "tags": [
+        "Dtos"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Application/Dtos/FlowableCallbackDto.cs:FlowableCallbackTypes",
+      "type": "class",
+      "name": "FlowableCallbackTypes",
+      "filePath": "Application/Dtos/FlowableCallbackDto.cs",
+      "summary": "类 FlowableCallbackTypes",
+      "tags": [
+        "Dtos"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Application/Dtos/FlowableCallbackDto.cs:FlowableCallbackResponse",
+      "type": "class",
+      "name": "FlowableCallbackResponse",
+      "filePath": "Application/Dtos/FlowableCallbackDto.cs",
+      "summary": "类 FlowableCallbackResponse",
+      "tags": [
+        "Dtos"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Application/Dtos/FlowableCallbackDto.cs:MultiInstanceContext",
+      "type": "class",
+      "name": "MultiInstanceContext",
+      "filePath": "Application/Dtos/FlowableCallbackDto.cs",
+      "summary": "类 MultiInstanceContext",
+      "tags": [
+        "Dtos"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Application/Dtos/FlowableCallbackDto.cs:NodeCompletedCallbackPayload",
+      "type": "class",
+      "name": "NodeCompletedCallbackPayload",
+      "filePath": "Application/Dtos/FlowableCallbackDto.cs",
+      "summary": "类 NodeCompletedCallbackPayload",
+      "tags": [
+        "Dtos"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Application/Dtos/FlowableCallbackDto.cs:AuditRecordSnapshot",
+      "type": "class",
+      "name": "AuditRecordSnapshot",
+      "filePath": "Application/Dtos/FlowableCallbackDto.cs",
+      "summary": "类 AuditRecordSnapshot",
+      "tags": [
+        "Dtos"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Application/Dtos/FlowableCallbackDto.cs:BusinessCallbackPayload",
+      "type": "class",
+      "name": "BusinessCallbackPayload",
+      "filePath": "Application/Dtos/FlowableCallbackDto.cs",
+      "summary": "类 BusinessCallbackPayload",
+      "tags": [
+        "Dtos"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:Application/Dtos/FlowableCallbackDto.cs",
+      "type": "file",
+      "name": "FlowableCallbackDto.cs",
+      "filePath": "Application/Dtos/FlowableCallbackDto.cs",
+      "summary": "C# 类文件（FlowableCallbackRequest, FlowableCallbackTypes, FlowableCallbackResponse, MultiInstanceContext, NodeCompletedCallbackPayload, AuditRecordSnapshot, BusinessCallbackPayload）",
+      "tags": [
+        "code",
+        "csharp",
+        "Dtos",
+        "FlowableWrapper",
+        "Application"
+      ],
+      "sizeLines": 130,
+      "language": "csharp",
+      "fileCategory": "code",
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Application/Dtos/PendingTaskDto.cs:GetPendingTasksRequest",
+      "type": "class",
+      "name": "GetPendingTasksRequest",
+      "filePath": "Application/Dtos/PendingTaskDto.cs",
+      "summary": "类 GetPendingTasksRequest",
+      "tags": [
+        "Dtos"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Application/Dtos/PendingTaskDto.cs:PendingTaskDto",
+      "type": "class",
+      "name": "PendingTaskDto",
+      "filePath": "Application/Dtos/PendingTaskDto.cs",
+      "summary": "类 PendingTaskDto",
+      "tags": [
+        "Dtos"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Application/Dtos/PendingTaskDto.cs:PendingTaskPageResult",
+      "type": "class",
+      "name": "PendingTaskPageResult",
+      "filePath": "Application/Dtos/PendingTaskDto.cs",
+      "summary": "类 PendingTaskPageResult",
+      "tags": [
+        "Dtos"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:Application/Dtos/PendingTaskDto.cs",
+      "type": "file",
+      "name": "PendingTaskDto.cs",
+      "filePath": "Application/Dtos/PendingTaskDto.cs",
+      "summary": "C# 类文件（GetPendingTasksRequest, PendingTaskDto, PendingTaskPageResult）",
+      "tags": [
+        "code",
+        "csharp",
+        "Dtos",
+        "FlowableWrapper",
+        "Application"
+      ],
+      "sizeLines": 147,
+      "language": "csharp",
+      "fileCategory": "code",
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Application/Dtos/ProcessFlowRenderDto.cs:ProcessFlowRenderDto",
+      "type": "class",
+      "name": "ProcessFlowRenderDto",
+      "filePath": "Application/Dtos/ProcessFlowRenderDto.cs",
+      "summary": "类 ProcessFlowRenderDto",
+      "tags": [
+        "Dtos"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Application/Dtos/ProcessFlowRenderDto.cs:FlowNodeDto",
+      "type": "class",
+      "name": "FlowNodeDto",
+      "filePath": "Application/Dtos/ProcessFlowRenderDto.cs",
+      "summary": "类 FlowNodeDto",
+      "tags": [
+        "Dtos"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Application/Dtos/ProcessFlowRenderDto.cs:FlowEdgeDto",
+      "type": "class",
+      "name": "FlowEdgeDto",
+      "filePath": "Application/Dtos/ProcessFlowRenderDto.cs",
+      "summary": "类 FlowEdgeDto",
+      "tags": [
+        "Dtos"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Application/Dtos/ProcessFlowRenderDto.cs:ActiveTaskRenderDto",
+      "type": "class",
+      "name": "ActiveTaskRenderDto",
+      "filePath": "Application/Dtos/ProcessFlowRenderDto.cs",
+      "summary": "类 ActiveTaskRenderDto",
+      "tags": [
+        "Dtos"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Application/Dtos/ProcessFlowRenderDto.cs:CompletedRecordRenderDto",
+      "type": "class",
+      "name": "CompletedRecordRenderDto",
+      "filePath": "Application/Dtos/ProcessFlowRenderDto.cs",
+      "summary": "类 CompletedRecordRenderDto",
+      "tags": [
+        "Dtos"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Application/Dtos/ProcessFlowRenderDto.cs:RejectHistoryRenderDto",
+      "type": "class",
+      "name": "RejectHistoryRenderDto",
+      "filePath": "Application/Dtos/ProcessFlowRenderDto.cs",
+      "summary": "类 RejectHistoryRenderDto",
+      "tags": [
+        "Dtos"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:Application/Dtos/ProcessFlowRenderDto.cs",
+      "type": "file",
+      "name": "ProcessFlowRenderDto.cs",
+      "filePath": "Application/Dtos/ProcessFlowRenderDto.cs",
+      "summary": "C# 类文件（ProcessFlowRenderDto, FlowNodeDto, FlowEdgeDto, ActiveTaskRenderDto, CompletedRecordRenderDto, RejectHistoryRenderDto）",
+      "tags": [
+        "code",
+        "csharp",
+        "Dtos",
+        "FlowableWrapper",
+        "Application"
+      ],
+      "sizeLines": 232,
+      "language": "csharp",
+      "fileCategory": "code",
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Application/Dtos/ProcessProgressDto.cs:ProcessProgressDto",
+      "type": "class",
+      "name": "ProcessProgressDto",
+      "filePath": "Application/Dtos/ProcessProgressDto.cs",
+      "summary": "类 ProcessProgressDto",
+      "tags": [
+        "Dtos"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Application/Dtos/ProcessProgressDto.cs:CurrentNodeDto",
+      "type": "class",
+      "name": "CurrentNodeDto",
+      "filePath": "Application/Dtos/ProcessProgressDto.cs",
+      "summary": "类 CurrentNodeDto",
+      "tags": [
+        "Dtos"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Application/Dtos/ProcessProgressDto.cs:AuditRecordDto",
+      "type": "class",
+      "name": "AuditRecordDto",
+      "filePath": "Application/Dtos/ProcessProgressDto.cs",
+      "summary": "类 AuditRecordDto",
+      "tags": [
+        "Dtos"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Application/Dtos/ProcessProgressDto.cs:SlotSelectionRecordDto",
+      "type": "class",
+      "name": "SlotSelectionRecordDto",
+      "filePath": "Application/Dtos/ProcessProgressDto.cs",
+      "summary": "类 SlotSelectionRecordDto",
+      "tags": [
+        "Dtos"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:Application/Dtos/ProcessProgressDto.cs",
+      "type": "file",
+      "name": "ProcessProgressDto.cs",
+      "filePath": "Application/Dtos/ProcessProgressDto.cs",
+      "summary": "C# 类文件（ProcessProgressDto, CurrentNodeDto, AuditRecordDto, SlotSelectionRecordDto）",
+      "tags": [
+        "code",
+        "csharp",
+        "Dtos",
+        "FlowableWrapper",
+        "Application"
+      ],
+      "sizeLines": 219,
+      "language": "csharp",
+      "fileCategory": "code",
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Application/Dtos/ProcessQueryDto.cs:ProcessListItemDto",
+      "type": "class",
+      "name": "ProcessListItemDto",
+      "filePath": "Application/Dtos/ProcessQueryDto.cs",
+      "summary": "类 ProcessListItemDto",
+      "tags": [
+        "Dtos"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Application/Dtos/ProcessQueryDto.cs:ProcessListResult",
+      "type": "class",
+      "name": "ProcessListResult",
+      "filePath": "Application/Dtos/ProcessQueryDto.cs",
+      "summary": "类 ProcessListResult",
+      "tags": [
+        "Dtos"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Application/Dtos/ProcessQueryDto.cs:AuditHistoryRequest",
+      "type": "class",
+      "name": "AuditHistoryRequest",
+      "filePath": "Application/Dtos/ProcessQueryDto.cs",
+      "summary": "类 AuditHistoryRequest",
+      "tags": [
+        "Dtos"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:Application/Dtos/ProcessQueryDto.cs",
+      "type": "file",
+      "name": "ProcessQueryDto.cs",
+      "filePath": "Application/Dtos/ProcessQueryDto.cs",
+      "summary": "C# 类文件（ProcessListItemDto, ProcessListResult, AuditHistoryRequest）",
+      "tags": [
+        "code",
+        "csharp",
+        "Dtos",
+        "FlowableWrapper",
+        "Application"
+      ],
+      "sizeLines": 46,
+      "language": "csharp",
+      "fileCategory": "code",
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Application/Dtos/StartProcessRequest.cs:StartProcessRequest",
+      "type": "class",
+      "name": "StartProcessRequest",
+      "filePath": "Application/Dtos/StartProcessRequest.cs",
+      "summary": "类 StartProcessRequest",
+      "tags": [
+        "Dtos"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Application/Dtos/StartProcessRequest.cs:AssigneeContract",
+      "type": "class",
+      "name": "AssigneeContract",
+      "filePath": "Application/Dtos/StartProcessRequest.cs",
+      "summary": "类 AssigneeContract",
+      "tags": [
+        "Dtos"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Application/Dtos/StartProcessRequest.cs:RoleAssignment",
+      "type": "class",
+      "name": "RoleAssignment",
+      "filePath": "Application/Dtos/StartProcessRequest.cs",
+      "summary": "类 RoleAssignment",
+      "tags": [
+        "Dtos"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Application/Dtos/StartProcessRequest.cs:CallbackConfigDto",
+      "type": "class",
+      "name": "CallbackConfigDto",
+      "filePath": "Application/Dtos/StartProcessRequest.cs",
+      "summary": "类 CallbackConfigDto",
+      "tags": [
+        "Dtos"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Application/Dtos/StartProcessRequest.cs:StartProcessResponse",
+      "type": "class",
+      "name": "StartProcessResponse",
+      "filePath": "Application/Dtos/StartProcessRequest.cs",
+      "summary": "类 StartProcessResponse",
+      "tags": [
+        "Dtos"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Application/Dtos/StartProcessRequest.cs:ProcessListRequest",
+      "type": "class",
+      "name": "ProcessListRequest",
+      "filePath": "Application/Dtos/StartProcessRequest.cs",
+      "summary": "类 ProcessListRequest",
+      "tags": [
+        "Dtos"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:Application/Dtos/StartProcessRequest.cs",
+      "type": "file",
+      "name": "StartProcessRequest.cs",
+      "filePath": "Application/Dtos/StartProcessRequest.cs",
+      "summary": "C# 类文件（StartProcessRequest, AssigneeContract, RoleAssignment, CallbackConfigDto, StartProcessResponse, ProcessListRequest）",
+      "tags": [
+        "code",
+        "csharp",
+        "Dtos",
+        "FlowableWrapper",
+        "Application"
+      ],
+      "sizeLines": 94,
+      "language": "csharp",
+      "fileCategory": "code",
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Application/Services/BpmnDeploymentAppService.cs:BpmnDeploymentAppService",
+      "type": "class",
+      "name": "BpmnDeploymentAppService",
+      "filePath": "Application/Services/BpmnDeploymentAppService.cs",
+      "summary": "类 BpmnDeploymentAppService",
+      "tags": [
+        "Services"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:Application/Services/BpmnDeploymentAppService.cs",
+      "type": "file",
+      "name": "BpmnDeploymentAppService.cs",
+      "filePath": "Application/Services/BpmnDeploymentAppService.cs",
+      "summary": "C# 类文件（BpmnDeploymentAppService）",
+      "tags": [
+        "code",
+        "csharp",
+        "Services",
+        "FlowableWrapper",
+        "Application"
+      ],
+      "sizeLines": 446,
+      "language": "csharp",
+      "fileCategory": "code",
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Application/Services/ProcessCallbackAppService.cs:ProcessCallbackAppService",
+      "type": "class",
+      "name": "ProcessCallbackAppService",
+      "filePath": "Application/Services/ProcessCallbackAppService.cs",
+      "summary": "类 ProcessCallbackAppService",
+      "tags": [
+        "Services"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Application/Services/ProcessCallbackAppService.cs:NodeCallbackContext",
+      "type": "class",
+      "name": "NodeCallbackContext",
+      "filePath": "Application/Services/ProcessCallbackAppService.cs",
+      "summary": "类 NodeCallbackContext",
+      "tags": [
+        "Services"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:Application/Services/ProcessCallbackAppService.cs",
+      "type": "file",
+      "name": "ProcessCallbackAppService.cs",
+      "filePath": "Application/Services/ProcessCallbackAppService.cs",
+      "summary": "C# 类文件（ProcessCallbackAppService, NodeCallbackContext）",
+      "tags": [
+        "code",
+        "csharp",
+        "Services",
+        "FlowableWrapper",
+        "Application"
+      ],
+      "sizeLines": 690,
+      "language": "csharp",
+      "fileCategory": "code",
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Application/Services/ProcessFlowRenderAppService.cs:ProcessFlowRenderAppService",
+      "type": "class",
+      "name": "ProcessFlowRenderAppService",
+      "filePath": "Application/Services/ProcessFlowRenderAppService.cs",
+      "summary": "类 ProcessFlowRenderAppService",
+      "tags": [
+        "Services"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Application/Services/ProcessFlowRenderAppService.cs:in",
+      "type": "class",
+      "name": "in",
+      "filePath": "Application/Services/ProcessFlowRenderAppService.cs",
+      "summary": "类 in",
+      "tags": [
+        "Services"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Application/Services/ProcessFlowRenderAppService.cs:DiCoord",
+      "type": "class",
+      "name": "DiCoord",
+      "filePath": "Application/Services/ProcessFlowRenderAppService.cs",
+      "summary": "类 DiCoord",
+      "tags": [
+        "Services"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:Application/Services/ProcessFlowRenderAppService.cs",
+      "type": "file",
+      "name": "ProcessFlowRenderAppService.cs",
+      "filePath": "Application/Services/ProcessFlowRenderAppService.cs",
+      "summary": "C# 类文件（ProcessFlowRenderAppService, in, DiCoord）",
+      "tags": [
+        "code",
+        "csharp",
+        "Services",
+        "FlowableWrapper",
+        "Application"
+      ],
+      "sizeLines": 661,
+      "language": "csharp",
+      "fileCategory": "code",
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Application/Services/ProcessLifecycleAppService.cs:ProcessLifecycleAppService",
+      "type": "class",
+      "name": "ProcessLifecycleAppService",
+      "filePath": "Application/Services/ProcessLifecycleAppService.cs",
+      "summary": "类 ProcessLifecycleAppService",
+      "tags": [
+        "Services"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:Application/Services/ProcessLifecycleAppService.cs",
+      "type": "file",
+      "name": "ProcessLifecycleAppService.cs",
+      "filePath": "Application/Services/ProcessLifecycleAppService.cs",
+      "summary": "C# 类文件（ProcessLifecycleAppService）",
+      "tags": [
+        "code",
+        "csharp",
+        "Services",
+        "FlowableWrapper",
+        "Application"
+      ],
+      "sizeLines": 599,
+      "language": "csharp",
+      "fileCategory": "code",
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Application/Services/ProcessNotificationService.cs:ProcessNotificationService",
+      "type": "class",
+      "name": "ProcessNotificationService",
+      "filePath": "Application/Services/ProcessNotificationService.cs",
+      "summary": "类 ProcessNotificationService",
+      "tags": [
+        "Services"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Application/Services/ProcessNotificationService.cs:TokenResponse",
+      "type": "class",
+      "name": "TokenResponse",
+      "filePath": "Application/Services/ProcessNotificationService.cs",
+      "summary": "类 TokenResponse",
+      "tags": [
+        "Services"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Application/Services/ProcessNotificationService.cs:SendMessageRequest",
+      "type": "class",
+      "name": "SendMessageRequest",
+      "filePath": "Application/Services/ProcessNotificationService.cs",
+      "summary": "类 SendMessageRequest",
+      "tags": [
+        "Services"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Application/Services/ProcessNotificationService.cs:MessageReceiver",
+      "type": "class",
+      "name": "MessageReceiver",
+      "filePath": "Application/Services/ProcessNotificationService.cs",
+      "summary": "类 MessageReceiver",
+      "tags": [
+        "Services"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:Application/Services/ProcessNotificationService.cs",
+      "type": "file",
+      "name": "ProcessNotificationService.cs",
+      "filePath": "Application/Services/ProcessNotificationService.cs",
+      "summary": "C# 类文件（ProcessNotificationService, TokenResponse, SendMessageRequest, MessageReceiver）",
+      "tags": [
+        "code",
+        "csharp",
+        "Services",
+        "FlowableWrapper",
+        "Application"
+      ],
+      "sizeLines": 288,
+      "language": "csharp",
+      "fileCategory": "code",
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Application/Services/ProcessQueryAppService.cs:ProcessQueryAppService",
+      "type": "class",
+      "name": "ProcessQueryAppService",
+      "filePath": "Application/Services/ProcessQueryAppService.cs",
+      "summary": "类 ProcessQueryAppService",
+      "tags": [
+        "Services"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:Application/Services/ProcessQueryAppService.cs",
+      "type": "file",
+      "name": "ProcessQueryAppService.cs",
+      "filePath": "Application/Services/ProcessQueryAppService.cs",
+      "summary": "C# 类文件（ProcessQueryAppService）",
+      "tags": [
+        "code",
+        "csharp",
+        "Services",
+        "FlowableWrapper",
+        "Application"
+      ],
+      "sizeLines": 445,
+      "language": "csharp",
+      "fileCategory": "code",
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Application/Services/TaskExecutionAppService.cs:TaskExecutionAppService",
+      "type": "class",
+      "name": "TaskExecutionAppService",
+      "filePath": "Application/Services/TaskExecutionAppService.cs",
+      "summary": "类 TaskExecutionAppService",
+      "tags": [
+        "Services"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:Application/Services/TaskExecutionAppService.cs",
+      "type": "file",
+      "name": "TaskExecutionAppService.cs",
+      "filePath": "Application/Services/TaskExecutionAppService.cs",
+      "summary": "C# 类文件（TaskExecutionAppService）",
+      "tags": [
+        "code",
+        "csharp",
+        "Services",
+        "FlowableWrapper",
+        "Application"
+      ],
+      "sizeLines": 956,
+      "language": "csharp",
+      "fileCategory": "code",
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Application/Slots/AssigneeContractConverter.cs:AssigneeContractConverter",
+      "type": "class",
+      "name": "AssigneeContractConverter",
+      "filePath": "Application/Slots/AssigneeContractConverter.cs",
+      "summary": "类 AssigneeContractConverter",
+      "tags": [
+        "Slots"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:Application/Slots/AssigneeContractConverter.cs",
+      "type": "file",
+      "name": "AssigneeContractConverter.cs",
+      "filePath": "Application/Slots/AssigneeContractConverter.cs",
+      "summary": "C# 类文件（AssigneeContractConverter）",
+      "tags": [
+        "code",
+        "csharp",
+        "Slots",
+        "FlowableWrapper",
+        "Application"
+      ],
+      "sizeLines": 87,
+      "language": "csharp",
+      "fileCategory": "code",
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Application/Slots/IProcessSlotConfigProvider.cs:IProcessSlotConfigProvider",
+      "type": "class",
+      "name": "IProcessSlotConfigProvider",
+      "filePath": "Application/Slots/IProcessSlotConfigProvider.cs",
+      "summary": "类 IProcessSlotConfigProvider",
+      "tags": [
+        "Slots"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:Application/Slots/IProcessSlotConfigProvider.cs",
+      "type": "file",
+      "name": "IProcessSlotConfigProvider.cs",
+      "filePath": "Application/Slots/IProcessSlotConfigProvider.cs",
+      "summary": "C# 类文件（IProcessSlotConfigProvider）",
+      "tags": [
+        "code",
+        "csharp",
+        "Slots",
+        "FlowableWrapper",
+        "Application"
+      ],
+      "sizeLines": 31,
+      "language": "csharp",
+      "fileCategory": "code",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:Application/Slots/LoopAssignmentProjector.cs",
+      "type": "file",
+      "name": "LoopAssignmentProjector.cs",
+      "filePath": "Application/Slots/LoopAssignmentProjector.cs",
+      "summary": "C# 源文件: LoopAssignmentProjector.cs",
+      "tags": [
+        "code",
+        "csharp"
+      ],
+      "sizeLines": 8,
+      "language": "csharp",
+      "fileCategory": "code",
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Application/Slots/SlotDefinitionDto.cs:SlotSelection",
+      "type": "class",
+      "name": "SlotSelection",
+      "filePath": "Application/Slots/SlotDefinitionDto.cs",
+      "summary": "类 SlotSelection",
+      "tags": [
+        "Slots"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Application/Slots/SlotDefinitionDto.cs:SlotConversionResult",
+      "type": "class",
+      "name": "SlotConversionResult",
+      "filePath": "Application/Slots/SlotDefinitionDto.cs",
+      "summary": "类 SlotConversionResult",
+      "tags": [
+        "Slots"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Application/Slots/SlotDefinitionDto.cs:SlotSelectionSnapshot",
+      "type": "class",
+      "name": "SlotSelectionSnapshot",
+      "filePath": "Application/Slots/SlotDefinitionDto.cs",
+      "summary": "类 SlotSelectionSnapshot",
+      "tags": [
+        "Slots"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:Application/Slots/SlotDefinitionDto.cs",
+      "type": "file",
+      "name": "SlotDefinitionDto.cs",
+      "filePath": "Application/Slots/SlotDefinitionDto.cs",
+      "summary": "C# 类文件（SlotSelection, SlotConversionResult, SlotSelectionSnapshot）",
+      "tags": [
+        "code",
+        "csharp",
+        "Slots",
+        "FlowableWrapper",
+        "Application"
+      ],
+      "sizeLines": 56,
+      "language": "csharp",
+      "fileCategory": "code",
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Application/Slots/SlotVariableConverter.cs:SlotVariableConverter",
+      "type": "class",
+      "name": "SlotVariableConverter",
+      "filePath": "Application/Slots/SlotVariableConverter.cs",
+      "summary": "类 SlotVariableConverter",
+      "tags": [
+        "Slots"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:Application/Slots/SlotVariableConverter.cs",
+      "type": "file",
+      "name": "SlotVariableConverter.cs",
+      "filePath": "Application/Slots/SlotVariableConverter.cs",
+      "summary": "C# 类文件（SlotVariableConverter）",
+      "tags": [
+        "code",
+        "csharp",
+        "Slots",
+        "FlowableWrapper",
+        "Application"
+      ],
+      "sizeLines": 263,
+      "language": "csharp",
+      "fileCategory": "code",
+      "complexity": "moderate"
+    },
+    {
+      "id": "config:bpmn/流程中心综合测评/process_center_comprehensive_evaluation_slot.json",
+      "type": "config",
+      "name": "process_center_comprehensive_evaluation_slot.json",
+      "filePath": "bpmn/流程中心综合测评/process_center_comprehensive_evaluation_slot.json",
+      "summary": "JSON 配置: process_center_comprehensive_evaluation_slot.json",
+      "tags": [
+        "config",
+        "json"
+      ],
+      "sizeLines": 232,
+      "language": "json",
+      "fileCategory": "config",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:bpmn/流程中心综合测评/process_center_comprehensive_evaluation.bpmn",
+      "type": "file",
+      "name": "process_center_comprehensive_evaluation.bpmn",
+      "filePath": "bpmn/流程中心综合测评/process_center_comprehensive_evaluation.bpmn",
+      "summary": "BPMN 流程定义: process_center_comprehensive_evaluation.bpmn",
+      "tags": [
+        "code",
+        "bpmn"
+      ],
+      "sizeLines": 381,
+      "language": "bpmn",
+      "fileCategory": "code",
+      "complexity": "moderate"
+    },
+    {
+      "id": "config:bpmn/门户资讯审批/portal_content_approval_slot.json",
+      "type": "config",
+      "name": "portal_content_approval_slot.json",
+      "filePath": "bpmn/门户资讯审批/portal_content_approval_slot.json",
+      "summary": "JSON 配置: portal_content_approval_slot.json",
+      "tags": [
+        "config",
+        "json"
+      ],
+      "sizeLines": 49,
+      "language": "json",
+      "fileCategory": "config",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:bpmn/门户资讯审批/portal_content_approval.bpmn",
+      "type": "file",
+      "name": "portal_content_approval.bpmn",
+      "filePath": "bpmn/门户资讯审批/portal_content_approval.bpmn",
+      "summary": "BPMN 流程定义: portal_content_approval.bpmn",
+      "tags": [
+        "code",
+        "bpmn"
+      ],
+      "sizeLines": 171,
+      "language": "bpmn",
+      "fileCategory": "code",
+      "complexity": "moderate"
+    },
+    {
+      "id": "config:bpmn/全自动流程/personnel_selection_approval_slot.json",
+      "type": "config",
+      "name": "personnel_selection_approval_slot.json",
+      "filePath": "bpmn/全自动流程/personnel_selection_approval_slot.json",
+      "summary": "JSON 配置: personnel_selection_approval_slot.json",
+      "tags": [
+        "config",
+        "json"
+      ],
+      "sizeLines": 261,
+      "language": "json",
+      "fileCategory": "config",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:bpmn/全自动流程/personnel_selection_approval.bpmn",
+      "type": "file",
+      "name": "personnel_selection_approval.bpmn",
+      "filePath": "bpmn/全自动流程/personnel_selection_approval.bpmn",
+      "summary": "BPMN 流程定义: personnel_selection_approval.bpmn",
+      "tags": [
+        "code",
+        "bpmn"
+      ],
+      "sizeLines": 296,
+      "language": "bpmn",
+      "fileCategory": "code",
+      "complexity": "moderate"
+    },
+    {
+      "id": "config:bpmn/人员选调/personnel_selection_approval_solt.json",
+      "type": "config",
+      "name": "personnel_selection_approval_solt.json",
+      "filePath": "bpmn/人员选调/personnel_selection_approval_solt.json",
+      "summary": "JSON 配置: personnel_selection_approval_solt.json",
+      "tags": [
+        "config",
+        "json"
+      ],
+      "sizeLines": 226,
+      "language": "json",
+      "fileCategory": "config",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:bpmn/人员选调/personnel_selection_approval.bpmn",
+      "type": "file",
+      "name": "personnel_selection_approval.bpmn",
+      "filePath": "bpmn/人员选调/personnel_selection_approval.bpmn",
+      "summary": "BPMN 流程定义: personnel_selection_approval.bpmn",
+      "tags": [
+        "code",
+        "bpmn"
+      ],
+      "sizeLines": 292,
+      "language": "bpmn",
+      "fileCategory": "code",
+      "complexity": "moderate"
+    },
+    {
+      "id": "config:bpmn/人员选调/personnel_selection_collection_solt.json",
+      "type": "config",
+      "name": "personnel_selection_collection_solt.json",
+      "filePath": "bpmn/人员选调/personnel_selection_collection_solt.json",
+      "summary": "JSON 配置: personnel_selection_collection_solt.json",
+      "tags": [
+        "config",
+        "json"
+      ],
+      "sizeLines": 135,
+      "language": "json",
+      "fileCategory": "config",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:bpmn/人员选调/personnel_selection_collection.bpmn",
+      "type": "file",
+      "name": "personnel_selection_collection.bpmn",
+      "filePath": "bpmn/人员选调/personnel_selection_collection.bpmn",
+      "summary": "BPMN 流程定义: personnel_selection_collection.bpmn",
+      "tags": [
+        "code",
+        "bpmn"
+      ],
+      "sizeLines": 216,
+      "language": "bpmn",
+      "fileCategory": "code",
+      "complexity": "moderate"
+    },
+    {
+      "id": "config:bpmn/日常监督/daily_supervision_solt.json",
+      "type": "config",
+      "name": "daily_supervision_solt.json",
+      "filePath": "bpmn/日常监督/daily_supervision_solt.json",
+      "summary": "JSON 配置: daily_supervision_solt.json",
+      "tags": [
+        "config",
+        "json"
+      ],
+      "sizeLines": 130,
+      "language": "json",
+      "fileCategory": "config",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:bpmn/日常监督/daily_supervision.bpmn",
+      "type": "file",
+      "name": "daily_supervision.bpmn",
+      "filePath": "bpmn/日常监督/daily_supervision.bpmn",
+      "summary": "BPMN 流程定义: daily_supervision.bpmn",
+      "tags": [
+        "code",
+        "bpmn"
+      ],
+      "sizeLines": 314,
+      "language": "bpmn",
+      "fileCategory": "code",
+      "complexity": "moderate"
+    },
+    {
+      "id": "config:bpmn/巡察准备/inspection_preparation_solt.json",
+      "type": "config",
+      "name": "inspection_preparation_solt.json",
+      "filePath": "bpmn/巡察准备/inspection_preparation_solt.json",
+      "summary": "JSON 配置: inspection_preparation_solt.json",
+      "tags": [
+        "config",
+        "json"
+      ],
+      "sizeLines": 93,
+      "language": "json",
+      "fileCategory": "config",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:bpmn/巡察准备/inspection_preparation.bpmn",
+      "type": "file",
+      "name": "inspection_preparation.bpmn",
+      "filePath": "bpmn/巡察准备/inspection_preparation.bpmn",
+      "summary": "BPMN 流程定义: inspection_preparation.bpmn",
+      "tags": [
+        "code",
+        "bpmn"
+      ],
+      "sizeLines": 233,
+      "language": "bpmn",
+      "fileCategory": "code",
+      "complexity": "moderate"
+    },
+    {
+      "id": "config:bpmn/巡前通报/pre_inspection_briefing_solt.json",
+      "type": "config",
+      "name": "pre_inspection_briefing_solt.json",
+      "filePath": "bpmn/巡前通报/pre_inspection_briefing_solt.json",
+      "summary": "JSON 配置: pre_inspection_briefing_solt.json",
+      "tags": [
+        "config",
+        "json"
+      ],
+      "sizeLines": 130,
+      "language": "json",
+      "fileCategory": "config",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:bpmn/巡前通报/pre_inspection_briefing.bpmn",
+      "type": "file",
+      "name": "pre_inspection_briefing.bpmn",
+      "filePath": "bpmn/巡前通报/pre_inspection_briefing.bpmn",
+      "summary": "BPMN 流程定义: pre_inspection_briefing.bpmn",
+      "tags": [
+        "code",
+        "bpmn"
+      ],
+      "sizeLines": 314,
+      "language": "bpmn",
+      "fileCategory": "code",
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Configuration/BusinessTypeProcessMapping.cs:BusinessTypeProcessMapping",
+      "type": "class",
+      "name": "BusinessTypeProcessMapping",
+      "filePath": "Configuration/BusinessTypeProcessMapping.cs",
+      "summary": "类 BusinessTypeProcessMapping",
+      "tags": [
+        "Configuration"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:Configuration/BusinessTypeProcessMapping.cs",
+      "type": "file",
+      "name": "BusinessTypeProcessMapping.cs",
+      "filePath": "Configuration/BusinessTypeProcessMapping.cs",
+      "summary": "C# 类文件（BusinessTypeProcessMapping）",
+      "tags": [
+        "code",
+        "csharp",
+        "Configuration",
+        "FlowableWrapper"
+      ],
+      "sizeLines": 42,
+      "language": "csharp",
+      "fileCategory": "code",
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Configuration/JwtOptions.cs:JwtOptions",
+      "type": "class",
+      "name": "JwtOptions",
+      "filePath": "Configuration/JwtOptions.cs",
+      "summary": "类 JwtOptions",
+      "tags": [
+        "Configuration"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:Configuration/JwtOptions.cs",
+      "type": "file",
+      "name": "JwtOptions.cs",
+      "filePath": "Configuration/JwtOptions.cs",
+      "summary": "C# 类文件（JwtOptions）",
+      "tags": [
+        "code",
+        "csharp",
+        "Configuration",
+        "FlowableWrapper"
+      ],
+      "sizeLines": 18,
+      "language": "csharp",
+      "fileCategory": "code",
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Configuration/ProcessNotificationOptions.cs:ProcessNotificationOptions",
+      "type": "class",
+      "name": "ProcessNotificationOptions",
+      "filePath": "Configuration/ProcessNotificationOptions.cs",
+      "summary": "类 ProcessNotificationOptions",
+      "tags": [
+        "Configuration"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:Configuration/ProcessNotificationOptions.cs",
+      "type": "file",
+      "name": "ProcessNotificationOptions.cs",
+      "filePath": "Configuration/ProcessNotificationOptions.cs",
+      "summary": "C# 类文件（ProcessNotificationOptions）",
+      "tags": [
+        "code",
+        "csharp",
+        "Configuration",
+        "FlowableWrapper"
+      ],
+      "sizeLines": 25,
+      "language": "csharp",
+      "fileCategory": "code",
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Domain/Abstractions/BusinessException.cs:BusinessException",
+      "type": "class",
+      "name": "BusinessException",
+      "filePath": "Domain/Abstractions/BusinessException.cs",
+      "summary": "类 BusinessException（基类: Exception）",
+      "tags": [
+        "Exception",
+        "Abstractions"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:Domain/Abstractions/BusinessException.cs",
+      "type": "file",
+      "name": "BusinessException.cs",
+      "filePath": "Domain/Abstractions/BusinessException.cs",
+      "summary": "C# 类文件（BusinessException）",
+      "tags": [
+        "code",
+        "csharp",
+        "Exception",
+        "Abstractions",
+        "FlowableWrapper",
+        "Domain"
+      ],
+      "sizeLines": 17,
+      "language": "csharp",
+      "fileCategory": "code",
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Domain/Abstractions/ConcurrentUpdateException.cs:ConcurrentUpdateException",
+      "type": "class",
+      "name": "ConcurrentUpdateException",
+      "filePath": "Domain/Abstractions/ConcurrentUpdateException.cs",
+      "summary": "类 ConcurrentUpdateException（基类: Exception）",
+      "tags": [
+        "Exception",
+        "Abstractions"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:Domain/Abstractions/ConcurrentUpdateException.cs",
+      "type": "file",
+      "name": "ConcurrentUpdateException.cs",
+      "filePath": "Domain/Abstractions/ConcurrentUpdateException.cs",
+      "summary": "C# 类文件（ConcurrentUpdateException）",
+      "tags": [
+        "code",
+        "csharp",
+        "Exception",
+        "Abstractions",
+        "process",
+        "Domain"
+      ],
+      "sizeLines": 13,
+      "language": "csharp",
+      "fileCategory": "code",
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Domain/Abstractions/ICurrentUser.cs:ICurrentUser",
+      "type": "class",
+      "name": "ICurrentUser",
+      "filePath": "Domain/Abstractions/ICurrentUser.cs",
+      "summary": "类 ICurrentUser",
+      "tags": [
+        "Abstractions"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:Domain/Abstractions/ICurrentUser.cs",
+      "type": "file",
+      "name": "ICurrentUser.cs",
+      "filePath": "Domain/Abstractions/ICurrentUser.cs",
+      "summary": "C# 类文件（ICurrentUser）",
+      "tags": [
+        "code",
+        "csharp",
+        "Abstractions",
+        "FlowableWrapper",
+        "Domain"
+      ],
+      "sizeLines": 19,
+      "language": "csharp",
+      "fileCategory": "code",
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Domain/DistributedLock/IDistributedLockService.cs:IDistributedLockService",
+      "type": "class",
+      "name": "IDistributedLockService",
+      "filePath": "Domain/DistributedLock/IDistributedLockService.cs",
+      "summary": "类 IDistributedLockService",
+      "tags": [
+        "DistributedLock"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:Domain/DistributedLock/IDistributedLockService.cs",
+      "type": "file",
+      "name": "IDistributedLockService.cs",
+      "filePath": "Domain/DistributedLock/IDistributedLockService.cs",
+      "summary": "C# 类文件（IDistributedLockService）",
+      "tags": [
+        "code",
+        "csharp",
+        "DistributedLock",
+        "process",
+        "Domain"
+      ],
+      "sizeLines": 8,
+      "language": "csharp",
+      "fileCategory": "code",
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Domain/ElasticSearch/Documents/ProcessMetadataDocument.cs:ProcessMetadataDocument",
+      "type": "class",
+      "name": "ProcessMetadataDocument",
+      "filePath": "Domain/ElasticSearch/Documents/ProcessMetadataDocument.cs",
+      "summary": "类 ProcessMetadataDocument",
+      "tags": [
+        "ElasticSearch"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Domain/ElasticSearch/Documents/ProcessMetadataDocument.cs:CallbackMetadata",
+      "type": "class",
+      "name": "CallbackMetadata",
+      "filePath": "Domain/ElasticSearch/Documents/ProcessMetadataDocument.cs",
+      "summary": "类 CallbackMetadata",
+      "tags": [
+        "ElasticSearch"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Domain/ElasticSearch/Documents/ProcessMetadataDocument.cs:NodeSemanticInfo",
+      "type": "class",
+      "name": "NodeSemanticInfo",
+      "filePath": "Domain/ElasticSearch/Documents/ProcessMetadataDocument.cs",
+      "summary": "类 NodeSemanticInfo",
+      "tags": [
+        "ElasticSearch"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Domain/ElasticSearch/Documents/ProcessMetadataDocument.cs:RejectOption",
+      "type": "class",
+      "name": "RejectOption",
+      "filePath": "Domain/ElasticSearch/Documents/ProcessMetadataDocument.cs",
+      "summary": "类 RejectOption",
+      "tags": [
+        "ElasticSearch"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Domain/ElasticSearch/Documents/ProcessMetadataDocument.cs:SlotDefinition",
+      "type": "class",
+      "name": "SlotDefinition",
+      "filePath": "Domain/ElasticSearch/Documents/ProcessMetadataDocument.cs",
+      "summary": "类 SlotDefinition",
+      "tags": [
+        "ElasticSearch"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Domain/ElasticSearch/Documents/ProcessMetadataDocument.cs:ProcessDefinitionSemanticDocument",
+      "type": "class",
+      "name": "ProcessDefinitionSemanticDocument",
+      "filePath": "Domain/ElasticSearch/Documents/ProcessMetadataDocument.cs",
+      "summary": "类 ProcessDefinitionSemanticDocument",
+      "tags": [
+        "ElasticSearch"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Domain/ElasticSearch/Documents/ProcessMetadataDocument.cs:ProcessAuditRecord",
+      "type": "class",
+      "name": "ProcessAuditRecord",
+      "filePath": "Domain/ElasticSearch/Documents/ProcessMetadataDocument.cs",
+      "summary": "类 ProcessAuditRecord",
+      "tags": [
+        "ElasticSearch"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Domain/ElasticSearch/Documents/ProcessMetadataDocument.cs:SlotSelectionRecord",
+      "type": "class",
+      "name": "SlotSelectionRecord",
+      "filePath": "Domain/ElasticSearch/Documents/ProcessMetadataDocument.cs",
+      "summary": "类 SlotSelectionRecord",
+      "tags": [
+        "ElasticSearch"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:Domain/ElasticSearch/Documents/ProcessMetadataDocument.cs",
+      "type": "file",
+      "name": "ProcessMetadataDocument.cs",
+      "filePath": "Domain/ElasticSearch/Documents/ProcessMetadataDocument.cs",
+      "summary": "C# 类文件（ProcessMetadataDocument, CallbackMetadata, NodeSemanticInfo, RejectOption, SlotDefinition, ProcessDefinitionSemanticDocument, ProcessAuditRecord, SlotSelectionRecord）",
+      "tags": [
+        "code",
+        "csharp",
+        "ElasticSearch",
+        "FlowableWrapper",
+        "Domain"
+      ],
+      "sizeLines": 291,
+      "language": "csharp",
+      "fileCategory": "code",
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Domain/ElasticSearch/IElasticSearchService.cs:IElasticSearchService",
+      "type": "class",
+      "name": "IElasticSearchService",
+      "filePath": "Domain/ElasticSearch/IElasticSearchService.cs",
+      "summary": "类 IElasticSearchService",
+      "tags": [
+        "Services"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:Domain/ElasticSearch/IElasticSearchService.cs",
+      "type": "file",
+      "name": "IElasticSearchService.cs",
+      "filePath": "Domain/ElasticSearch/IElasticSearchService.cs",
+      "summary": "C# 类文件（IElasticSearchService）",
+      "tags": [
+        "code",
+        "csharp",
+        "Services",
+        "FlowableWrapper",
+        "Domain"
+      ],
+      "sizeLines": 62,
+      "language": "csharp",
+      "fileCategory": "code",
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Domain/Flowable/FlowableModels.cs:FlowableProcessInstance",
+      "type": "class",
+      "name": "FlowableProcessInstance",
+      "filePath": "Domain/Flowable/FlowableModels.cs",
+      "summary": "类 FlowableProcessInstance",
+      "tags": [
+        "Flowable"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Domain/Flowable/FlowableModels.cs:FlowableTask",
+      "type": "class",
+      "name": "FlowableTask",
+      "filePath": "Domain/Flowable/FlowableModels.cs",
+      "summary": "类 FlowableTask",
+      "tags": [
+        "Flowable"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Domain/Flowable/FlowableModels.cs:FlowableTaskQuery",
+      "type": "class",
+      "name": "FlowableTaskQuery",
+      "filePath": "Domain/Flowable/FlowableModels.cs",
+      "summary": "类 FlowableTaskQuery",
+      "tags": [
+        "Flowable"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Domain/Flowable/FlowableModels.cs:FlowableHistoricTask",
+      "type": "class",
+      "name": "FlowableHistoricTask",
+      "filePath": "Domain/Flowable/FlowableModels.cs",
+      "summary": "类 FlowableHistoricTask",
+      "tags": [
+        "Flowable"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Domain/Flowable/FlowableModels.cs:FlowableHistoricTaskQuery",
+      "type": "class",
+      "name": "FlowableHistoricTaskQuery",
+      "filePath": "Domain/Flowable/FlowableModels.cs",
+      "summary": "类 FlowableHistoricTaskQuery",
+      "tags": [
+        "Flowable"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Domain/Flowable/FlowableModels.cs:FlowableDeployment",
+      "type": "class",
+      "name": "FlowableDeployment",
+      "filePath": "Domain/Flowable/FlowableModels.cs",
+      "summary": "类 FlowableDeployment",
+      "tags": [
+        "Flowable"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Domain/Flowable/FlowableModels.cs:FlowableProcessDefinition",
+      "type": "class",
+      "name": "FlowableProcessDefinition",
+      "filePath": "Domain/Flowable/FlowableModels.cs",
+      "summary": "类 FlowableProcessDefinition",
+      "tags": [
+        "Flowable"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:Domain/Flowable/FlowableModels.cs",
+      "type": "file",
+      "name": "FlowableModels.cs",
+      "filePath": "Domain/Flowable/FlowableModels.cs",
+      "summary": "C# 类文件（FlowableProcessInstance, FlowableTask, FlowableTaskQuery, FlowableHistoricTask, FlowableHistoricTaskQuery, FlowableDeployment, FlowableProcessDefinition）",
+      "tags": [
+        "code",
+        "csharp",
+        "Flowable",
+        "FlowableWrapper",
+        "Domain"
+      ],
+      "sizeLines": 99,
+      "language": "csharp",
+      "fileCategory": "code",
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Domain/Flowable/IFlowableHistoryService.cs:IFlowableHistoryService",
+      "type": "class",
+      "name": "IFlowableHistoryService",
+      "filePath": "Domain/Flowable/IFlowableHistoryService.cs",
+      "summary": "类 IFlowableHistoryService",
+      "tags": [
+        "Flowable"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:Domain/Flowable/IFlowableHistoryService.cs",
+      "type": "file",
+      "name": "IFlowableHistoryService.cs",
+      "filePath": "Domain/Flowable/IFlowableHistoryService.cs",
+      "summary": "C# 类文件（IFlowableHistoryService）",
+      "tags": [
+        "code",
+        "csharp",
+        "Flowable",
+        "FlowableWrapper",
+        "Domain"
+      ],
+      "sizeLines": 18,
+      "language": "csharp",
+      "fileCategory": "code",
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Domain/Flowable/IFlowableRepositoryService.cs:IFlowableRepositoryService",
+      "type": "class",
+      "name": "IFlowableRepositoryService",
+      "filePath": "Domain/Flowable/IFlowableRepositoryService.cs",
+      "summary": "类 IFlowableRepositoryService",
+      "tags": [
+        "Flowable"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:Domain/Flowable/IFlowableRepositoryService.cs",
+      "type": "file",
+      "name": "IFlowableRepositoryService.cs",
+      "filePath": "Domain/Flowable/IFlowableRepositoryService.cs",
+      "summary": "C# 类文件（IFlowableRepositoryService）",
+      "tags": [
+        "code",
+        "csharp",
+        "Flowable",
+        "FlowableWrapper",
+        "Domain"
+      ],
+      "sizeLines": 37,
+      "language": "csharp",
+      "fileCategory": "code",
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Domain/Flowable/IFlowableRuntimeService.cs:IFlowableRuntimeService",
+      "type": "class",
+      "name": "IFlowableRuntimeService",
+      "filePath": "Domain/Flowable/IFlowableRuntimeService.cs",
+      "summary": "类 IFlowableRuntimeService",
+      "tags": [
+        "Flowable"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:Domain/Flowable/IFlowableRuntimeService.cs",
+      "type": "file",
+      "name": "IFlowableRuntimeService.cs",
+      "filePath": "Domain/Flowable/IFlowableRuntimeService.cs",
+      "summary": "C# 类文件（IFlowableRuntimeService）",
+      "tags": [
+        "code",
+        "csharp",
+        "Flowable",
+        "FlowableWrapper",
+        "Domain"
+      ],
+      "sizeLines": 40,
+      "language": "csharp",
+      "fileCategory": "code",
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Domain/Flowable/IFlowableTaskService.cs:IFlowableTaskService",
+      "type": "class",
+      "name": "IFlowableTaskService",
+      "filePath": "Domain/Flowable/IFlowableTaskService.cs",
+      "summary": "类 IFlowableTaskService",
+      "tags": [
+        "Flowable"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:Domain/Flowable/IFlowableTaskService.cs",
+      "type": "file",
+      "name": "IFlowableTaskService.cs",
+      "filePath": "Domain/Flowable/IFlowableTaskService.cs",
+      "summary": "C# 类文件（IFlowableTaskService）",
+      "tags": [
+        "code",
+        "csharp",
+        "Flowable",
+        "FlowableWrapper",
+        "Domain"
+      ],
+      "sizeLines": 52,
+      "language": "csharp",
+      "fileCategory": "code",
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Infrastructure/CurrentUser/HttpContextCurrentUser.cs:HttpContextCurrentUser",
+      "type": "class",
+      "name": "HttpContextCurrentUser",
+      "filePath": "Infrastructure/CurrentUser/HttpContextCurrentUser.cs",
+      "summary": "类 HttpContextCurrentUser（基类: ICurrentUser）",
+      "tags": [
+        "ICurrentUser",
+        "CurrentUser"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:Infrastructure/CurrentUser/HttpContextCurrentUser.cs",
+      "type": "file",
+      "name": "HttpContextCurrentUser.cs",
+      "filePath": "Infrastructure/CurrentUser/HttpContextCurrentUser.cs",
+      "summary": "C# 类文件（HttpContextCurrentUser）",
+      "tags": [
+        "code",
+        "csharp",
+        "ICurrentUser",
+        "CurrentUser",
+        "FlowableWrapper",
+        "Infrastructure"
+      ],
+      "sizeLines": 48,
+      "language": "csharp",
+      "fileCategory": "code",
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Infrastructure/DistributedLock/RedisDistributedLockService.cs:RedisDistributedLockService",
+      "type": "class",
+      "name": "RedisDistributedLockService",
+      "filePath": "Infrastructure/DistributedLock/RedisDistributedLockService.cs",
+      "summary": "类 RedisDistributedLockService（基类: IDistributedLockService）",
+      "tags": [
+        "IDistributedLockService",
+        "DistributedLock"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:Infrastructure/DistributedLock/RedisDistributedLockService.cs",
+      "type": "file",
+      "name": "RedisDistributedLockService.cs",
+      "filePath": "Infrastructure/DistributedLock/RedisDistributedLockService.cs",
+      "summary": "C# 类文件（RedisDistributedLockService）",
+      "tags": [
+        "code",
+        "csharp",
+        "IDistributedLockService",
+        "DistributedLock",
+        "process",
+        "Infrastructure"
+      ],
+      "sizeLines": 79,
+      "language": "csharp",
+      "fileCategory": "code",
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Infrastructure/DistributedLock/RedisOptions.cs:RedisOptions",
+      "type": "class",
+      "name": "RedisOptions",
+      "filePath": "Infrastructure/DistributedLock/RedisOptions.cs",
+      "summary": "类 RedisOptions",
+      "tags": [
+        "DistributedLock"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:Infrastructure/DistributedLock/RedisOptions.cs",
+      "type": "file",
+      "name": "RedisOptions.cs",
+      "filePath": "Infrastructure/DistributedLock/RedisOptions.cs",
+      "summary": "C# 类文件（RedisOptions）",
+      "tags": [
+        "code",
+        "csharp",
+        "DistributedLock",
+        "process",
+        "Infrastructure"
+      ],
+      "sizeLines": 7,
+      "language": "csharp",
+      "fileCategory": "code",
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Infrastructure/ElasticSearch/ElasticSearchOptions.cs:ElasticSearchOptions",
+      "type": "class",
+      "name": "ElasticSearchOptions",
+      "filePath": "Infrastructure/ElasticSearch/ElasticSearchOptions.cs",
+      "summary": "类 ElasticSearchOptions",
+      "tags": [
+        "ElasticSearch"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:Infrastructure/ElasticSearch/ElasticSearchOptions.cs",
+      "type": "file",
+      "name": "ElasticSearchOptions.cs",
+      "filePath": "Infrastructure/ElasticSearch/ElasticSearchOptions.cs",
+      "summary": "C# 类文件（ElasticSearchOptions）",
+      "tags": [
+        "code",
+        "csharp",
+        "ElasticSearch",
+        "FlowableWrapper",
+        "Infrastructure"
+      ],
+      "sizeLines": 15,
+      "language": "csharp",
+      "fileCategory": "code",
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Infrastructure/ElasticSearch/ElasticSearchServiceImpl.cs:ElasticSearchServiceImpl",
+      "type": "class",
+      "name": "ElasticSearchServiceImpl",
+      "filePath": "Infrastructure/ElasticSearch/ElasticSearchServiceImpl.cs",
+      "summary": "类 ElasticSearchServiceImpl（基类: IElasticSearchService）",
+      "tags": [
+        "IElasticSearchService",
+        "ElasticSearch"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:Infrastructure/ElasticSearch/ElasticSearchServiceImpl.cs",
+      "type": "file",
+      "name": "ElasticSearchServiceImpl.cs",
+      "filePath": "Infrastructure/ElasticSearch/ElasticSearchServiceImpl.cs",
+      "summary": "C# 类文件（ElasticSearchServiceImpl）",
+      "tags": [
+        "code",
+        "csharp",
+        "IElasticSearchService",
+        "ElasticSearch",
+        "FlowableWrapper",
+        "Infrastructure"
+      ],
+      "sizeLines": 366,
+      "language": "csharp",
+      "fileCategory": "code",
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Infrastructure/Flowable/FlowableHistoryServiceImpl.cs:FlowableHistoryServiceImpl",
+      "type": "class",
+      "name": "FlowableHistoryServiceImpl",
+      "filePath": "Infrastructure/Flowable/FlowableHistoryServiceImpl.cs",
+      "summary": "类 FlowableHistoryServiceImpl（基类: IFlowableHistoryService）",
+      "tags": [
+        "IFlowableHistoryService",
+        "Flowable"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Infrastructure/Flowable/FlowableHistoryServiceImpl.cs:FlowableHistoricTaskListResponse",
+      "type": "class",
+      "name": "FlowableHistoricTaskListResponse",
+      "filePath": "Infrastructure/Flowable/FlowableHistoryServiceImpl.cs",
+      "summary": "类 FlowableHistoricTaskListResponse",
+      "tags": [
+        "Flowable"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Infrastructure/Flowable/FlowableHistoryServiceImpl.cs:FlowableHistoricTaskResponse",
+      "type": "class",
+      "name": "FlowableHistoricTaskResponse",
+      "filePath": "Infrastructure/Flowable/FlowableHistoryServiceImpl.cs",
+      "summary": "类 FlowableHistoricTaskResponse",
+      "tags": [
+        "Flowable"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:Infrastructure/Flowable/FlowableHistoryServiceImpl.cs",
+      "type": "file",
+      "name": "FlowableHistoryServiceImpl.cs",
+      "filePath": "Infrastructure/Flowable/FlowableHistoryServiceImpl.cs",
+      "summary": "C# 类文件（FlowableHistoryServiceImpl, FlowableHistoricTaskListResponse, FlowableHistoricTaskResponse）",
+      "tags": [
+        "code",
+        "csharp",
+        "IFlowableHistoryService",
+        "Flowable",
+        "FlowableWrapper",
+        "Infrastructure"
+      ],
+      "sizeLines": 73,
+      "language": "csharp",
+      "fileCategory": "code",
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Infrastructure/Flowable/FlowableHttpClient.cs:FlowableHttpClient",
+      "type": "class",
+      "name": "FlowableHttpClient",
+      "filePath": "Infrastructure/Flowable/FlowableHttpClient.cs",
+      "summary": "类 FlowableHttpClient",
+      "tags": [
+        "Flowable"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Infrastructure/Flowable/FlowableHttpClient.cs:FlowableApiException",
+      "type": "class",
+      "name": "FlowableApiException",
+      "filePath": "Infrastructure/Flowable/FlowableHttpClient.cs",
+      "summary": "类 FlowableApiException（基类: Exception）",
+      "tags": [
+        "Exception",
+        "Flowable"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:Infrastructure/Flowable/FlowableHttpClient.cs",
+      "type": "file",
+      "name": "FlowableHttpClient.cs",
+      "filePath": "Infrastructure/Flowable/FlowableHttpClient.cs",
+      "summary": "C# 类文件（FlowableHttpClient, FlowableApiException）",
+      "tags": [
+        "code",
+        "csharp",
+        "Exception",
+        "Flowable",
+        "FlowableWrapper",
+        "Infrastructure"
+      ],
+      "sizeLines": 133,
+      "language": "csharp",
+      "fileCategory": "code",
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Infrastructure/Flowable/FlowableOptions.cs:FlowableOptions",
+      "type": "class",
+      "name": "FlowableOptions",
+      "filePath": "Infrastructure/Flowable/FlowableOptions.cs",
+      "summary": "类 FlowableOptions",
+      "tags": [
+        "Flowable"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:Infrastructure/Flowable/FlowableOptions.cs",
+      "type": "file",
+      "name": "FlowableOptions.cs",
+      "filePath": "Infrastructure/Flowable/FlowableOptions.cs",
+      "summary": "C# 类文件（FlowableOptions）",
+      "tags": [
+        "code",
+        "csharp",
+        "Flowable",
+        "FlowableWrapper",
+        "Infrastructure"
+      ],
+      "sizeLines": 37,
+      "language": "csharp",
+      "fileCategory": "code",
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Infrastructure/Flowable/FlowableRepositoryServiceImpl.cs:FlowableRepositoryServiceImpl",
+      "type": "class",
+      "name": "FlowableRepositoryServiceImpl",
+      "filePath": "Infrastructure/Flowable/FlowableRepositoryServiceImpl.cs",
+      "summary": "类 FlowableRepositoryServiceImpl（基类: IFlowableRepositoryService）",
+      "tags": [
+        "IFlowableRepositoryService",
+        "Flowable"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Infrastructure/Flowable/FlowableRepositoryServiceImpl.cs:FlowableDeploymentResponse",
+      "type": "class",
+      "name": "FlowableDeploymentResponse",
+      "filePath": "Infrastructure/Flowable/FlowableRepositoryServiceImpl.cs",
+      "summary": "类 FlowableDeploymentResponse",
+      "tags": [
+        "Flowable"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Infrastructure/Flowable/FlowableRepositoryServiceImpl.cs:FlowableProcessDefinitionListResponse",
+      "type": "class",
+      "name": "FlowableProcessDefinitionListResponse",
+      "filePath": "Infrastructure/Flowable/FlowableRepositoryServiceImpl.cs",
+      "summary": "类 FlowableProcessDefinitionListResponse",
+      "tags": [
+        "Flowable"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Infrastructure/Flowable/FlowableRepositoryServiceImpl.cs:FlowableProcessDefinitionResponse",
+      "type": "class",
+      "name": "FlowableProcessDefinitionResponse",
+      "filePath": "Infrastructure/Flowable/FlowableRepositoryServiceImpl.cs",
+      "summary": "类 FlowableProcessDefinitionResponse",
+      "tags": [
+        "Flowable"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:Infrastructure/Flowable/FlowableRepositoryServiceImpl.cs",
+      "type": "file",
+      "name": "FlowableRepositoryServiceImpl.cs",
+      "filePath": "Infrastructure/Flowable/FlowableRepositoryServiceImpl.cs",
+      "summary": "C# 类文件（FlowableRepositoryServiceImpl, FlowableDeploymentResponse, FlowableProcessDefinitionListResponse, FlowableProcessDefinitionResponse）",
+      "tags": [
+        "code",
+        "csharp",
+        "IFlowableRepositoryService",
+        "Flowable",
+        "FlowableWrapper",
+        "Infrastructure"
+      ],
+      "sizeLines": 116,
+      "language": "csharp",
+      "fileCategory": "code",
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Infrastructure/Flowable/FlowableRuntimeServiceImpl.cs:FlowableRuntimeServiceImpl",
+      "type": "class",
+      "name": "FlowableRuntimeServiceImpl",
+      "filePath": "Infrastructure/Flowable/FlowableRuntimeServiceImpl.cs",
+      "summary": "类 FlowableRuntimeServiceImpl（基类: IFlowableRuntimeService）",
+      "tags": [
+        "IFlowableRuntimeService",
+        "Flowable"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:Infrastructure/Flowable/FlowableRuntimeServiceImpl.cs",
+      "type": "file",
+      "name": "FlowableRuntimeServiceImpl.cs",
+      "filePath": "Infrastructure/Flowable/FlowableRuntimeServiceImpl.cs",
+      "summary": "C# 类文件（FlowableRuntimeServiceImpl）",
+      "tags": [
+        "code",
+        "csharp",
+        "IFlowableRuntimeService",
+        "Flowable",
+        "FlowableWrapper",
+        "Infrastructure"
+      ],
+      "sizeLines": 280,
+      "language": "csharp",
+      "fileCategory": "code",
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Infrastructure/Flowable/FlowableTaskServiceImpl.cs:FlowableTaskServiceImpl",
+      "type": "class",
+      "name": "FlowableTaskServiceImpl",
+      "filePath": "Infrastructure/Flowable/FlowableTaskServiceImpl.cs",
+      "summary": "类 FlowableTaskServiceImpl（基类: IFlowableTaskService）",
+      "tags": [
+        "IFlowableTaskService",
+        "Flowable"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Infrastructure/Flowable/FlowableTaskServiceImpl.cs:FlowableTaskListResponse",
+      "type": "class",
+      "name": "FlowableTaskListResponse",
+      "filePath": "Infrastructure/Flowable/FlowableTaskServiceImpl.cs",
+      "summary": "类 FlowableTaskListResponse",
+      "tags": [
+        "Flowable"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Infrastructure/Flowable/FlowableTaskServiceImpl.cs:FlowableTaskResponse",
+      "type": "class",
+      "name": "FlowableTaskResponse",
+      "filePath": "Infrastructure/Flowable/FlowableTaskServiceImpl.cs",
+      "summary": "类 FlowableTaskResponse",
+      "tags": [
+        "Flowable"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Infrastructure/Flowable/FlowableTaskServiceImpl.cs:FlowableIdentityLink",
+      "type": "class",
+      "name": "FlowableIdentityLink",
+      "filePath": "Infrastructure/Flowable/FlowableTaskServiceImpl.cs",
+      "summary": "类 FlowableIdentityLink",
+      "tags": [
+        "Flowable"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:Infrastructure/Flowable/FlowableTaskServiceImpl.cs",
+      "type": "file",
+      "name": "FlowableTaskServiceImpl.cs",
+      "filePath": "Infrastructure/Flowable/FlowableTaskServiceImpl.cs",
+      "summary": "C# 类文件（FlowableTaskServiceImpl, FlowableTaskListResponse, FlowableTaskResponse, FlowableIdentityLink）",
+      "tags": [
+        "code",
+        "csharp",
+        "IFlowableTaskService",
+        "Flowable",
+        "FlowableWrapper",
+        "Infrastructure"
+      ],
+      "sizeLines": 217,
+      "language": "csharp",
+      "fileCategory": "code",
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Infrastructure/Security/TrustedJwtAuthenticationHandler.cs:TrustedJwtAuthenticationHandler",
+      "type": "class",
+      "name": "TrustedJwtAuthenticationHandler",
+      "filePath": "Infrastructure/Security/TrustedJwtAuthenticationHandler.cs",
+      "summary": "类 TrustedJwtAuthenticationHandler（基类: AuthenticationHandler<AuthenticationSchemeOptions>）",
+      "tags": [
+        "AuthenticationHandler<AuthenticationSchemeOptions>",
+        "Security"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:Infrastructure/Security/TrustedJwtAuthenticationHandler.cs",
+      "type": "file",
+      "name": "TrustedJwtAuthenticationHandler.cs",
+      "filePath": "Infrastructure/Security/TrustedJwtAuthenticationHandler.cs",
+      "summary": "C# 类文件（TrustedJwtAuthenticationHandler）",
+      "tags": [
+        "code",
+        "csharp",
+        "AuthenticationHandler<AuthenticationSchemeOptions>",
+        "Security",
+        "FlowableWrapper",
+        "Infrastructure"
+      ],
+      "sizeLines": 52,
+      "language": "csharp",
+      "fileCategory": "code",
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Infrastructure/Slots/ElasticSearchSlotConfigProvider.cs:ElasticSearchSlotConfigProvider",
+      "type": "class",
+      "name": "ElasticSearchSlotConfigProvider",
+      "filePath": "Infrastructure/Slots/ElasticSearchSlotConfigProvider.cs",
+      "summary": "类 ElasticSearchSlotConfigProvider（基类: IProcessSlotConfigProvider）",
+      "tags": [
+        "IProcessSlotConfigProvider",
+        "Slots"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:Infrastructure/Slots/ElasticSearchSlotConfigProvider.cs",
+      "type": "file",
+      "name": "ElasticSearchSlotConfigProvider.cs",
+      "filePath": "Infrastructure/Slots/ElasticSearchSlotConfigProvider.cs",
+      "summary": "C# 类文件（ElasticSearchSlotConfigProvider）",
+      "tags": [
+        "code",
+        "csharp",
+        "IProcessSlotConfigProvider",
+        "Slots",
+        "FlowableWrapper",
+        "Infrastructure"
+      ],
+      "sizeLines": 52,
+      "language": "csharp",
+      "fileCategory": "code",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:Pages/_ViewImports.cshtml",
+      "type": "file",
+      "name": "_ViewImports.cshtml",
+      "filePath": "Pages/_ViewImports.cshtml",
+      "summary": "Razor 页面: _ViewImports.cshtml",
+      "tags": [
+        "code",
+        "cshtml"
+      ],
+      "sizeLines": 3,
+      "language": "cshtml",
+      "fileCategory": "code",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:Pages/_ViewStart.cshtml",
+      "type": "file",
+      "name": "_ViewStart.cshtml",
+      "filePath": "Pages/_ViewStart.cshtml",
+      "summary": "Razor 页面: _ViewStart.cshtml",
+      "tags": [
+        "code",
+        "cshtml"
+      ],
+      "sizeLines": 3,
+      "language": "cshtml",
+      "fileCategory": "code",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:Pages/Error.cshtml",
+      "type": "file",
+      "name": "Error.cshtml",
+      "filePath": "Pages/Error.cshtml",
+      "summary": "Razor 页面: Error.cshtml",
+      "tags": [
+        "code",
+        "cshtml"
+      ],
+      "sizeLines": 26,
+      "language": "cshtml",
+      "fileCategory": "code",
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Pages/Error.cshtml.cs:ErrorModel",
+      "type": "class",
+      "name": "ErrorModel",
+      "filePath": "Pages/Error.cshtml.cs",
+      "summary": "类 ErrorModel（基类: PageModel）",
+      "tags": [
+        "PageModel",
+        "Pages"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:Pages/Error.cshtml.cs",
+      "type": "file",
+      "name": "Error.cshtml.cs",
+      "filePath": "Pages/Error.cshtml.cs",
+      "summary": "C# 类文件（ErrorModel）",
+      "tags": [
+        "code",
+        "csharp",
+        "PageModel",
+        "Pages",
+        "process"
+      ],
+      "sizeLines": 26,
+      "language": "csharp",
+      "fileCategory": "code",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:Pages/Index.cshtml",
+      "type": "file",
+      "name": "Index.cshtml",
+      "filePath": "Pages/Index.cshtml",
+      "summary": "Razor 页面: Index.cshtml",
+      "tags": [
+        "code",
+        "cshtml"
+      ],
+      "sizeLines": 10,
+      "language": "cshtml",
+      "fileCategory": "code",
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Pages/Index.cshtml.cs:IndexModel",
+      "type": "class",
+      "name": "IndexModel",
+      "filePath": "Pages/Index.cshtml.cs",
+      "summary": "类 IndexModel（基类: PageModel）",
+      "tags": [
+        "PageModel",
+        "Pages"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:Pages/Index.cshtml.cs",
+      "type": "file",
+      "name": "Index.cshtml.cs",
+      "filePath": "Pages/Index.cshtml.cs",
+      "summary": "C# 类文件（IndexModel）",
+      "tags": [
+        "code",
+        "csharp",
+        "PageModel",
+        "Pages",
+        "process"
+      ],
+      "sizeLines": 19,
+      "language": "csharp",
+      "fileCategory": "code",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:Pages/Privacy.cshtml",
+      "type": "file",
+      "name": "Privacy.cshtml",
+      "filePath": "Pages/Privacy.cshtml",
+      "summary": "Razor 页面: Privacy.cshtml",
+      "tags": [
+        "code",
+        "cshtml"
+      ],
+      "sizeLines": 8,
+      "language": "cshtml",
+      "fileCategory": "code",
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Pages/Privacy.cshtml.cs:PrivacyModel",
+      "type": "class",
+      "name": "PrivacyModel",
+      "filePath": "Pages/Privacy.cshtml.cs",
+      "summary": "类 PrivacyModel（基类: PageModel）",
+      "tags": [
+        "PageModel",
+        "Pages"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:Pages/Privacy.cshtml.cs",
+      "type": "file",
+      "name": "Privacy.cshtml.cs",
+      "filePath": "Pages/Privacy.cshtml.cs",
+      "summary": "C# 类文件（PrivacyModel）",
+      "tags": [
+        "code",
+        "csharp",
+        "PageModel",
+        "Pages",
+        "process"
+      ],
+      "sizeLines": 18,
+      "language": "csharp",
+      "fileCategory": "code",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:Pages/Shared/_Layout.cshtml",
+      "type": "file",
+      "name": "_Layout.cshtml",
+      "filePath": "Pages/Shared/_Layout.cshtml",
+      "summary": "Razor 页面: _Layout.cshtml",
+      "tags": [
+        "code",
+        "cshtml"
+      ],
+      "sizeLines": 50,
+      "language": "cshtml",
+      "fileCategory": "code",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:Pages/Shared/_Layout.cshtml.css",
+      "type": "file",
+      "name": "_Layout.cshtml.css",
+      "filePath": "Pages/Shared/_Layout.cshtml.css",
+      "summary": "Pages/Shared/_Layout.cshtml.css",
+      "tags": [
+        "markup",
+        "css"
+      ],
+      "sizeLines": 48,
+      "language": "css",
+      "fileCategory": "markup",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:Pages/Shared/_ValidationScriptsPartial.cshtml",
+      "type": "file",
+      "name": "_ValidationScriptsPartial.cshtml",
+      "filePath": "Pages/Shared/_ValidationScriptsPartial.cshtml",
+      "summary": "Razor 页面: _ValidationScriptsPartial.cshtml",
+      "tags": [
+        "code",
+        "cshtml"
+      ],
+      "sizeLines": 2,
+      "language": "cshtml",
+      "fileCategory": "code",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:Program.cs",
+      "type": "file",
+      "name": "Program.cs",
+      "filePath": "Program.cs",
+      "summary": "C# 源文件: Program.cs",
+      "tags": [
+        "code",
+        "csharp"
+      ],
+      "sizeLines": 220,
+      "language": "csharp",
+      "fileCategory": "code",
+      "complexity": "moderate"
+    },
+    {
+      "id": "config:Properties/launchSettings.json",
+      "type": "config",
+      "name": "launchSettings.json",
+      "filePath": "Properties/launchSettings.json",
+      "summary": "JSON 配置: launchSettings.json",
+      "tags": [
+        "config",
+        "json"
+      ],
+      "sizeLines": 28,
+      "language": "json",
+      "fileCategory": "config",
+      "complexity": "moderate"
+    },
+    {
+      "id": "config:Test/FlowableWrapper.Test.csproj",
+      "type": "config",
+      "name": "FlowableWrapper.Test.csproj",
+      "filePath": "Test/FlowableWrapper.Test.csproj",
+      "summary": "Test/FlowableWrapper.Test.csproj",
+      "tags": [
+        "config",
+        "csproj"
+      ],
+      "sizeLines": 9,
+      "language": "csproj",
+      "fileCategory": "config",
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Test/ProcessCenter/CallbackDtos.cs:WorkflowCallbackTypes",
+      "type": "class",
+      "name": "WorkflowCallbackTypes",
+      "filePath": "Test/ProcessCenter/CallbackDtos.cs",
+      "summary": "类 WorkflowCallbackTypes",
+      "tags": [
+        "ProcessCenter"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Test/ProcessCenter/CallbackDtos.cs:NodeCompletedCallbackPayload",
+      "type": "class",
+      "name": "NodeCompletedCallbackPayload",
+      "filePath": "Test/ProcessCenter/CallbackDtos.cs",
+      "summary": "类 NodeCompletedCallbackPayload",
+      "tags": [
+        "ProcessCenter"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Test/ProcessCenter/CallbackDtos.cs:BusinessCallbackPayload",
+      "type": "class",
+      "name": "BusinessCallbackPayload",
+      "filePath": "Test/ProcessCenter/CallbackDtos.cs",
+      "summary": "类 BusinessCallbackPayload",
+      "tags": [
+        "ProcessCenter"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Test/ProcessCenter/CallbackDtos.cs:MultiInstanceContext",
+      "type": "class",
+      "name": "MultiInstanceContext",
+      "filePath": "Test/ProcessCenter/CallbackDtos.cs",
+      "summary": "类 MultiInstanceContext",
+      "tags": [
+        "ProcessCenter"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Test/ProcessCenter/CallbackDtos.cs:AuditRecordSnapshot",
+      "type": "class",
+      "name": "AuditRecordSnapshot",
+      "filePath": "Test/ProcessCenter/CallbackDtos.cs",
+      "summary": "类 AuditRecordSnapshot",
+      "tags": [
+        "ProcessCenter"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Test/ProcessCenter/CallbackDtos.cs:SlotSelectionRecord",
+      "type": "class",
+      "name": "SlotSelectionRecord",
+      "filePath": "Test/ProcessCenter/CallbackDtos.cs",
+      "summary": "类 SlotSelectionRecord",
+      "tags": [
+        "ProcessCenter"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Test/ProcessCenter/CallbackDtos.cs:CallbackHandleResult",
+      "type": "class",
+      "name": "CallbackHandleResult",
+      "filePath": "Test/ProcessCenter/CallbackDtos.cs",
+      "summary": "类 CallbackHandleResult",
+      "tags": [
+        "ProcessCenter"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:Test/ProcessCenter/CallbackDtos.cs",
+      "type": "file",
+      "name": "CallbackDtos.cs",
+      "filePath": "Test/ProcessCenter/CallbackDtos.cs",
+      "summary": "C# 类文件（WorkflowCallbackTypes, NodeCompletedCallbackPayload, BusinessCallbackPayload, MultiInstanceContext, AuditRecordSnapshot, SlotSelectionRecord, CallbackHandleResult）",
+      "tags": [
+        "code",
+        "csharp",
+        "ProcessCenter",
+        "FlowableWrapper",
+        "Test"
+      ],
+      "sizeLines": 131,
+      "language": "csharp",
+      "fileCategory": "code",
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Test/ProcessCenter/PortalContentApprovalWorkflow.cs:PortalContentApprovalWorkflow",
+      "type": "class",
+      "name": "PortalContentApprovalWorkflow",
+      "filePath": "Test/ProcessCenter/PortalContentApprovalWorkflow.cs",
+      "summary": "类 PortalContentApprovalWorkflow",
+      "tags": [
+        "ProcessCenter"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Test/ProcessCenter/PortalContentApprovalWorkflow.cs:StartAndCompleteStarterResult",
+      "type": "class",
+      "name": "StartAndCompleteStarterResult",
+      "filePath": "Test/ProcessCenter/PortalContentApprovalWorkflow.cs",
+      "summary": "类 StartAndCompleteStarterResult",
+      "tags": [
+        "ProcessCenter"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:Test/ProcessCenter/PortalContentApprovalWorkflow.cs",
+      "type": "file",
+      "name": "PortalContentApprovalWorkflow.cs",
+      "filePath": "Test/ProcessCenter/PortalContentApprovalWorkflow.cs",
+      "summary": "C# 类文件（PortalContentApprovalWorkflow, StartAndCompleteStarterResult）",
+      "tags": [
+        "code",
+        "csharp",
+        "ProcessCenter",
+        "FlowableWrapper",
+        "Test"
+      ],
+      "sizeLines": 180,
+      "language": "csharp",
+      "fileCategory": "code",
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Test/ProcessCenter/ProcessCenterClient.cs:ProcessCenterClient",
+      "type": "class",
+      "name": "ProcessCenterClient",
+      "filePath": "Test/ProcessCenter/ProcessCenterClient.cs",
+      "summary": "类 ProcessCenterClient",
+      "tags": [
+        "ProcessCenter"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Test/ProcessCenter/ProcessCenterClient.cs:ProcessCenterClientException",
+      "type": "class",
+      "name": "ProcessCenterClientException",
+      "filePath": "Test/ProcessCenter/ProcessCenterClient.cs",
+      "summary": "类 ProcessCenterClientException（基类: Exception）",
+      "tags": [
+        "Exception",
+        "ProcessCenter"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:Test/ProcessCenter/ProcessCenterClient.cs",
+      "type": "file",
+      "name": "ProcessCenterClient.cs",
+      "filePath": "Test/ProcessCenter/ProcessCenterClient.cs",
+      "summary": "C# 类文件（ProcessCenterClient, ProcessCenterClientException）",
+      "tags": [
+        "code",
+        "csharp",
+        "Exception",
+        "ProcessCenter",
+        "FlowableWrapper",
+        "Test"
+      ],
+      "sizeLines": 106,
+      "language": "csharp",
+      "fileCategory": "code",
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Test/ProcessCenter/ProcessCenterOptions.cs:ProcessCenterOptions",
+      "type": "class",
+      "name": "ProcessCenterOptions",
+      "filePath": "Test/ProcessCenter/ProcessCenterOptions.cs",
+      "summary": "类 ProcessCenterOptions",
+      "tags": [
+        "ProcessCenter"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:Test/ProcessCenter/ProcessCenterOptions.cs",
+      "type": "file",
+      "name": "ProcessCenterOptions.cs",
+      "filePath": "Test/ProcessCenter/ProcessCenterOptions.cs",
+      "summary": "C# 类文件（ProcessCenterOptions）",
+      "tags": [
+        "code",
+        "csharp",
+        "ProcessCenter",
+        "FlowableWrapper",
+        "Test"
+      ],
+      "sizeLines": 15,
+      "language": "csharp",
+      "fileCategory": "code",
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Test/ProcessCenter/WorkflowCallbackDispatcher.cs:IWorkflowCallbackHandler",
+      "type": "class",
+      "name": "IWorkflowCallbackHandler",
+      "filePath": "Test/ProcessCenter/WorkflowCallbackDispatcher.cs",
+      "summary": "类 IWorkflowCallbackHandler",
+      "tags": [
+        "ProcessCenter"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Test/ProcessCenter/WorkflowCallbackDispatcher.cs:WorkflowCallbackDispatcher",
+      "type": "class",
+      "name": "WorkflowCallbackDispatcher",
+      "filePath": "Test/ProcessCenter/WorkflowCallbackDispatcher.cs",
+      "summary": "类 WorkflowCallbackDispatcher",
+      "tags": [
+        "ProcessCenter"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:Test/ProcessCenter/WorkflowCallbackDispatcher.cs",
+      "type": "file",
+      "name": "WorkflowCallbackDispatcher.cs",
+      "filePath": "Test/ProcessCenter/WorkflowCallbackDispatcher.cs",
+      "summary": "C# 类文件（IWorkflowCallbackHandler, WorkflowCallbackDispatcher）",
+      "tags": [
+        "code",
+        "csharp",
+        "ProcessCenter",
+        "FlowableWrapper",
+        "Test"
+      ],
+      "sizeLines": 53,
+      "language": "csharp",
+      "fileCategory": "code",
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Test/ProcessCenter/WorkflowDtos.cs:ApiEnvelope",
+      "type": "class",
+      "name": "ApiEnvelope",
+      "filePath": "Test/ProcessCenter/WorkflowDtos.cs",
+      "summary": "类 ApiEnvelope",
+      "tags": [
+        "ProcessCenter"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Test/ProcessCenter/WorkflowDtos.cs:StartProcessRequest",
+      "type": "class",
+      "name": "StartProcessRequest",
+      "filePath": "Test/ProcessCenter/WorkflowDtos.cs",
+      "summary": "类 StartProcessRequest",
+      "tags": [
+        "ProcessCenter"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Test/ProcessCenter/WorkflowDtos.cs:StartProcessResponse",
+      "type": "class",
+      "name": "StartProcessResponse",
+      "filePath": "Test/ProcessCenter/WorkflowDtos.cs",
+      "summary": "类 StartProcessResponse",
+      "tags": [
+        "ProcessCenter"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Test/ProcessCenter/WorkflowDtos.cs:CompleteTaskRequest",
+      "type": "class",
+      "name": "CompleteTaskRequest",
+      "filePath": "Test/ProcessCenter/WorkflowDtos.cs",
+      "summary": "类 CompleteTaskRequest",
+      "tags": [
+        "ProcessCenter"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Test/ProcessCenter/WorkflowDtos.cs:CompleteTaskResponse",
+      "type": "class",
+      "name": "CompleteTaskResponse",
+      "filePath": "Test/ProcessCenter/WorkflowDtos.cs",
+      "summary": "类 CompleteTaskResponse",
+      "tags": [
+        "ProcessCenter"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Test/ProcessCenter/WorkflowDtos.cs:ApprovalAction",
+      "type": "class",
+      "name": "ApprovalAction",
+      "filePath": "Test/ProcessCenter/WorkflowDtos.cs",
+      "summary": "类 ApprovalAction",
+      "tags": [
+        "ProcessCenter"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Test/ProcessCenter/WorkflowDtos.cs:SlotSelection",
+      "type": "class",
+      "name": "SlotSelection",
+      "filePath": "Test/ProcessCenter/WorkflowDtos.cs",
+      "summary": "类 SlotSelection",
+      "tags": [
+        "ProcessCenter"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Test/ProcessCenter/WorkflowDtos.cs:AssigneeContract",
+      "type": "class",
+      "name": "AssigneeContract",
+      "filePath": "Test/ProcessCenter/WorkflowDtos.cs",
+      "summary": "类 AssigneeContract",
+      "tags": [
+        "ProcessCenter"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Test/ProcessCenter/WorkflowDtos.cs:RoleAssignment",
+      "type": "class",
+      "name": "RoleAssignment",
+      "filePath": "Test/ProcessCenter/WorkflowDtos.cs",
+      "summary": "类 RoleAssignment",
+      "tags": [
+        "ProcessCenter"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Test/ProcessCenter/WorkflowDtos.cs:CallbackConfig",
+      "type": "class",
+      "name": "CallbackConfig",
+      "filePath": "Test/ProcessCenter/WorkflowDtos.cs",
+      "summary": "类 CallbackConfig",
+      "tags": [
+        "ProcessCenter"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Test/ProcessCenter/WorkflowDtos.cs:PendingTaskPageResult",
+      "type": "class",
+      "name": "PendingTaskPageResult",
+      "filePath": "Test/ProcessCenter/WorkflowDtos.cs",
+      "summary": "类 PendingTaskPageResult",
+      "tags": [
+        "ProcessCenter"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Test/ProcessCenter/WorkflowDtos.cs:PendingTaskDto",
+      "type": "class",
+      "name": "PendingTaskDto",
+      "filePath": "Test/ProcessCenter/WorkflowDtos.cs",
+      "summary": "类 PendingTaskDto",
+      "tags": [
+        "ProcessCenter"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Test/ProcessCenter/WorkflowDtos.cs:SlotDefinition",
+      "type": "class",
+      "name": "SlotDefinition",
+      "filePath": "Test/ProcessCenter/WorkflowDtos.cs",
+      "summary": "类 SlotDefinition",
+      "tags": [
+        "ProcessCenter"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:Test/ProcessCenter/WorkflowDtos.cs:RejectOption",
+      "type": "class",
+      "name": "RejectOption",
+      "filePath": "Test/ProcessCenter/WorkflowDtos.cs",
+      "summary": "类 RejectOption",
+      "tags": [
+        "ProcessCenter"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:Test/ProcessCenter/WorkflowDtos.cs",
+      "type": "file",
+      "name": "WorkflowDtos.cs",
+      "filePath": "Test/ProcessCenter/WorkflowDtos.cs",
+      "summary": "C# 类文件（ApiEnvelope, StartProcessRequest, StartProcessResponse, CompleteTaskRequest, CompleteTaskResponse, ApprovalAction, SlotSelection, AssigneeContract, RoleAssignment, CallbackConfig, PendingTaskPageResult, PendingTaskDto, SlotDefinition, RejectOption）",
+      "tags": [
+        "code",
+        "csharp",
+        "ProcessCenter",
+        "FlowableWrapper",
+        "Test"
+      ],
+      "sizeLines": 237,
+      "language": "csharp",
+      "fileCategory": "code",
+      "complexity": "moderate"
+    },
+    {
+      "id": "document:Test/README.md",
+      "type": "document",
+      "name": "README.md",
+      "filePath": "Test/README.md",
+      "summary": "文档: README.md",
+      "tags": [
+        "docs",
+        "markdown"
+      ],
+      "sizeLines": 127,
+      "language": "markdown",
+      "fileCategory": "docs",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:wwwroot/css/site.css",
+      "type": "file",
+      "name": "site.css",
+      "filePath": "wwwroot/css/site.css",
+      "summary": "wwwroot/css/site.css",
+      "tags": [
+        "markup",
+        "css"
+      ],
+      "sizeLines": 17,
+      "language": "css",
+      "fileCategory": "markup",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:wwwroot/js/site.js",
+      "type": "file",
+      "name": "site.js",
+      "filePath": "wwwroot/js/site.js",
+      "summary": "wwwroot/js/site.js",
+      "tags": [
+        "code",
+        "javascript"
+      ],
+      "sizeLines": 4,
+      "language": "javascript",
+      "fileCategory": "code",
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:wwwroot/lib/jquery-validation-unobtrusive/jquery.validate.unobtrusive.js",
+      "type": "file",
+      "name": "jquery.validate.unobtrusive.js",
+      "filePath": "wwwroot/lib/jquery-validation-unobtrusive/jquery.validate.unobtrusive.js",
+      "summary": "wwwroot/lib/jquery-validation-unobtrusive/jquery.validate.unobtrusive.js",
+      "tags": [
+        "code",
+        "javascript"
+      ],
+      "sizeLines": 432,
+      "language": "javascript",
+      "fileCategory": "code",
+      "complexity": "moderate"
+    },
+    {
+      "id": "document:wwwroot/lib/jquery-validation-unobtrusive/LICENSE.txt",
+      "type": "document",
+      "name": "LICENSE.txt",
+      "filePath": "wwwroot/lib/jquery-validation-unobtrusive/LICENSE.txt",
+      "summary": "wwwroot/lib/jquery-validation-unobtrusive/LICENSE.txt",
+      "tags": [
+        "docs",
+        "txt"
+      ],
+      "sizeLines": 12,
+      "language": "txt",
+      "fileCategory": "docs",
+      "complexity": "moderate"
+    },
+    {
+      "id": "document:wwwroot/lib/jquery-validation/LICENSE.md",
+      "type": "document",
+      "name": "LICENSE.md",
+      "filePath": "wwwroot/lib/jquery-validation/LICENSE.md",
+      "summary": "文档: LICENSE.md",
+      "tags": [
+        "docs",
+        "markdown"
+      ],
+      "sizeLines": 22,
+      "language": "markdown",
+      "fileCategory": "docs",
+      "complexity": "moderate"
+    },
+    {
+      "id": "document:wwwroot/lib/jquery/LICENSE.txt",
+      "type": "document",
+      "name": "LICENSE.txt",
+      "filePath": "wwwroot/lib/jquery/LICENSE.txt",
+      "summary": "wwwroot/lib/jquery/LICENSE.txt",
+      "tags": [
+        "docs",
+        "txt"
+      ],
+      "sizeLines": 36,
+      "language": "txt",
+      "fileCategory": "docs",
+      "complexity": "moderate"
+    }
+  ],
+  "edges": [
+    {
+      "source": "file:Api/Controllers/BpmnController.cs",
+      "target": "class:Api/Controllers/BpmnController.cs:BpmnController",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Api/Controllers/CallbackController.cs",
+      "target": "class:Api/Controllers/CallbackController.cs:CallbackController",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Api/Controllers/ProcessController.cs",
+      "target": "class:Api/Controllers/ProcessController.cs:ProcessController",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Api/Controllers/ProcessFlowRenderController.cs",
+      "target": "class:Api/Controllers/ProcessFlowRenderController.cs:ProcessFlowRenderController",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Api/Controllers/ProcessQueryController.cs",
+      "target": "class:Api/Controllers/ProcessQueryController.cs:ProcessQueryController",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Api/Controllers/TaskController.cs",
+      "target": "class:Api/Controllers/TaskController.cs:TaskController",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Api/Controllers/TestController.cs",
+      "target": "class:Api/Controllers/TestController.cs:TestController",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Api/Controllers/TestController.cs",
+      "target": "class:Api/Controllers/TestController.cs:TestCallbackRecord",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Api/Filters/ApiResult.cs",
+      "target": "class:Api/Filters/ApiResult.cs:ApiResult",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Api/Filters/GlobalExceptionFilter.cs",
+      "target": "class:Api/Filters/GlobalExceptionFilter.cs:GlobalExceptionFilter",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Api/Filters/GlobalExceptionFilter.cs",
+      "target": "class:Api/Filters/GlobalExceptionFilter.cs:ApiErrorResponse",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Application/Dtos/BpmnDeploymentDto.cs",
+      "target": "class:Application/Dtos/BpmnDeploymentDto.cs:BpmnDeployRequest",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Application/Dtos/BpmnDeploymentDto.cs",
+      "target": "class:Application/Dtos/BpmnDeploymentDto.cs:NodeSlotConfig",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Application/Dtos/BpmnDeploymentDto.cs",
+      "target": "class:Application/Dtos/BpmnDeploymentDto.cs:RejectOptionConfig",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Application/Dtos/BpmnDeploymentDto.cs",
+      "target": "class:Application/Dtos/BpmnDeploymentDto.cs:BpmnDeploymentResponse",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Application/Dtos/BpmnDeploymentDto.cs",
+      "target": "class:Application/Dtos/BpmnDeploymentDto.cs:NodeSemanticSummary",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Application/Dtos/BpmnDeploymentDto.cs",
+      "target": "class:Application/Dtos/BpmnDeploymentDto.cs:ProcessDefinitionNodeDto",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Application/Dtos/CompleteTaskRequest.cs",
+      "target": "class:Application/Dtos/CompleteTaskRequest.cs:CompleteTaskRequest",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Application/Dtos/CompleteTaskRequest.cs",
+      "target": "class:Application/Dtos/CompleteTaskRequest.cs:CompleteTaskResponse",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Application/Dtos/CompleteTaskRequest.cs",
+      "target": "class:Application/Dtos/CompleteTaskRequest.cs:ReassignTaskRequest",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Application/Dtos/CompleteTaskRequest.cs",
+      "target": "class:Application/Dtos/CompleteTaskRequest.cs:TerminateProcessRequest",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Application/Dtos/FlowableCallbackDto.cs",
+      "target": "class:Application/Dtos/FlowableCallbackDto.cs:FlowableCallbackRequest",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Application/Dtos/FlowableCallbackDto.cs",
+      "target": "class:Application/Dtos/FlowableCallbackDto.cs:FlowableCallbackTypes",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Application/Dtos/FlowableCallbackDto.cs",
+      "target": "class:Application/Dtos/FlowableCallbackDto.cs:FlowableCallbackResponse",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Application/Dtos/FlowableCallbackDto.cs",
+      "target": "class:Application/Dtos/FlowableCallbackDto.cs:MultiInstanceContext",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Application/Dtos/FlowableCallbackDto.cs",
+      "target": "class:Application/Dtos/FlowableCallbackDto.cs:NodeCompletedCallbackPayload",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Application/Dtos/FlowableCallbackDto.cs",
+      "target": "class:Application/Dtos/FlowableCallbackDto.cs:AuditRecordSnapshot",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Application/Dtos/FlowableCallbackDto.cs",
+      "target": "class:Application/Dtos/FlowableCallbackDto.cs:BusinessCallbackPayload",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Application/Dtos/PendingTaskDto.cs",
+      "target": "class:Application/Dtos/PendingTaskDto.cs:GetPendingTasksRequest",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Application/Dtos/PendingTaskDto.cs",
+      "target": "class:Application/Dtos/PendingTaskDto.cs:PendingTaskDto",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Application/Dtos/PendingTaskDto.cs",
+      "target": "class:Application/Dtos/PendingTaskDto.cs:PendingTaskPageResult",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Application/Dtos/ProcessFlowRenderDto.cs",
+      "target": "class:Application/Dtos/ProcessFlowRenderDto.cs:ProcessFlowRenderDto",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Application/Dtos/ProcessFlowRenderDto.cs",
+      "target": "class:Application/Dtos/ProcessFlowRenderDto.cs:FlowNodeDto",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Application/Dtos/ProcessFlowRenderDto.cs",
+      "target": "class:Application/Dtos/ProcessFlowRenderDto.cs:FlowEdgeDto",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Application/Dtos/ProcessFlowRenderDto.cs",
+      "target": "class:Application/Dtos/ProcessFlowRenderDto.cs:ActiveTaskRenderDto",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Application/Dtos/ProcessFlowRenderDto.cs",
+      "target": "class:Application/Dtos/ProcessFlowRenderDto.cs:CompletedRecordRenderDto",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Application/Dtos/ProcessFlowRenderDto.cs",
+      "target": "class:Application/Dtos/ProcessFlowRenderDto.cs:RejectHistoryRenderDto",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Application/Dtos/ProcessProgressDto.cs",
+      "target": "class:Application/Dtos/ProcessProgressDto.cs:ProcessProgressDto",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Application/Dtos/ProcessProgressDto.cs",
+      "target": "class:Application/Dtos/ProcessProgressDto.cs:CurrentNodeDto",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Application/Dtos/ProcessProgressDto.cs",
+      "target": "class:Application/Dtos/ProcessProgressDto.cs:AuditRecordDto",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Application/Dtos/ProcessProgressDto.cs",
+      "target": "class:Application/Dtos/ProcessProgressDto.cs:SlotSelectionRecordDto",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Application/Dtos/ProcessQueryDto.cs",
+      "target": "class:Application/Dtos/ProcessQueryDto.cs:ProcessListItemDto",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Application/Dtos/ProcessQueryDto.cs",
+      "target": "class:Application/Dtos/ProcessQueryDto.cs:ProcessListResult",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Application/Dtos/ProcessQueryDto.cs",
+      "target": "class:Application/Dtos/ProcessQueryDto.cs:AuditHistoryRequest",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Application/Dtos/StartProcessRequest.cs",
+      "target": "class:Application/Dtos/StartProcessRequest.cs:StartProcessRequest",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Application/Dtos/StartProcessRequest.cs",
+      "target": "class:Application/Dtos/StartProcessRequest.cs:AssigneeContract",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Application/Dtos/StartProcessRequest.cs",
+      "target": "class:Application/Dtos/StartProcessRequest.cs:RoleAssignment",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Application/Dtos/StartProcessRequest.cs",
+      "target": "class:Application/Dtos/StartProcessRequest.cs:CallbackConfigDto",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Application/Dtos/StartProcessRequest.cs",
+      "target": "class:Application/Dtos/StartProcessRequest.cs:StartProcessResponse",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Application/Dtos/StartProcessRequest.cs",
+      "target": "class:Application/Dtos/StartProcessRequest.cs:ProcessListRequest",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Application/Services/BpmnDeploymentAppService.cs",
+      "target": "class:Application/Services/BpmnDeploymentAppService.cs:BpmnDeploymentAppService",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Application/Services/ProcessCallbackAppService.cs",
+      "target": "class:Application/Services/ProcessCallbackAppService.cs:ProcessCallbackAppService",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Application/Services/ProcessCallbackAppService.cs",
+      "target": "class:Application/Services/ProcessCallbackAppService.cs:NodeCallbackContext",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Application/Services/ProcessFlowRenderAppService.cs",
+      "target": "class:Application/Services/ProcessFlowRenderAppService.cs:ProcessFlowRenderAppService",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Application/Services/ProcessFlowRenderAppService.cs",
+      "target": "class:Application/Services/ProcessFlowRenderAppService.cs:in",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Application/Services/ProcessFlowRenderAppService.cs",
+      "target": "class:Application/Services/ProcessFlowRenderAppService.cs:DiCoord",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Application/Services/ProcessLifecycleAppService.cs",
+      "target": "class:Application/Services/ProcessLifecycleAppService.cs:ProcessLifecycleAppService",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Application/Services/ProcessNotificationService.cs",
+      "target": "class:Application/Services/ProcessNotificationService.cs:ProcessNotificationService",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Application/Services/ProcessNotificationService.cs",
+      "target": "class:Application/Services/ProcessNotificationService.cs:TokenResponse",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Application/Services/ProcessNotificationService.cs",
+      "target": "class:Application/Services/ProcessNotificationService.cs:SendMessageRequest",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Application/Services/ProcessNotificationService.cs",
+      "target": "class:Application/Services/ProcessNotificationService.cs:MessageReceiver",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Application/Services/ProcessQueryAppService.cs",
+      "target": "class:Application/Services/ProcessQueryAppService.cs:ProcessQueryAppService",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Application/Services/TaskExecutionAppService.cs",
+      "target": "class:Application/Services/TaskExecutionAppService.cs:TaskExecutionAppService",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Application/Slots/AssigneeContractConverter.cs",
+      "target": "class:Application/Slots/AssigneeContractConverter.cs:AssigneeContractConverter",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Application/Slots/IProcessSlotConfigProvider.cs",
+      "target": "class:Application/Slots/IProcessSlotConfigProvider.cs:IProcessSlotConfigProvider",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Application/Slots/SlotDefinitionDto.cs",
+      "target": "class:Application/Slots/SlotDefinitionDto.cs:SlotSelection",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Application/Slots/SlotDefinitionDto.cs",
+      "target": "class:Application/Slots/SlotDefinitionDto.cs:SlotConversionResult",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Application/Slots/SlotDefinitionDto.cs",
+      "target": "class:Application/Slots/SlotDefinitionDto.cs:SlotSelectionSnapshot",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Application/Slots/SlotVariableConverter.cs",
+      "target": "class:Application/Slots/SlotVariableConverter.cs:SlotVariableConverter",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Configuration/BusinessTypeProcessMapping.cs",
+      "target": "class:Configuration/BusinessTypeProcessMapping.cs:BusinessTypeProcessMapping",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Configuration/JwtOptions.cs",
+      "target": "class:Configuration/JwtOptions.cs:JwtOptions",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Configuration/ProcessNotificationOptions.cs",
+      "target": "class:Configuration/ProcessNotificationOptions.cs:ProcessNotificationOptions",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Domain/Abstractions/BusinessException.cs",
+      "target": "class:Domain/Abstractions/BusinessException.cs:BusinessException",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Domain/Abstractions/ConcurrentUpdateException.cs",
+      "target": "class:Domain/Abstractions/ConcurrentUpdateException.cs:ConcurrentUpdateException",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Domain/Abstractions/ICurrentUser.cs",
+      "target": "class:Domain/Abstractions/ICurrentUser.cs:ICurrentUser",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Domain/DistributedLock/IDistributedLockService.cs",
+      "target": "class:Domain/DistributedLock/IDistributedLockService.cs:IDistributedLockService",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Domain/ElasticSearch/Documents/ProcessMetadataDocument.cs",
+      "target": "class:Domain/ElasticSearch/Documents/ProcessMetadataDocument.cs:ProcessMetadataDocument",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Domain/ElasticSearch/Documents/ProcessMetadataDocument.cs",
+      "target": "class:Domain/ElasticSearch/Documents/ProcessMetadataDocument.cs:CallbackMetadata",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Domain/ElasticSearch/Documents/ProcessMetadataDocument.cs",
+      "target": "class:Domain/ElasticSearch/Documents/ProcessMetadataDocument.cs:NodeSemanticInfo",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Domain/ElasticSearch/Documents/ProcessMetadataDocument.cs",
+      "target": "class:Domain/ElasticSearch/Documents/ProcessMetadataDocument.cs:RejectOption",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Domain/ElasticSearch/Documents/ProcessMetadataDocument.cs",
+      "target": "class:Domain/ElasticSearch/Documents/ProcessMetadataDocument.cs:SlotDefinition",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Domain/ElasticSearch/Documents/ProcessMetadataDocument.cs",
+      "target": "class:Domain/ElasticSearch/Documents/ProcessMetadataDocument.cs:ProcessDefinitionSemanticDocument",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Domain/ElasticSearch/Documents/ProcessMetadataDocument.cs",
+      "target": "class:Domain/ElasticSearch/Documents/ProcessMetadataDocument.cs:ProcessAuditRecord",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Domain/ElasticSearch/Documents/ProcessMetadataDocument.cs",
+      "target": "class:Domain/ElasticSearch/Documents/ProcessMetadataDocument.cs:SlotSelectionRecord",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Domain/ElasticSearch/IElasticSearchService.cs",
+      "target": "class:Domain/ElasticSearch/IElasticSearchService.cs:IElasticSearchService",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Domain/Flowable/FlowableModels.cs",
+      "target": "class:Domain/Flowable/FlowableModels.cs:FlowableProcessInstance",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Domain/Flowable/FlowableModels.cs",
+      "target": "class:Domain/Flowable/FlowableModels.cs:FlowableTask",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Domain/Flowable/FlowableModels.cs",
+      "target": "class:Domain/Flowable/FlowableModels.cs:FlowableTaskQuery",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Domain/Flowable/FlowableModels.cs",
+      "target": "class:Domain/Flowable/FlowableModels.cs:FlowableHistoricTask",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Domain/Flowable/FlowableModels.cs",
+      "target": "class:Domain/Flowable/FlowableModels.cs:FlowableHistoricTaskQuery",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Domain/Flowable/FlowableModels.cs",
+      "target": "class:Domain/Flowable/FlowableModels.cs:FlowableDeployment",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Domain/Flowable/FlowableModels.cs",
+      "target": "class:Domain/Flowable/FlowableModels.cs:FlowableProcessDefinition",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Domain/Flowable/IFlowableHistoryService.cs",
+      "target": "class:Domain/Flowable/IFlowableHistoryService.cs:IFlowableHistoryService",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Domain/Flowable/IFlowableRepositoryService.cs",
+      "target": "class:Domain/Flowable/IFlowableRepositoryService.cs:IFlowableRepositoryService",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Domain/Flowable/IFlowableRuntimeService.cs",
+      "target": "class:Domain/Flowable/IFlowableRuntimeService.cs:IFlowableRuntimeService",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Domain/Flowable/IFlowableTaskService.cs",
+      "target": "class:Domain/Flowable/IFlowableTaskService.cs:IFlowableTaskService",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Infrastructure/CurrentUser/HttpContextCurrentUser.cs",
+      "target": "class:Infrastructure/CurrentUser/HttpContextCurrentUser.cs:HttpContextCurrentUser",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Infrastructure/DistributedLock/RedisDistributedLockService.cs",
+      "target": "class:Infrastructure/DistributedLock/RedisDistributedLockService.cs:RedisDistributedLockService",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Infrastructure/DistributedLock/RedisOptions.cs",
+      "target": "class:Infrastructure/DistributedLock/RedisOptions.cs:RedisOptions",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Infrastructure/ElasticSearch/ElasticSearchOptions.cs",
+      "target": "class:Infrastructure/ElasticSearch/ElasticSearchOptions.cs:ElasticSearchOptions",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Infrastructure/ElasticSearch/ElasticSearchServiceImpl.cs",
+      "target": "class:Infrastructure/ElasticSearch/ElasticSearchServiceImpl.cs:ElasticSearchServiceImpl",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Infrastructure/Flowable/FlowableHistoryServiceImpl.cs",
+      "target": "class:Infrastructure/Flowable/FlowableHistoryServiceImpl.cs:FlowableHistoryServiceImpl",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Infrastructure/Flowable/FlowableHistoryServiceImpl.cs",
+      "target": "class:Infrastructure/Flowable/FlowableHistoryServiceImpl.cs:FlowableHistoricTaskListResponse",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Infrastructure/Flowable/FlowableHistoryServiceImpl.cs",
+      "target": "class:Infrastructure/Flowable/FlowableHistoryServiceImpl.cs:FlowableHistoricTaskResponse",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Infrastructure/Flowable/FlowableHttpClient.cs",
+      "target": "class:Infrastructure/Flowable/FlowableHttpClient.cs:FlowableHttpClient",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Infrastructure/Flowable/FlowableHttpClient.cs",
+      "target": "class:Infrastructure/Flowable/FlowableHttpClient.cs:FlowableApiException",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Infrastructure/Flowable/FlowableOptions.cs",
+      "target": "class:Infrastructure/Flowable/FlowableOptions.cs:FlowableOptions",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Infrastructure/Flowable/FlowableRepositoryServiceImpl.cs",
+      "target": "class:Infrastructure/Flowable/FlowableRepositoryServiceImpl.cs:FlowableRepositoryServiceImpl",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Infrastructure/Flowable/FlowableRepositoryServiceImpl.cs",
+      "target": "class:Infrastructure/Flowable/FlowableRepositoryServiceImpl.cs:FlowableDeploymentResponse",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Infrastructure/Flowable/FlowableRepositoryServiceImpl.cs",
+      "target": "class:Infrastructure/Flowable/FlowableRepositoryServiceImpl.cs:FlowableProcessDefinitionListResponse",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Infrastructure/Flowable/FlowableRepositoryServiceImpl.cs",
+      "target": "class:Infrastructure/Flowable/FlowableRepositoryServiceImpl.cs:FlowableProcessDefinitionResponse",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Infrastructure/Flowable/FlowableRuntimeServiceImpl.cs",
+      "target": "class:Infrastructure/Flowable/FlowableRuntimeServiceImpl.cs:FlowableRuntimeServiceImpl",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Infrastructure/Flowable/FlowableTaskServiceImpl.cs",
+      "target": "class:Infrastructure/Flowable/FlowableTaskServiceImpl.cs:FlowableTaskServiceImpl",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Infrastructure/Flowable/FlowableTaskServiceImpl.cs",
+      "target": "class:Infrastructure/Flowable/FlowableTaskServiceImpl.cs:FlowableTaskListResponse",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Infrastructure/Flowable/FlowableTaskServiceImpl.cs",
+      "target": "class:Infrastructure/Flowable/FlowableTaskServiceImpl.cs:FlowableTaskResponse",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Infrastructure/Flowable/FlowableTaskServiceImpl.cs",
+      "target": "class:Infrastructure/Flowable/FlowableTaskServiceImpl.cs:FlowableIdentityLink",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Infrastructure/Security/TrustedJwtAuthenticationHandler.cs",
+      "target": "class:Infrastructure/Security/TrustedJwtAuthenticationHandler.cs:TrustedJwtAuthenticationHandler",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Infrastructure/Slots/ElasticSearchSlotConfigProvider.cs",
+      "target": "class:Infrastructure/Slots/ElasticSearchSlotConfigProvider.cs:ElasticSearchSlotConfigProvider",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Pages/Error.cshtml.cs",
+      "target": "class:Pages/Error.cshtml.cs:ErrorModel",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Pages/Index.cshtml.cs",
+      "target": "class:Pages/Index.cshtml.cs:IndexModel",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Pages/Privacy.cshtml.cs",
+      "target": "class:Pages/Privacy.cshtml.cs:PrivacyModel",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Test/ProcessCenter/CallbackDtos.cs",
+      "target": "class:Test/ProcessCenter/CallbackDtos.cs:WorkflowCallbackTypes",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Test/ProcessCenter/CallbackDtos.cs",
+      "target": "class:Test/ProcessCenter/CallbackDtos.cs:NodeCompletedCallbackPayload",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Test/ProcessCenter/CallbackDtos.cs",
+      "target": "class:Test/ProcessCenter/CallbackDtos.cs:BusinessCallbackPayload",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Test/ProcessCenter/CallbackDtos.cs",
+      "target": "class:Test/ProcessCenter/CallbackDtos.cs:MultiInstanceContext",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Test/ProcessCenter/CallbackDtos.cs",
+      "target": "class:Test/ProcessCenter/CallbackDtos.cs:AuditRecordSnapshot",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Test/ProcessCenter/CallbackDtos.cs",
+      "target": "class:Test/ProcessCenter/CallbackDtos.cs:SlotSelectionRecord",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Test/ProcessCenter/CallbackDtos.cs",
+      "target": "class:Test/ProcessCenter/CallbackDtos.cs:CallbackHandleResult",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Test/ProcessCenter/PortalContentApprovalWorkflow.cs",
+      "target": "class:Test/ProcessCenter/PortalContentApprovalWorkflow.cs:PortalContentApprovalWorkflow",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Test/ProcessCenter/PortalContentApprovalWorkflow.cs",
+      "target": "class:Test/ProcessCenter/PortalContentApprovalWorkflow.cs:StartAndCompleteStarterResult",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Test/ProcessCenter/ProcessCenterClient.cs",
+      "target": "class:Test/ProcessCenter/ProcessCenterClient.cs:ProcessCenterClient",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Test/ProcessCenter/ProcessCenterClient.cs",
+      "target": "class:Test/ProcessCenter/ProcessCenterClient.cs:ProcessCenterClientException",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Test/ProcessCenter/ProcessCenterOptions.cs",
+      "target": "class:Test/ProcessCenter/ProcessCenterOptions.cs:ProcessCenterOptions",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Test/ProcessCenter/WorkflowCallbackDispatcher.cs",
+      "target": "class:Test/ProcessCenter/WorkflowCallbackDispatcher.cs:IWorkflowCallbackHandler",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Test/ProcessCenter/WorkflowCallbackDispatcher.cs",
+      "target": "class:Test/ProcessCenter/WorkflowCallbackDispatcher.cs:WorkflowCallbackDispatcher",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Test/ProcessCenter/WorkflowDtos.cs",
+      "target": "class:Test/ProcessCenter/WorkflowDtos.cs:ApiEnvelope",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Test/ProcessCenter/WorkflowDtos.cs",
+      "target": "class:Test/ProcessCenter/WorkflowDtos.cs:StartProcessRequest",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Test/ProcessCenter/WorkflowDtos.cs",
+      "target": "class:Test/ProcessCenter/WorkflowDtos.cs:StartProcessResponse",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Test/ProcessCenter/WorkflowDtos.cs",
+      "target": "class:Test/ProcessCenter/WorkflowDtos.cs:CompleteTaskRequest",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Test/ProcessCenter/WorkflowDtos.cs",
+      "target": "class:Test/ProcessCenter/WorkflowDtos.cs:CompleteTaskResponse",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Test/ProcessCenter/WorkflowDtos.cs",
+      "target": "class:Test/ProcessCenter/WorkflowDtos.cs:ApprovalAction",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Test/ProcessCenter/WorkflowDtos.cs",
+      "target": "class:Test/ProcessCenter/WorkflowDtos.cs:SlotSelection",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Test/ProcessCenter/WorkflowDtos.cs",
+      "target": "class:Test/ProcessCenter/WorkflowDtos.cs:AssigneeContract",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Test/ProcessCenter/WorkflowDtos.cs",
+      "target": "class:Test/ProcessCenter/WorkflowDtos.cs:RoleAssignment",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Test/ProcessCenter/WorkflowDtos.cs",
+      "target": "class:Test/ProcessCenter/WorkflowDtos.cs:CallbackConfig",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Test/ProcessCenter/WorkflowDtos.cs",
+      "target": "class:Test/ProcessCenter/WorkflowDtos.cs:PendingTaskPageResult",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Test/ProcessCenter/WorkflowDtos.cs",
+      "target": "class:Test/ProcessCenter/WorkflowDtos.cs:PendingTaskDto",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Test/ProcessCenter/WorkflowDtos.cs",
+      "target": "class:Test/ProcessCenter/WorkflowDtos.cs:SlotDefinition",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    },
+    {
+      "source": "file:Test/ProcessCenter/WorkflowDtos.cs",
+      "target": "class:Test/ProcessCenter/WorkflowDtos.cs:RejectOption",
+      "type": "contains",
+      "weight": 1.0,
+      "direction": "forward"
+    }
+  ],
+  "layers": [
+    {
+      "id": "layer:api-controllers",
+      "name": "API 控制器层",
+      "description": "HTTP API 控制器，处理外部请求路由、参数校验和响应返回。包含 BPMN 部署、流程操作、回调处理等控制器。",
+      "nodeIds": [
+        "file:Api/Controllers/BpmnController.cs",
+        "file:Api/Controllers/CallbackController.cs",
+        "file:Api/Controllers/ProcessController.cs",
+        "file:Api/Controllers/ProcessFlowRenderController.cs",
+        "file:Api/Controllers/ProcessQueryController.cs",
+        "file:Api/Controllers/TaskController.cs",
+        "file:Api/Controllers/TestController.cs",
+        "file:Api/Filters/ApiResult.cs",
+        "file:Api/Filters/GlobalExceptionFilter.cs"
+      ]
+    },
+    {
+      "id": "layer:application-services",
+      "name": "应用服务层",
+      "description": "业务流程编排层，包含 DTO 定义、应用服务（部署、回调、生命周期、查询）、Slot 配置转换和赋值逻辑。",
+      "nodeIds": [
+        "file:Application/Dtos/ApprovalAction.cs",
+        "file:Application/Dtos/BpmnDeploymentDto.cs",
+        "file:Application/Dtos/CompleteTaskRequest.cs",
+        "file:Application/Dtos/FlowableCallbackDto.cs",
+        "file:Application/Dtos/PendingTaskDto.cs",
+        "file:Application/Dtos/ProcessFlowRenderDto.cs",
+        "file:Application/Dtos/ProcessProgressDto.cs",
+        "file:Application/Dtos/ProcessQueryDto.cs",
+        "file:Application/Dtos/StartProcessRequest.cs",
+        "file:Application/Services/BpmnDeploymentAppService.cs",
+        "file:Application/Services/ProcessCallbackAppService.cs",
+        "file:Application/Services/ProcessFlowRenderAppService.cs",
+        "file:Application/Services/ProcessLifecycleAppService.cs",
+        "file:Application/Services/ProcessNotificationService.cs",
+        "file:Application/Services/ProcessQueryAppService.cs",
+        "file:Application/Services/TaskExecutionAppService.cs",
+        "file:Application/Slots/AssigneeContractConverter.cs",
+        "file:Application/Slots/IProcessSlotConfigProvider.cs",
+        "file:Application/Slots/LoopAssignmentProjector.cs",
+        "file:Application/Slots/SlotDefinitionDto.cs",
+        "file:Application/Slots/SlotVariableConverter.cs"
+      ]
+    },
+    {
+      "id": "layer:domain-models",
+      "name": "领域模型层",
+      "description": "核心业务抽象和接口定义，包含领域异常、分布式锁接口、ElasticSearch 文档模型和 Flowable 仓储/运行时服务接口。",
+      "nodeIds": [
+        "file:Domain/Abstractions/BusinessException.cs",
+        "file:Domain/Abstractions/ConcurrentUpdateException.cs",
+        "file:Domain/Abstractions/ICurrentUser.cs",
+        "file:Domain/DistributedLock/IDistributedLockService.cs",
+        "file:Domain/ElasticSearch/Documents/ProcessMetadataDocument.cs",
+        "file:Domain/ElasticSearch/IElasticSearchService.cs",
+        "file:Domain/Flowable/FlowableModels.cs",
+        "file:Domain/Flowable/IFlowableHistoryService.cs",
+        "file:Domain/Flowable/IFlowableRepositoryService.cs",
+        "file:Domain/Flowable/IFlowableRuntimeService.cs",
+        "file:Domain/Flowable/IFlowableTaskService.cs"
+      ]
+    },
+    {
+      "id": "layer:infrastructure",
+      "name": "基础设施层",
+      "description": "基础设施实现，包含 Redis 分布式锁、ElasticSearch 搜索实现、Flowable HTTP 客户端、JWT 认证、当前用户上下文和 Slot 配置提供者。",
+      "nodeIds": [
+        "file:Infrastructure/CurrentUser/HttpContextCurrentUser.cs",
+        "file:Infrastructure/DistributedLock/RedisDistributedLockService.cs",
+        "file:Infrastructure/DistributedLock/RedisOptions.cs",
+        "file:Infrastructure/ElasticSearch/ElasticSearchOptions.cs",
+        "file:Infrastructure/ElasticSearch/ElasticSearchServiceImpl.cs",
+        "file:Infrastructure/Flowable/FlowableHistoryServiceImpl.cs",
+        "file:Infrastructure/Flowable/FlowableHttpClient.cs",
+        "file:Infrastructure/Flowable/FlowableOptions.cs",
+        "file:Infrastructure/Flowable/FlowableRepositoryServiceImpl.cs",
+        "file:Infrastructure/Flowable/FlowableRuntimeServiceImpl.cs",
+        "file:Infrastructure/Flowable/FlowableTaskServiceImpl.cs",
+        "file:Infrastructure/Security/TrustedJwtAuthenticationHandler.cs",
+        "file:Infrastructure/Slots/ElasticSearchSlotConfigProvider.cs"
+      ]
+    },
+    {
+      "id": "layer:configuration",
+      "name": "配置层",
+      "description": "应用程序配置，包含 JWT 选项、业务类型-流程映射、流程通知选项和应用设置。",
+      "nodeIds": [
+        "file:Configuration/BusinessTypeProcessMapping.cs",
+        "file:Configuration/JwtOptions.cs",
+        "file:Configuration/ProcessNotificationOptions.cs",
+        "config:appsettings.Development.json",
+        "config:appsettings.json"
+      ]
+    },
+    {
+      "id": "layer:presentation",
+      "name": "表示层",
+      "description": "Razor Pages 前端页面，包含共享布局、错误页面、隐私页面和首页。",
+      "nodeIds": [
+        "file:Pages/Error.cshtml",
+        "file:Pages/Error.cshtml.cs",
+        "file:Pages/Index.cshtml",
+        "file:Pages/Index.cshtml.cs",
+        "file:Pages/Privacy.cshtml",
+        "file:Pages/Privacy.cshtml.cs",
+        "file:Pages/Shared/_Layout.cshtml",
+        "file:Pages/Shared/_Layout.cshtml.css",
+        "file:Pages/Shared/_ValidationScriptsPartial.cshtml",
+        "file:Pages/_ViewImports.cshtml",
+        "file:Pages/_ViewStart.cshtml"
+      ]
+    },
+    {
+      "id": "layer:bpmn-definitions",
+      "name": "BPMN 流程定义",
+      "description": "BPMN 2.0 流程定义文件及对应的 Slot 配置 JSON，包含流程中心综合测评、门户资讯审批、全自动流程、人员选调、日常监督、巡察准备和巡前通报。",
+      "nodeIds": [
+        "config:bpmn/人员选调/personnel_selection_approval_solt.json",
+        "config:bpmn/人员选调/personnel_selection_collection_solt.json",
+        "config:bpmn/全自动流程/personnel_selection_approval_slot.json",
+        "config:bpmn/巡前通报/pre_inspection_briefing_solt.json",
+        "config:bpmn/巡察准备/inspection_preparation_solt.json",
+        "config:bpmn/日常监督/daily_supervision_solt.json",
+        "config:bpmn/流程中心综合测评/process_center_comprehensive_evaluation_slot.json",
+        "config:bpmn/门户资讯审批/portal_content_approval_slot.json",
+        "file:bpmn/人员选调/personnel_selection_approval.bpmn",
+        "file:bpmn/人员选调/personnel_selection_collection.bpmn",
+        "file:bpmn/全自动流程/personnel_selection_approval.bpmn",
+        "file:bpmn/巡前通报/pre_inspection_briefing.bpmn",
+        "file:bpmn/巡察准备/inspection_preparation.bpmn",
+        "file:bpmn/日常监督/daily_supervision.bpmn",
+        "file:bpmn/流程中心综合测评/process_center_comprehensive_evaluation.bpmn",
+        "file:bpmn/门户资讯审批/portal_content_approval.bpmn"
+      ]
+    },
+    {
+      "id": "layer:tests",
+      "name": "测试层",
+      "description": "单元测试和集成测试，包含流程中心客户端和 Flowable 包装器测试。",
+      "nodeIds": [
+        "config:Test/FlowableWrapper.Test.csproj",
+        "document:Test/README.md",
+        "file:Test/ProcessCenter/CallbackDtos.cs",
+        "file:Test/ProcessCenter/PortalContentApprovalWorkflow.cs",
+        "file:Test/ProcessCenter/ProcessCenterClient.cs",
+        "file:Test/ProcessCenter/ProcessCenterOptions.cs",
+        "file:Test/ProcessCenter/WorkflowCallbackDispatcher.cs",
+        "file:Test/ProcessCenter/WorkflowDtos.cs"
+      ]
+    },
+    {
+      "id": "layer:project-root",
+      "name": "项目根配置",
+      "description": "项目根目录下的核心配置文件和入口点。",
+      "nodeIds": [
+        "file:Program.cs",
+        "config:process.csproj",
+        "config:process.sln",
+        "document:CLAUDE.md",
+        "document:AGENTS.md",
+        "document:README.md"
+      ]
+    },
+    {
+      "id": "layer:specs-and-artifacts",
+      "name": "规范和测试制品",
+      "description": "项目规范文档、API 测试响应制品。",
+      "nodeIds": [
+        "document:specs/mian/plan.md",
+        "document:specs/mian/process_center_patch_plan_v1.md",
+        "document:specs/mian/spec.md",
+        "document:specs/mian/tasks.md",
+        "config:artifacts/deploy-response.json",
+        "config:artifacts/start-response-2.json",
+        "config:artifacts/start-response-3.json",
+        "config:artifacts/start-response.json",
+        "config:artifacts/workflow-callback-test-2.json",
+        "config:artifacts/workflow-callback-test-3.json",
+        "config:.specify/extensions.yml",
+        "config:.specify/extensions/git/config-template.yml",
+        "config:.specify/extensions/git/extension.yml",
+        "config:.specify/extensions/git/git-config.yml",
+        "config:.specify/feature.json",
+        "config:.specify/init-options.json",
+        "config:.specify/integration.json",
+        "config:.specify/integrations/codex.manifest.json",
+        "config:.specify/integrations/speckit.manifest.json",
+        "config:.specify/workflows/speckit/workflow.yml",
+        "config:.specify/workflows/workflow-registry.json",
+        "document:.specify/extensions/git/README.md",
+        "document:.specify/extensions/git/commands/speckit.git.commit.md",
+        "document:.specify/extensions/git/commands/speckit.git.feature.md",
+        "document:.specify/extensions/git/commands/speckit.git.initialize.md",
+        "document:.specify/extensions/git/commands/speckit.git.remote.md",
+        "document:.specify/extensions/git/commands/speckit.git.validate.md",
+        "document:.specify/memory/constitution.md",
+        "document:.specify/templates/checklist-template.md",
+        "document:.specify/templates/constitution-template.md",
+        "document:.specify/templates/plan-template.md",
+        "document:.specify/templates/spec-template.md",
+        "document:.specify/templates/tasks-template.md",
+        "file:.specify/extensions/.registry",
+        "file:.specify/extensions/git/scripts/bash/auto-commit.sh",
+        "file:.specify/extensions/git/scripts/bash/create-new-feature.sh",
+        "file:.specify/extensions/git/scripts/bash/git-common.sh",
+        "file:.specify/extensions/git/scripts/bash/initialize-repo.sh",
+        "file:.specify/extensions/git/scripts/powershell/auto-commit.ps1",
+        "file:.specify/extensions/git/scripts/powershell/create-new-feature.ps1",
+        "file:.specify/extensions/git/scripts/powershell/git-common.ps1",
+        "file:.specify/extensions/git/scripts/powershell/initialize-repo.ps1",
+        "file:.specify/scripts/powershell/check-prerequisites.ps1",
+        "file:.specify/scripts/powershell/common.ps1",
+        "file:.specify/scripts/powershell/create-new-feature.ps1",
+        "file:.specify/scripts/powershell/setup-plan.ps1"
+      ]
+    },
+    {
+      "id": "layer:other",
+      "name": "其他文件",
+      "description": "未分配到特定层次的杂项文件（Agent 技能定义等）。",
+      "nodeIds": [
+        "file:.understand-anything/.understandignore",
+        "config:.understand-anything/config.json",
+        "config:Properties/launchSettings.json",
+        "file:wwwroot/css/site.css",
+        "file:wwwroot/js/site.js",
+        "file:wwwroot/lib/jquery-validation-unobtrusive/jquery.validate.unobtrusive.js",
+        "document:wwwroot/lib/jquery-validation-unobtrusive/LICENSE.txt",
+        "document:wwwroot/lib/jquery-validation/LICENSE.md",
+        "document:wwwroot/lib/jquery/LICENSE.txt",
+        "document:.agents/skills/speckit-analyze/SKILL.md",
+        "document:.agents/skills/speckit-checklist/SKILL.md",
+        "document:.agents/skills/speckit-clarify/SKILL.md",
+        "document:.agents/skills/speckit-constitution/SKILL.md",
+        "document:.agents/skills/speckit-git-commit/SKILL.md",
+        "document:.agents/skills/speckit-git-feature/SKILL.md",
+        "document:.agents/skills/speckit-git-initialize/SKILL.md",
+        "document:.agents/skills/speckit-git-remote/SKILL.md",
+        "document:.agents/skills/speckit-git-validate/SKILL.md",
+        "document:.agents/skills/speckit-implement/SKILL.md",
+        "document:.agents/skills/speckit-plan/SKILL.md",
+        "document:.agents/skills/speckit-specify/SKILL.md",
+        "document:.agents/skills/speckit-tasks/SKILL.md",
+        "document:.agents/skills/speckit-taskstoissues/SKILL.md"
+      ]
+    }
+  ],
+  "tour": [
+    {
+      "order": 1,
+      "title": "项目概览",
+      "description": "流程中心（Process Center）是基于 .NET 6.0 和 Flowable 7.2 的 BPMN 流程引擎服务中心。README 文档描述了 API 测试规范和系统架构原则。",
+      "nodeIds": [
+        "document:README.md",
+        "file:Program.cs"
+      ]
+    },
+    {
+      "order": 2,
+      "title": "应用入口与配置",
+      "description": "Program.cs 是应用程序入口点，配置了服务注册、中间件管道和路由。appsettings.json 包含数据库、Elasticsearch、Redis 等基础设施连接配置。",
+      "nodeIds": [
+        "file:Program.cs",
+        "config:appsettings.json"
+      ]
+    },
+    {
+      "order": 3,
+      "title": "API 控制器层",
+      "description": "提供 RESTful API 端点，包括 BPMN 部署、流程启动/审批/驳回/加签、流程查询和回调接收。ApiResult 统一封装响应格式，GlobalExceptionFilter 全局处理异常。",
+      "nodeIds": [
+        "file:Api/Controllers/BpmnController.cs",
+        "file:Api/Controllers/ProcessController.cs",
+        "file:Api/Controllers/CallbackController.cs",
+        "file:Api/Controllers/ProcessQueryController.cs",
+        "file:Api/Controllers/TaskController.cs",
+        "file:Api/Filters/ApiResult.cs",
+        "file:Api/Filters/GlobalExceptionFilter.cs"
+      ]
+    },
+    {
+      "order": 4,
+      "title": "应用服务层",
+      "description": "业务逻辑编排层，包含 BPMN 部署服务、流程生命周期管理（启动、审批、驳回、转派）、回调处理服务和流程查询服务。Dtos 目录定义了请求/响应数据结构。",
+      "nodeIds": [
+        "file:Application/Services/BpmnDeploymentAppService.cs",
+        "file:Application/Services/ProcessLifecycleAppService.cs",
+        "file:Application/Services/ProcessCallbackAppService.cs",
+        "file:Application/Services/ProcessQueryAppService.cs",
+        "file:Application/Dtos/StartProcessRequest.cs",
+        "file:Application/Dtos/FlowableCallbackDto.cs"
+      ]
+    },
+    {
+      "order": 5,
+      "title": "Slot 三键分离体系",
+      "description": "核心架构模式：slotKey/roleKey/variableName 三者职责分离，禁止互相推导。包含 Slot 配置提供者接口、赋值转换器、循环赋值投影器和 Slot 定义 DTO。",
+      "nodeIds": [
+        "file:Application/Slots/IProcessSlotConfigProvider.cs",
+        "file:Application/Slots/AssigneeContractConverter.cs",
+        "file:Application/Slots/SlotVariableConverter.cs",
+        "file:Application/Slots/LoopAssignmentProjector.cs",
+        "file:Application/Slots/SlotDefinitionDto.cs"
+      ]
+    },
+    {
+      "order": 6,
+      "title": "领域模型与接口定义",
+      "description": "核心业务抽象，包含分布式锁接口、Elasticsearch 文档模型（ProcessMetadataDocument）、Flowable 仓储/运行时/任务/历史服务接口定义。",
+      "nodeIds": [
+        "file:Domain/Abstractions/BusinessException.cs",
+        "file:Domain/DistributedLock/IDistributedLockService.cs",
+        "file:Domain/ElasticSearch/IElasticSearchService.cs",
+        "file:Domain/ElasticSearch/Documents/ProcessMetadataDocument.cs",
+        "file:Domain/Flowable/IFlowableRepositoryService.cs",
+        "file:Domain/Flowable/IFlowableRuntimeService.cs",
+        "file:Domain/Flowable/IFlowableTaskService.cs"
+      ]
+    },
+    {
+      "order": 7,
+      "title": "基础设施实现",
+      "description": "基础设施的完整实现层，包含 Redis 分布式锁（基于 StackExchange.Redis）、Elasticsearch 搜索服务（基于 NEST 客户端）、Flowable HTTP 客户端、JWT 认证处理器和 Slot 配置提供者（从 ES 读取）。",
+      "nodeIds": [
+        "file:Infrastructure/DistributedLock/RedisDistributedLockService.cs",
+        "file:Infrastructure/ElasticSearch/ElasticSearchServiceImpl.cs",
+        "file:Infrastructure/Flowable/FlowableHttpClient.cs",
+        "file:Infrastructure/Flowable/FlowableRuntimeServiceImpl.cs",
+        "file:Infrastructure/Security/TrustedJwtAuthenticationHandler.cs",
+        "file:Infrastructure/Slots/ElasticSearchSlotConfigProvider.cs",
+        "file:Infrastructure/CurrentUser/HttpContextCurrentUser.cs"
+      ]
+    },
+    {
+      "order": 8,
+      "title": "BPMN 流程定义",
+      "description": "BPMN 2.0 流程定义文件，包含流程中心综合测评、门户资讯审批、全自动流程、人员选调、日常监督、巡察准备和巡前通报等业务流程。每个流程有对应的 Slot JSON 配置。",
+      "nodeIds": [
+        "file:bpmn/流程中心综合测评/process_center_comprehensive_evaluation.bpmn",
+        "file:bpmn/门户资讯审批/portal_content_approval.bpmn",
+        "file:bpmn/全自动流程/personnel_selection_approval.bpmn",
+        "file:bpmn/人员选调/personnel_selection_approval.bpmn",
+        "file:bpmn/人员选调/personnel_selection_collection.bpmn",
+        "file:bpmn/日常监督/daily_supervision.bpmn",
+        "file:bpmn/巡察准备/inspection_preparation.bpmn",
+        "file:bpmn/巡前通报/pre_inspection_briefing.bpmn"
+      ]
+    },
+    {
+      "order": 9,
+      "title": "配置管理",
+      "description": "应用程序配置选项，包括 JWT 认证配置、业务类型到流程定义的映射、流程通知选项（邮件/短信/站内信）。",
+      "nodeIds": [
+        "file:Configuration/JwtOptions.cs",
+        "file:Configuration/BusinessTypeProcessMapping.cs",
+        "file:Configuration/ProcessNotificationOptions.cs"
+      ]
+    },
+    {
+      "order": 10,
+      "title": "测试与验证",
+      "description": "测试项目，包含流程中心客户端测试代码和 Flowable 包装器测试。测试覆盖了 API 调用和流程引擎交互场景。",
+      "nodeIds": [
+        "config:Test/FlowableWrapper.Test.csproj",
+        "file:Test/ProcessCenter/CallbackDtos.cs",
+        "file:Test/ProcessCenter/PortalContentApprovalWorkflow.cs",
+        "file:Test/ProcessCenter/ProcessCenterClient.cs",
+        "file:Test/ProcessCenter/ProcessCenterOptions.cs",
+        "file:Test/ProcessCenter/WorkflowCallbackDispatcher.cs",
+        "file:Test/ProcessCenter/WorkflowDtos.cs",
+        "document:Test/README.md"
+      ]
+    }
+  ]
+}
