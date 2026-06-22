@@ -1,0 +1,81 @@
+[
+  {
+    "taskDefinitionKey": "ut01_applicant_submit",
+    "nodeSemantic": "LC_KEY_NODE_APPLICANT_SUBMIT",
+    "pageCode": "LaborCompetition/KeyNode/ApplicantSubmitForm",
+    "isStarterNode": true,
+    "isConvergencePoint": false,
+    "canReject": false,
+    "rejectOptions": [],
+    "isRejectTarget": true,
+    "rejectCode": "TO_APPLICANT_SUBMIT",
+    "roleKey": "lc_key_node_applicant",
+    "assigneeMode": "single",
+    "slots": [
+      {
+        "slotKey": "grassroots_chair",
+        "roleKey": "lc_grassroots_union_chair",
+        "label": "基层工会主席",
+        "mode": "single",
+        "variableName": "grassrootsChairAssignee",
+        "required": true,
+        "conditionalOn": null,
+        "restrictToRecommended": true
+      }
+    ],
+    "callbackUrl": null
+  },
+  {
+    "taskDefinitionKey": "ut02_grassroots_chair_approve",
+    "nodeSemantic": "LC_KEY_NODE_GRASSROOTS_CHAIR_APPROVE",
+    "pageCode": "LaborCompetition/KeyNode/GrassrootsChairApproveForm",
+    "isStarterNode": false,
+    "isConvergencePoint": false,
+    "canReject": true,
+    "rejectOptions": [
+      {
+        "rejectCode": "TO_APPLICANT_SUBMIT",
+        "label": "驳回申请人修改",
+        "description": "基层工会主席审批不通过，退回申请人发起节点"
+      }
+    ],
+    "isRejectTarget": false,
+    "rejectCode": null,
+    "roleKey": "lc_grassroots_union_chair",
+    "assigneeMode": "single",
+    "slots": [
+      {
+        "slotKey": "competition_supervisor",
+        "roleKey": "lc_competition_supervisor",
+        "label": "公司工会劳动竞赛主管",
+        "mode": "single",
+        "variableName": "competitionSupervisorAssignee",
+        "required": true,
+        "conditionalOn": null,
+        "restrictToRecommended": true
+      }
+    ],
+    "callbackUrl": null
+  },
+  {
+    "taskDefinitionKey": "ut03_competition_supervisor_approve",
+    "nodeSemantic": "LC_KEY_NODE_COMPETITION_SUPERVISOR_APPROVE",
+    "pageCode": "LaborCompetition/KeyNode/CompetitionSupervisorApproveForm",
+    "isStarterNode": false,
+    "isConvergencePoint": true,
+    "canReject": true,
+    "rejectOptions": [
+      {
+        "rejectCode": "TO_APPLICANT_SUBMIT",
+        "label": "驳回申请人修改",
+        "description": "公司工会劳动竞赛主管审批不通过，退回申请人发起节点"
+      }
+    ],
+    "isRejectTarget": false,
+    "rejectCode": null,
+    "roleKey": "lc_competition_supervisor",
+    "assigneeMode": "single",
+    "slots": [],
+    "callbackUrl": null
+  }
+]

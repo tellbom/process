@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xmlns:flowable="http://flowable.org/bpmn"
+             xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+             xmlns:omgdc="http://www.omg.org/spec/DD/20100524/DC"
+             xmlns:omgdi="http://www.omg.org/spec/DD/20100524/DI"
+             typeLanguage="http://www.w3.org/2001/XMLSchema"
+             expressionLanguage="http://www.w3.org/1999/XPath"
+             targetNamespace="http://www.flowable.org/processdef">
+
+  <!--
+    流程：劳动竞赛关键节点审批
+    ProcessDefinitionKey : labor_competition_key_node_approval
+    BusinessType         : labor_competition_key_node_approval
+
+    路径：
+      申请人 -> 基层工会主席 -> 公司工会劳动竞赛主管 -> 框架回调 -> 结束
+  -->
+  <process id="labor_competition_key_node_approval"
+           name="劳动竞赛关键节点审批"
+           isExecutable="true">
+
+    <startEvent id="start_event" name="开始"/>
+
+    <sequenceFlow id="flow_start_to_ut01"
+                  sourceRef="start_event"
+                  targetRef="ut01_applicant_submit"/>
+
+    <userTask id="ut01_applicant_submit"
+              name="申请人"
+              flowable:assignee="${applicantAssignee}">
+      <documentation>
+        操作: 申请人提交劳动竞赛关键节点审批材料。
+        slots: 选基层工会主席 -> grassrootsChairAssignee
+      </documentation>
+      <extensionElements>
+        <flowable:field name="nodeSemantic" stringValue="LC_KEY_NODE_APPLICANT_SUBMIT"/>
+        <flowable:field name="pageCode" stringValue="LaborCompetition/KeyNode/ApplicantSubmitForm"/>
+        <flowable:field name="isConvergencePoint" stringValue="false"/>
+      </extensionElements>
+    </userTask>
+
+    <sequenceFlow id="flow_ut01_to_ut02"
+                  sourceRef="ut01_applicant_submit"
+                  targetRef="ut02_grassroots_chair_approve"/>
+
+    <userTask id="ut02_grassroots_chair_approve"
+              name="基层工会主席"
+              flowable:assignee="${grassrootsChairAssignee}">
+      <documentation>
+        操作: 基层工会主席审批，可同意或驳回到申请人。
+        slots: 选公司工会劳动竞赛主管 -> competitionSupervisorAssignee
+      </documentation>
+      <extensionElements>
+        <flowable:field name="nodeSemantic" stringValue="LC_KEY_NODE_GRASSROOTS_CHAIR_APPROVE"/>
+        <flowable:field name="pageCode" stringValue="LaborCompetition/KeyNode/GrassrootsChairApproveForm"/>
+        <flowable:field name="isConvergencePoint" stringValue="false"/>
+      </extensionElements>
+    </userTask>
+
+    <sequenceFlow id="flow_ut02_to_ut03"
+                  sourceRef="ut02_grassroots_chair_approve"
+                  targetRef="ut03_competition_supervisor_approve"/>
+
+    <userTask id="ut03_competition_supervisor_approve"
+              name="公司工会劳动竞赛主管"
+              flowable:assignee="${competitionSupervisorAssignee}">
+      <documentation>
+        操作: 公司工会劳动竞赛主管审批，可同意或驳回到申请人。
+        slots: 无
+      </documentation>
+      <extensionElements>
+        <flowable:field name="nodeSemantic" stringValue="LC_KEY_NODE_COMPETITION_SUPERVISOR_APPROVE"/>
+        <flowable:field name="pageCode" stringValue="LaborCompetition/KeyNode/CompetitionSupervisorApproveForm"/>
+        <flowable:field name="isConvergencePoint" stringValue="true"/>
+      </extensionElements>
+    </userTask>
+
+    <sequenceFlow id="flow_ut03_to_st04"
+                  sourceRef="ut03_competition_supervisor_approve"
+                  targetRef="st04_framework_callback"/>
+
+    <serviceTask id="st04_framework_callback"
+                 name="框架回调业务系统"
+                 flowable:type="http">
+      <extensionElements>
+        <flowable:field name="requestMethod"><flowable:string>POST</flowable:string></flowable:field>
+        <flowable:field name="requestUrl"><flowable:expression>${frameworkCallbackUrl}</flowable:expression></flowable:field>
+        <flowable:field name="requestHeaders"><flowable:string>Content-Type: application/json</flowable:string></flowable:field>
+        <flowable:field name="requestBody">
+          <flowable:expression>{"processInstanceId":"${execution.processInstanceId}","businessId":"${businessId}","processDefinitionKey":"${processDefinitionKey}"}</flowable:expression>
+        </flowable:field>
+        <flowable:field name="saveResponseParameters"><flowable:string>false</flowable:string></flowable:field>
+      </extensionElements>
+    </serviceTask>
+
+    <sequenceFlow id="flow_st04_to_end"
+                  sourceRef="st04_framework_callback"
+                  targetRef="end_event"/>
+
+    <endEvent id="end_event" name="结束"/>
+
+  </process>
+
+  <bpmndi:BPMNDiagram id="BPMNDiagram_labor_competition_key_node_approval">
+    <bpmndi:BPMNPlane id="BPMNPlane_labor_competition_key_node_approval"
+                      bpmnElement="labor_competition_key_node_approval">
+      <bpmndi:BPMNShape id="shape_start" bpmnElement="start_event"><omgdc:Bounds x="80" y="102" width="36" height="36"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_ut01" bpmnElement="ut01_applicant_submit"><omgdc:Bounds x="160" y="80" width="170" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_ut02" bpmnElement="ut02_grassroots_chair_approve"><omgdc:Bounds x="390" y="80" width="190" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_ut03" bpmnElement="ut03_competition_supervisor_approve"><omgdc:Bounds x="640" y="80" width="220" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_st04" bpmnElement="st04_framework_callback"><omgdc:Bounds x="920" y="80" width="180" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_end" bpmnElement="end_event"><omgdc:Bounds x="1160" y="102" width="36" height="36"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="edge_start_to_ut01" bpmnElement="flow_start_to_ut01"><omgdi:waypoint x="116" y="120"/><omgdi:waypoint x="160" y="120"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_ut01_to_ut02" bpmnElement="flow_ut01_to_ut02"><omgdi:waypoint x="330" y="120"/><omgdi:waypoint x="390" y="120"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_ut02_to_ut03" bpmnElement="flow_ut02_to_ut03"><omgdi:waypoint x="580" y="120"/><omgdi:waypoint x="640" y="120"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_ut03_to_st04" bpmnElement="flow_ut03_to_st04"><omgdi:waypoint x="860" y="120"/><omgdi:waypoint x="920" y="120"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_st04_to_end" bpmnElement="flow_st04_to_end"><omgdi:waypoint x="1100" y="120"/><omgdi:waypoint x="1160" y="120"/></bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</definitions>
