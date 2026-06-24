@@ -14,7 +14,7 @@
         "slotKey": "group_leader",
         "roleKey": "group_leader",
         "label": "巡察组组长",
-        "mode": "single",
+        "mode": "multiple",
         "variableName": "groupLeaderAssignee",
         "required": true,
         "conditionalOn": null
@@ -42,7 +42,7 @@
         "slotKey": "inspection_office_reviewer",
         "roleKey": "inspection_office_reviewer",
         "label": "巡察办审核人",
-        "mode": "single",
+        "mode": "multiple",
         "variableName": "inspectionOfficeReviewAssignee",
         "required": true,
         "conditionalOn": null
@@ -70,7 +70,7 @@
         "slotKey": "integrity_dept_reviewer",
         "roleKey": "integrity_dept_reviewer",
         "label": "纪检部审核人",
-        "mode": "single",
+        "mode": "multiple",
         "variableName": "integrityDeptReviewAssignee",
         "required": true,
         "conditionalOn": null
@@ -98,7 +98,7 @@
         "slotKey": "integrity_head",
         "roleKey": "integrity_head",
         "label": "纪检部一把手",
-        "mode": "single",
+        "mode": "multiple",
         "variableName": "integrityHeadAssignee",
         "required": true,
         "conditionalOn": null
@@ -126,7 +126,7 @@
         "slotKey": "feedback_person",
         "roleKey": "feedback_person",
         "label": "他人反馈人",
-        "mode": "single",
+        "mode": "multiple",
         "variableName": "feedbackPersonAssignee",
         "required": false,
         "conditionalOn": "needPersonFeedback==true"
@@ -135,7 +135,7 @@
         "slotKey": "office_director_self_handle",
         "roleKey": "office_director",
         "label": "巡察办主任（本人处理路径）",
-        "mode": "single",
+        "mode": "multiple",
         "variableName": "officeDirectorAssignee",
         "required": true,
         "conditionalOn": "needPersonFeedback==false"
@@ -175,7 +175,7 @@
         "slotKey": "office_director_after_feedback",
         "roleKey": "office_director",
         "label": "巡察办主任（他人反馈路径）",
-        "mode": "single",
+        "mode": "multiple",
         "variableName": "officeDirectorAssignee",
         "required": true,
         "conditionalOn": null
@@ -203,7 +203,7 @@
         "slotKey": "secretary",
         "roleKey": "secretary",
         "label": "纪委书记",
-        "mode": "single",
+        "mode": "multiple",
         "variableName": "secretaryAssignee",
         "required": true,
         "conditionalOn": null

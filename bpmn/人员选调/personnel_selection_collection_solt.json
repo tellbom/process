@@ -14,7 +14,7 @@
         "slotKey": "dept_head",
         "roleKey": "dept_head",
         "label": "相关部门一把手",
-        "mode": "single",
+        "mode": "multiple",
         "variableName": "deptHeadAssignee",
         "required": true,
         "conditionalOn": null
@@ -30,7 +30,7 @@
     "canReject": true,
     "rejectOptions": [
       {
-        "	": "TO_STARTER",
+        "rejectCode": "TO_STARTER",
         "label": "退回发起人重新提交",
         "description": "退回至发起人，重新填写表单数据"
       }
@@ -42,7 +42,7 @@
         "slotKey": "feedback_person",
         "roleKey": "feedback_person",
         "label": "下属反馈人",
-        "mode": "single",
+        "mode": "multiple",
         "variableName": "feedbackPersonAssignee",
         "required": false,
         "conditionalOn": "needFeedback==true"
@@ -51,7 +51,7 @@
         "slotKey": "inspection_office_verifier_path_a",
         "roleKey": "inspection_office_verifier",
         "label": "巡察办核实人（自处理路径）",
-        "mode": "single",
+        "mode": "multiple",
         "variableName": "inspectionOfficeAssignee",
         "required": false,
         "conditionalOn": "needFeedback==false"
@@ -79,7 +79,7 @@
         "slotKey": "dept_head_approver",
         "roleKey": "dept_head",
         "label": "一把手审批人",
-        "mode": "single",
+        "mode": "multiple",
         "variableName": "deptHeadAssignee",
         "required": true,
         "conditionalOn": null
@@ -107,7 +107,7 @@
         "slotKey": "inspection_office_verifier_path_b",
         "roleKey": "inspection_office_verifier",
         "label": "巡察办核实人（指派路径）",
-        "mode": "single",
+        "mode": "multiple",
         "variableName": "inspectionOfficeAssignee",
         "required": true,
         "conditionalOn": null

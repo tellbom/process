@@ -14,7 +14,7 @@
         "slotKey": "group_leader",
         "roleKey": "group_leader",
         "label": "巡察组组长",
-        "mode": "single",
+        "mode": "multiple",
         "variableName": "groupLeaderAssignee",
         "required": true,
         "conditionalOn": null
@@ -42,7 +42,7 @@
         "slotKey": "office_director",
         "roleKey": "office_director",
         "label": "巡察办主任",
-        "mode": "single",
+        "mode": "multiple",
         "variableName": "officeDirectorAssignee",
         "required": true,
         "conditionalOn": null
@@ -70,7 +70,7 @@
         "slotKey": "secretary",
         "roleKey": "secretary",
         "label": "纪委书记",
-        "mode": "single",
+        "mode": "multiple",
         "variableName": "secretaryAssignee",
         "required": true,
         "conditionalOn": null
