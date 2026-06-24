@@ -10,7 +10,7 @@
     "isRejectTarget": true,
     "rejectCode": "TO_STARTER",
     "roleKey": "problem_zero_starter",
-    "assigneeMode": "multiple",
+    "assigneeMode": "single",
     "slots": [
       {
         "slotKey": "team_leader",
@@ -83,7 +83,7 @@
         "mode": "multiple",
         "variableName": "responsibleAssigneeList",
         "required": true,
-        "conditionalOn": null,
+        "conditionalOn": "IS_SOLVED==false",
         "restrictToRecommended": true
       }
     ],
@@ -119,11 +119,11 @@
         "restrictToRecommended": true
       },
       {
-        "slotKey": "department_leader_direct",
-        "roleKey": "problem_zero_department_leader",
-        "label": "科室领导（非专项工作路径）",
+        "slotKey": "discoverer_direct",
+        "roleKey": "problem_zero_discoverer",
+        "label": "发现问题人（非专项工作路径）",
         "mode": "multiple",
-        "variableName": "departmentLeaderAssigneeList",
+        "variableName": "discovererAssigneeList",
         "required": true,
         "conditionalOn": "PROBLEM_ATTRIBUTE==false",
         "restrictToRecommended": true
@@ -151,41 +151,9 @@
     "assigneeMode": "multiple",
     "slots": [
       {
-        "slotKey": "department_leader_after_counterpart",
-        "roleKey": "problem_zero_department_leader",
-        "label": "科室领导（专项工作路径）",
-        "mode": "multiple",
-        "variableName": "departmentLeaderAssigneeList",
-        "required": true,
-        "conditionalOn": null,
-        "restrictToRecommended": true
-      }
-    ],
-    "callbackUrl": null
-  },
-  {
-    "taskDefinitionKey": "ut06_department_leader_confirm",
-    "nodeSemantic": "PROBLEM_ZERO_DEPARTMENT_LEADER_CONFIRM",
-    "pageCode": "ProblemZero/DepartmentLeaderConfirmForm",
-    "isStarterNode": false,
-    "isConvergencePoint": false,
-    "canReject": true,
-    "rejectOptions": [
-      {
-        "rejectCode": "TO_STARTER",
-        "label": "退回发起人修改",
-        "description": "科室领导确认不通过，退回问题发起人修改"
-      }
-    ],
-    "isRejectTarget": false,
-    "rejectCode": null,
-    "roleKey": "problem_zero_department_leader",
-    "assigneeMode": "multiple",
-    "slots": [
-      {
-        "slotKey": "discoverer",
+        "slotKey": "discoverer_after_counterpart",
         "roleKey": "problem_zero_discoverer",
-        "label": "发现问题人",
+        "label": "发现问题人（专项工作路径）",
         "mode": "multiple",
         "variableName": "discovererAssigneeList",
         "required": true,
@@ -196,7 +164,7 @@
     "callbackUrl": null
   },
   {
-    "taskDefinitionKey": "ut07_discoverer_confirm",
+    "taskDefinitionKey": "ut06_discoverer_confirm",
     "nodeSemantic": "PROBLEM_ZERO_DISCOVERER_CONFIRM",
     "pageCode": "ProblemZero/DiscovererConfirmForm",
     "isStarterNode": false,

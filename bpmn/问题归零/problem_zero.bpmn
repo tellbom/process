@@ -15,25 +15,26 @@
     BusinessType         : problem_zero
 
     流程路径：
-      UT-01 问题发起人启动流程
+      UT-01 问题发起人启动流程（单人）
       UT-02 发现问题班组负责人问题确认
-      UT-03 质控人员组确认
-      UT-04 责任人确认
-      EG-01 判断 PROBLEM_ATTRIBUTE 是否专项工作
-        true  -> UT-05 对口领导审核 -> UT-06 科室领导确认
-        false -> UT-06 科室领导确认
-      UT-07 发现问题人确认，问题归零
-      ST-08 框架回调业务系统
+      UT-03 质控人员组确认，提交 IS_SOLVED
+        true  -> ST-07 框架回调业务系统 -> 结束
+        false -> UT-04 责任人确认
+      UT-04 责任人确认，提交 PROBLEM_ATTRIBUTE
+      EG-02 判断 PROBLEM_ATTRIBUTE 是否专项工作
+        true  -> UT-05 对口领导审核 -> UT-06 发现问题人确认
+        false -> UT-06 发现问题人确认
+      ST-07 框架回调业务系统
 
     变量说明：
-      starterAssigneeList         : 问题发起人工号列表，启动时传入
-      teamLeaderAssigneeList      : 发现问题班组负责人工号列表，UT-01 完成时通过 slot 写入
-      qualityAssigneeList         : 质控人员组工号列表，UT-02 完成时通过 slot 写入
-      responsibleAssigneeList     : 责任人工号列表，UT-03 完成时通过 slot 写入
-      PROBLEM_ATTRIBUTE           : 是否专项工作，UT-04 完成时由业务变量传入 true/false
-      counterpartLeaderAssigneeList : 对口领导工号列表，专项工作路径使用
-      departmentLeaderAssigneeList  : 科室领导工号列表
-      discovererAssigneeList        : 发现问题人工号列表
+      starterAssignee              : 问题发起人工号，启动时传入
+      teamLeaderAssigneeList       : 发现问题班组负责人工号列表，UT-01 完成时通过 slot 写入
+      qualityAssigneeList          : 质控人员组工号列表，UT-02 完成时通过 slot 写入
+      IS_SOLVED                    : 是否已解决，UT-03 完成时由业务变量传入 true/false
+      responsibleAssigneeList      : 责任人工号列表，IS_SOLVED=false 时由 UT-03 slot 写入
+      PROBLEM_ATTRIBUTE            : 是否专项工作，UT-04 完成时由业务变量传入 true/false
+      counterpartLeaderAssigneeList: 对口领导工号列表，专项工作路径使用
+      discovererAssigneeList       : 发现问题人工号列表
   -->
   <process id="problem_zero"
            name="问题归零"
@@ -47,9 +48,9 @@
 
     <userTask id="ut01_starter_submit"
               name="问题发起人启动流程"
-              flowable:assignee="${starterAssignee.asText()}">
+              flowable:assignee="${starterAssignee}">
       <documentation>
-        处理人: 启动时由业务系统传入 starterAssigneeList，节点并行或签
+        处理人: 启动时由业务系统传入 starterAssignee
         操作: 创建问题归零流程，提交问题基本信息
         slots: 选发现问题班组负责人 -> teamLeaderAssigneeList
       </documentation>
@@ -58,11 +59,6 @@
         <flowable:field name="pageCode" stringValue="ProblemZero/StarterSubmitForm"/>
         <flowable:field name="isConvergencePoint" stringValue="false"/>
       </extensionElements>
-      <multiInstanceLoopCharacteristics isSequential="false"
-                                        flowable:collection="${starterAssigneeList}"
-                                        flowable:elementVariable="starterAssignee">
-        <completionCondition>${nrOfCompletedInstances &gt;= 1}</completionCondition>
-      </multiInstanceLoopCharacteristics>
     </userTask>
 
     <sequenceFlow id="flow_ut01_to_ut02"
@@ -98,8 +94,8 @@
               flowable:assignee="${qualityAssignee.asText()}">
       <documentation>
         处理人: UT-02 完成时通过 qualityAssigneeList 指定多个质控人员
-        操作: 质控人员组并行或签，任意一人确认后进入责任人确认
-        slots: 选责任人 -> responsibleAssigneeList
+        操作: 质控人员组确认是否已解决，并提交 IS_SOLVED
+        slots(IS_SOLVED=false): 选责任人 -> responsibleAssigneeList
       </documentation>
       <extensionElements>
         <flowable:field name="nodeSemantic" stringValue="PROBLEM_ZERO_QUALITY_GROUP_CONFIRM"/>
@@ -113,9 +109,25 @@
       </multiInstanceLoopCharacteristics>
     </userTask>
 
-    <sequenceFlow id="flow_ut03_to_ut04"
+    <sequenceFlow id="flow_ut03_to_eg01"
                   sourceRef="ut03_quality_group_confirm"
-                  targetRef="ut04_responsible_confirm"/>
+                  targetRef="eg01_is_solved"/>
+
+    <exclusiveGateway id="eg01_is_solved" name="是否已解决？"/>
+
+    <sequenceFlow id="flow_eg01_true_to_st07"
+                  name="已解决"
+                  sourceRef="eg01_is_solved"
+                  targetRef="st07_framework_callback">
+      <conditionExpression xsi:type="tFormalExpression">${IS_SOLVED == true}</conditionExpression>
+    </sequenceFlow>
+
+    <sequenceFlow id="flow_eg01_false_to_ut04"
+                  name="未解决"
+                  sourceRef="eg01_is_solved"
+                  targetRef="ut04_responsible_confirm">
+      <conditionExpression xsi:type="tFormalExpression">${IS_SOLVED == false}</conditionExpression>
+    </sequenceFlow>
 
     <userTask id="ut04_responsible_confirm"
               name="责任人确认"
@@ -124,7 +136,7 @@
         处理人: UT-03 完成时通过 responsibleAssigneeList 指定，节点并行或签
         操作: 责任人确认整改/归零措施，并提交 PROBLEM_ATTRIBUTE
         slots(PROBLEM_ATTRIBUTE=true):  选对口领导 -> counterpartLeaderAssigneeList
-        slots(PROBLEM_ATTRIBUTE=false): 选科室领导 -> departmentLeaderAssigneeList
+        slots(PROBLEM_ATTRIBUTE=false): 选发现问题人 -> discovererAssigneeList
       </documentation>
       <extensionElements>
         <flowable:field name="nodeSemantic" stringValue="PROBLEM_ZERO_RESPONSIBLE_CONFIRM"/>
@@ -138,23 +150,23 @@
       </multiInstanceLoopCharacteristics>
     </userTask>
 
-    <sequenceFlow id="flow_ut04_to_eg01"
+    <sequenceFlow id="flow_ut04_to_eg02"
                   sourceRef="ut04_responsible_confirm"
-                  targetRef="eg01_problem_attribute"/>
+                  targetRef="eg02_problem_attribute"/>
 
-    <exclusiveGateway id="eg01_problem_attribute" name="是否专项工作？"/>
+    <exclusiveGateway id="eg02_problem_attribute" name="是否专项工作？"/>
 
-    <sequenceFlow id="flow_eg01_true_to_ut05"
+    <sequenceFlow id="flow_eg02_true_to_ut05"
                   name="专项工作"
-                  sourceRef="eg01_problem_attribute"
+                  sourceRef="eg02_problem_attribute"
                   targetRef="ut05_counterpart_leader_review">
       <conditionExpression xsi:type="tFormalExpression">${PROBLEM_ATTRIBUTE == true}</conditionExpression>
     </sequenceFlow>
 
-    <sequenceFlow id="flow_eg01_false_to_ut06"
+    <sequenceFlow id="flow_eg02_false_to_ut06"
                   name="非专项工作"
-                  sourceRef="eg01_problem_attribute"
-                  targetRef="ut06_department_leader_confirm">
+                  sourceRef="eg02_problem_attribute"
+                  targetRef="ut06_discoverer_confirm">
       <conditionExpression xsi:type="tFormalExpression">${PROBLEM_ATTRIBUTE == false}</conditionExpression>
     </sequenceFlow>
 
@@ -164,7 +176,7 @@
       <documentation>
         处理人: UT-04 完成时通过 counterpartLeaderAssigneeList 指定，节点并行或签
         操作: 专项工作对口领导审核
-        slots: 选科室领导 -> departmentLeaderAssigneeList
+        slots: 选发现问题人 -> discovererAssigneeList
       </documentation>
       <extensionElements>
         <flowable:field name="nodeSemantic" stringValue="PROBLEM_ZERO_COUNTERPART_LEADER_REVIEW"/>
@@ -180,40 +192,13 @@
 
     <sequenceFlow id="flow_ut05_to_ut06"
                   sourceRef="ut05_counterpart_leader_review"
-                  targetRef="ut06_department_leader_confirm"/>
+                  targetRef="ut06_discoverer_confirm"/>
 
-    <userTask id="ut06_department_leader_confirm"
-              name="科室领导确认"
-              flowable:assignee="${departmentLeaderAssignee.asText()}">
-      <documentation>
-        处理人:
-          专项工作路径由 UT-05 选择 departmentLeaderAssigneeList
-          非专项工作路径由 UT-04 选择 departmentLeaderAssigneeList
-          节点并行或签
-        操作: 科室领导确认归零结果
-        slots: 选发现问题人 -> discovererAssigneeList
-      </documentation>
-      <extensionElements>
-        <flowable:field name="nodeSemantic" stringValue="PROBLEM_ZERO_DEPARTMENT_LEADER_CONFIRM"/>
-        <flowable:field name="pageCode" stringValue="ProblemZero/DepartmentLeaderConfirmForm"/>
-        <flowable:field name="isConvergencePoint" stringValue="false"/>
-      </extensionElements>
-      <multiInstanceLoopCharacteristics isSequential="false"
-                                        flowable:collection="${departmentLeaderAssigneeList}"
-                                        flowable:elementVariable="departmentLeaderAssignee">
-        <completionCondition>${nrOfCompletedInstances &gt;= 1}</completionCondition>
-      </multiInstanceLoopCharacteristics>
-    </userTask>
-
-    <sequenceFlow id="flow_ut06_to_ut07"
-                  sourceRef="ut06_department_leader_confirm"
-                  targetRef="ut07_discoverer_confirm"/>
-
-    <userTask id="ut07_discoverer_confirm"
-              name="发现问题人确认，问题归零"
+    <userTask id="ut06_discoverer_confirm"
+              name="发现问题人确认"
               flowable:assignee="${discovererAssignee.asText()}">
       <documentation>
-        处理人: UT-06 完成时通过 discovererAssigneeList 指定，节点并行或签
+        处理人: 非专项路径由 UT-04 选择，专项路径由 UT-05 选择 discovererAssigneeList
         操作: 发现问题人最终确认，问题归零
         slots: 无
         isConvergencePoint: true
@@ -230,11 +215,11 @@
       </multiInstanceLoopCharacteristics>
     </userTask>
 
-    <sequenceFlow id="flow_ut07_to_st08"
-                  sourceRef="ut07_discoverer_confirm"
-                  targetRef="st08_framework_callback"/>
+    <sequenceFlow id="flow_ut06_to_st07"
+                  sourceRef="ut06_discoverer_confirm"
+                  targetRef="st07_framework_callback"/>
 
-    <serviceTask id="st08_framework_callback"
+    <serviceTask id="st07_framework_callback"
                  name="框架回调业务系统"
                  flowable:type="http">
       <documentation>
@@ -260,8 +245,8 @@
       </extensionElements>
     </serviceTask>
 
-    <sequenceFlow id="flow_st08_to_end"
-                  sourceRef="st08_framework_callback"
+    <sequenceFlow id="flow_st07_to_end"
+                  sourceRef="st07_framework_callback"
                   targetRef="end_event"/>
 
     <endEvent id="end_event" name="结束"/>
@@ -273,104 +258,111 @@
                       bpmnElement="problem_zero">
 
       <bpmndi:BPMNShape id="shape_start_event" bpmnElement="start_event">
-        <omgdc:Bounds x="82" y="112" width="36" height="36"/>
+        <omgdc:Bounds x="82" y="142" width="36" height="36"/>
       </bpmndi:BPMNShape>
 
       <bpmndi:BPMNShape id="shape_ut01" bpmnElement="ut01_starter_submit">
-        <omgdc:Bounds x="160" y="90" width="180" height="80"/>
+        <omgdc:Bounds x="160" y="120" width="180" height="80"/>
       </bpmndi:BPMNShape>
 
       <bpmndi:BPMNShape id="shape_ut02" bpmnElement="ut02_team_leader_confirm">
-        <omgdc:Bounds x="390" y="90" width="200" height="80"/>
+        <omgdc:Bounds x="390" y="120" width="200" height="80"/>
       </bpmndi:BPMNShape>
 
       <bpmndi:BPMNShape id="shape_ut03" bpmnElement="ut03_quality_group_confirm">
-        <omgdc:Bounds x="640" y="90" width="190" height="80"/>
+        <omgdc:Bounds x="640" y="120" width="190" height="80"/>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="shape_eg01" bpmnElement="eg01_is_solved" isMarkerVisible="true">
+        <omgdc:Bounds x="885" y="135" width="50" height="50"/>
       </bpmndi:BPMNShape>
 
       <bpmndi:BPMNShape id="shape_ut04" bpmnElement="ut04_responsible_confirm">
-        <omgdc:Bounds x="880" y="90" width="180" height="80"/>
+        <omgdc:Bounds x="990" y="120" width="180" height="80"/>
       </bpmndi:BPMNShape>
 
-      <bpmndi:BPMNShape id="shape_eg01" bpmnElement="eg01_problem_attribute" isMarkerVisible="true">
-        <omgdc:Bounds x="1125" y="105" width="50" height="50"/>
+      <bpmndi:BPMNShape id="shape_eg02" bpmnElement="eg02_problem_attribute" isMarkerVisible="true">
+        <omgdc:Bounds x="1225" y="135" width="50" height="50"/>
       </bpmndi:BPMNShape>
 
       <bpmndi:BPMNShape id="shape_ut05" bpmnElement="ut05_counterpart_leader_review">
-        <omgdc:Bounds x="1220" y="30" width="180" height="80"/>
+        <omgdc:Bounds x="1330" y="40" width="180" height="80"/>
       </bpmndi:BPMNShape>
 
-      <bpmndi:BPMNShape id="shape_ut06" bpmnElement="ut06_department_leader_confirm">
-        <omgdc:Bounds x="1220" y="165" width="180" height="80"/>
+      <bpmndi:BPMNShape id="shape_ut06" bpmnElement="ut06_discoverer_confirm">
+        <omgdc:Bounds x="1330" y="200" width="200" height="80"/>
       </bpmndi:BPMNShape>
 
-      <bpmndi:BPMNShape id="shape_ut07" bpmnElement="ut07_discoverer_confirm">
-        <omgdc:Bounds x="1450" y="165" width="200" height="80"/>
-      </bpmndi:BPMNShape>
-
-      <bpmndi:BPMNShape id="shape_st08" bpmnElement="st08_framework_callback">
-        <omgdc:Bounds x="1700" y="165" width="180" height="80"/>
+      <bpmndi:BPMNShape id="shape_st07" bpmnElement="st07_framework_callback">
+        <omgdc:Bounds x="1600" y="200" width="180" height="80"/>
       </bpmndi:BPMNShape>
 
       <bpmndi:BPMNShape id="shape_end_event" bpmnElement="end_event">
-        <omgdc:Bounds x="1930" y="187" width="36" height="36"/>
+        <omgdc:Bounds x="1840" y="222" width="36" height="36"/>
       </bpmndi:BPMNShape>
 
       <bpmndi:BPMNEdge id="edge_start_to_ut01" bpmnElement="flow_start_to_ut01">
-        <omgdi:waypoint x="118" y="130"/>
-        <omgdi:waypoint x="160" y="130"/>
+        <omgdi:waypoint x="118" y="160"/>
+        <omgdi:waypoint x="160" y="160"/>
       </bpmndi:BPMNEdge>
 
       <bpmndi:BPMNEdge id="edge_ut01_to_ut02" bpmnElement="flow_ut01_to_ut02">
-        <omgdi:waypoint x="340" y="130"/>
-        <omgdi:waypoint x="390" y="130"/>
+        <omgdi:waypoint x="340" y="160"/>
+        <omgdi:waypoint x="390" y="160"/>
       </bpmndi:BPMNEdge>
 
       <bpmndi:BPMNEdge id="edge_ut02_to_ut03" bpmnElement="flow_ut02_to_ut03">
-        <omgdi:waypoint x="590" y="130"/>
-        <omgdi:waypoint x="640" y="130"/>
+        <omgdi:waypoint x="590" y="160"/>
+        <omgdi:waypoint x="640" y="160"/>
       </bpmndi:BPMNEdge>
 
-      <bpmndi:BPMNEdge id="edge_ut03_to_ut04" bpmnElement="flow_ut03_to_ut04">
-        <omgdi:waypoint x="830" y="130"/>
-        <omgdi:waypoint x="880" y="130"/>
+      <bpmndi:BPMNEdge id="edge_ut03_to_eg01" bpmnElement="flow_ut03_to_eg01">
+        <omgdi:waypoint x="830" y="160"/>
+        <omgdi:waypoint x="885" y="160"/>
       </bpmndi:BPMNEdge>
 
-      <bpmndi:BPMNEdge id="edge_ut04_to_eg01" bpmnElement="flow_ut04_to_eg01">
-        <omgdi:waypoint x="1060" y="130"/>
-        <omgdi:waypoint x="1125" y="130"/>
+      <bpmndi:BPMNEdge id="edge_eg01_false_to_ut04" bpmnElement="flow_eg01_false_to_ut04">
+        <omgdi:waypoint x="935" y="160"/>
+        <omgdi:waypoint x="990" y="160"/>
       </bpmndi:BPMNEdge>
 
-      <bpmndi:BPMNEdge id="edge_eg01_true_to_ut05" bpmnElement="flow_eg01_true_to_ut05">
-        <omgdi:waypoint x="1150" y="105"/>
-        <omgdi:waypoint x="1150" y="70"/>
-        <omgdi:waypoint x="1220" y="70"/>
+      <bpmndi:BPMNEdge id="edge_ut04_to_eg02" bpmnElement="flow_ut04_to_eg02">
+        <omgdi:waypoint x="1170" y="160"/>
+        <omgdi:waypoint x="1225" y="160"/>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="edge_eg02_true_to_ut05" bpmnElement="flow_eg02_true_to_ut05">
+        <omgdi:waypoint x="1250" y="135"/>
+        <omgdi:waypoint x="1250" y="80"/>
+        <omgdi:waypoint x="1330" y="80"/>
       </bpmndi:BPMNEdge>
 
       <bpmndi:BPMNEdge id="edge_ut05_to_ut06" bpmnElement="flow_ut05_to_ut06">
-        <omgdi:waypoint x="1310" y="110"/>
-        <omgdi:waypoint x="1310" y="165"/>
+        <omgdi:waypoint x="1420" y="120"/>
+        <omgdi:waypoint x="1420" y="200"/>
       </bpmndi:BPMNEdge>
 
-      <bpmndi:BPMNEdge id="edge_eg01_false_to_ut06" bpmnElement="flow_eg01_false_to_ut06">
-        <omgdi:waypoint x="1150" y="155"/>
-        <omgdi:waypoint x="1150" y="205"/>
-        <omgdi:waypoint x="1220" y="205"/>
+      <bpmndi:BPMNEdge id="edge_eg02_false_to_ut06" bpmnElement="flow_eg02_false_to_ut06">
+        <omgdi:waypoint x="1250" y="185"/>
+        <omgdi:waypoint x="1250" y="240"/>
+        <omgdi:waypoint x="1330" y="240"/>
       </bpmndi:BPMNEdge>
 
-      <bpmndi:BPMNEdge id="edge_ut06_to_ut07" bpmnElement="flow_ut06_to_ut07">
-        <omgdi:waypoint x="1400" y="205"/>
-        <omgdi:waypoint x="1450" y="205"/>
+      <bpmndi:BPMNEdge id="edge_ut06_to_st07" bpmnElement="flow_ut06_to_st07">
+        <omgdi:waypoint x="1530" y="240"/>
+        <omgdi:waypoint x="1600" y="240"/>
       </bpmndi:BPMNEdge>
 
-      <bpmndi:BPMNEdge id="edge_ut07_to_st08" bpmnElement="flow_ut07_to_st08">
-        <omgdi:waypoint x="1650" y="205"/>
-        <omgdi:waypoint x="1700" y="205"/>
+      <bpmndi:BPMNEdge id="edge_eg01_true_to_st07" bpmnElement="flow_eg01_true_to_st07">
+        <omgdi:waypoint x="910" y="185"/>
+        <omgdi:waypoint x="910" y="320"/>
+        <omgdi:waypoint x="1690" y="320"/>
+        <omgdi:waypoint x="1690" y="280"/>
       </bpmndi:BPMNEdge>
 
-      <bpmndi:BPMNEdge id="edge_st08_to_end" bpmnElement="flow_st08_to_end">
-        <omgdi:waypoint x="1880" y="205"/>
-        <omgdi:waypoint x="1930" y="205"/>
+      <bpmndi:BPMNEdge id="edge_st07_to_end" bpmnElement="flow_st07_to_end">
+        <omgdi:waypoint x="1780" y="240"/>
+        <omgdi:waypoint x="1840" y="240"/>
       </bpmndi:BPMNEdge>
 
     </bpmndi:BPMNPlane>
