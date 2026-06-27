@@ -63,7 +63,7 @@
     <!-- UT-02 巡察组组长审核 -->
     <userTask id="ut02_group_leader_review"
               name="巡察组组长审核"
-              flowable:assignee="${groupLeaderAssignee}">
+              flowable:assignee="${assignee}">
       <documentation>
         处理人: UT-01完成时前端通过 slot 传入 groupLeaderAssignee
         前端表单: InspectionPrep/GroupLeaderReviewForm
@@ -75,6 +75,11 @@
         <flowable:field name="pageCode" stringValue="InspectionPrep/GroupLeaderReviewForm"/>
         <flowable:field name="isConvergencePoint" stringValue="false"/>
       </extensionElements>
+      <multiInstanceLoopCharacteristics isSequential="false"
+                                        flowable:collection="${groupLeaderAssignee}"
+                                        flowable:elementVariable="assignee">
+        <completionCondition xsi:type="tFormalExpression">${nrOfCompletedInstances &gt;= 1}</completionCondition>
+      </multiInstanceLoopCharacteristics>
     </userTask>
 
     <sequenceFlow id="flow_ut02_to_ut03"
@@ -84,7 +89,7 @@
     <!-- UT-03 巡察办主任审核 -->
     <userTask id="ut03_office_director_review"
               name="巡察办主任审核"
-              flowable:assignee="${officeDirectorAssignee}">
+              flowable:assignee="${assignee}">
       <documentation>
         处理人: UT-02完成时前端通过 slot 传入 officeDirectorAssignee
         前端表单: InspectionPrep/OfficeDirectorReviewForm
@@ -96,6 +101,11 @@
         <flowable:field name="pageCode" stringValue="InspectionPrep/OfficeDirectorReviewForm"/>
         <flowable:field name="isConvergencePoint" stringValue="false"/>
       </extensionElements>
+      <multiInstanceLoopCharacteristics isSequential="false"
+                                        flowable:collection="${officeDirectorAssignee}"
+                                        flowable:elementVariable="assignee">
+        <completionCondition xsi:type="tFormalExpression">${nrOfCompletedInstances &gt;= 1}</completionCondition>
+      </multiInstanceLoopCharacteristics>
     </userTask>
 
     <sequenceFlow id="flow_ut03_to_ut04"
@@ -105,7 +115,7 @@
     <!-- UT-04 纪委书记审定（末节点，isConvergencePoint=true） -->
     <userTask id="ut04_secretary_approve"
               name="纪委书记审定"
-              flowable:assignee="${secretaryAssignee}">
+              flowable:assignee="${assignee}">
       <documentation>
         处理人: UT-03完成时前端通过 slot 传入 secretaryAssignee
         前端表单: InspectionPrep/SecretaryApproveForm
@@ -118,6 +128,11 @@
         <flowable:field name="pageCode" stringValue="InspectionPrep/SecretaryApproveForm"/>
         <flowable:field name="isConvergencePoint" stringValue="true"/>
       </extensionElements>
+      <multiInstanceLoopCharacteristics isSequential="false"
+                                        flowable:collection="${secretaryAssignee}"
+                                        flowable:elementVariable="assignee">
+        <completionCondition xsi:type="tFormalExpression">${nrOfCompletedInstances &gt;= 1}</completionCondition>
+      </multiInstanceLoopCharacteristics>
     </userTask>
 
     <sequenceFlow id="flow_ut04_to_st02"

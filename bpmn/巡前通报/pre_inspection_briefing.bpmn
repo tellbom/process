@@ -67,7 +67,7 @@
     <!-- UT-01 相关部门一把手处理 -->
     <userTask id="ut01_dept_head_handle"
               name="相关部门一把手处理"
-              flowable:assignee="${deptHeadAssignee}">
+              flowable:assignee="${assignee}">
       <documentation>
         处理人: UT-00完成时前端通过 slot 传入 deptHeadAssignee
         前端表单: InspectionBriefing/BriefingFeedbackForm
@@ -81,6 +81,11 @@
         <flowable:field name="pageCode" stringValue="InspectionBriefing/BriefingFeedbackForm"/>
         <flowable:field name="isConvergencePoint" stringValue="false"/>
       </extensionElements>
+      <multiInstanceLoopCharacteristics isSequential="false"
+                                        flowable:collection="${deptHeadAssignee}"
+                                        flowable:elementVariable="assignee">
+        <completionCondition xsi:type="tFormalExpression">${nrOfCompletedInstances &gt;= 1}</completionCondition>
+      </multiInstanceLoopCharacteristics>
     </userTask>
 
     <sequenceFlow id="flow_ut01_to_eg01"
@@ -109,7 +114,7 @@
     <!-- UT-02 指派人员反馈（路径B） -->
     <userTask id="ut02_assignee_feedback"
               name="指派人员反馈"
-              flowable:assignee="${feedbackAssignee}">
+              flowable:assignee="${assignee}">
       <documentation>
         处理人: UT-01完成时前端通过 slot 传入 feedbackAssignee
         前端表单: InspectionBriefing/BriefingFeedbackViewForm
@@ -121,6 +126,11 @@
         <flowable:field name="pageCode" stringValue="InspectionBriefing/BriefingFeedbackViewForm"/>
         <flowable:field name="isConvergencePoint" stringValue="false"/>
       </extensionElements>
+      <multiInstanceLoopCharacteristics isSequential="false"
+                                        flowable:collection="${feedbackAssignee}"
+                                        flowable:elementVariable="assignee">
+        <completionCondition xsi:type="tFormalExpression">${nrOfCompletedInstances &gt;= 1}</completionCondition>
+      </multiInstanceLoopCharacteristics>
     </userTask>
 
     <sequenceFlow id="flow_ut02_to_ut03"
@@ -130,7 +140,7 @@
     <!-- UT-03 公司分管领导审核（两条路径汇聚） -->
     <userTask id="ut03_company_leader_review"
               name="公司分管领导审核"
-              flowable:assignee="${companyLeaderAssignee}">
+              flowable:assignee="${assignee}">
       <documentation>
         处理人:
           路径A — UT-01完成时前端传入 companyLeaderAssignee
@@ -144,6 +154,11 @@
         <flowable:field name="pageCode" stringValue="InspectionBriefing/BriefingLeaderApprovalForm"/>
         <flowable:field name="isConvergencePoint" stringValue="false"/>
       </extensionElements>
+      <multiInstanceLoopCharacteristics isSequential="false"
+                                        flowable:collection="${companyLeaderAssignee}"
+                                        flowable:elementVariable="assignee">
+        <completionCondition xsi:type="tFormalExpression">${nrOfCompletedInstances &gt;= 1}</completionCondition>
+      </multiInstanceLoopCharacteristics>
     </userTask>
 
     <sequenceFlow id="flow_ut03_to_ut04"
@@ -153,7 +168,7 @@
     <!-- UT-04 巡察主管领导审核（末节点，isConvergencePoint=true） -->
     <userTask id="ut04_chief_leader_review"
               name="巡察主管领导审核"
-              flowable:assignee="${chiefLeaderAssignee}">
+              flowable:assignee="${assignee}">
       <documentation>
         处理人: UT-03完成时前端通过 slot 传入 chiefLeaderAssignee
         前端表单: InspectionBriefing/BriefingChiefReviewForm
@@ -166,6 +181,11 @@
         <flowable:field name="pageCode" stringValue="InspectionBriefing/BriefingChiefReviewForm"/>
         <flowable:field name="isConvergencePoint" stringValue="true"/>
       </extensionElements>
+      <multiInstanceLoopCharacteristics isSequential="false"
+                                        flowable:collection="${chiefLeaderAssignee}"
+                                        flowable:elementVariable="assignee">
+        <completionCondition xsi:type="tFormalExpression">${nrOfCompletedInstances &gt;= 1}</completionCondition>
+      </multiInstanceLoopCharacteristics>
     </userTask>
 
     <sequenceFlow id="flow_ut04_to_st02"
