@@ -819,3 +819,274 @@ BPMN 中只保留最后一个流程完成契约 HTTP ServiceTask，用于调用 
 | 流程状态 | GET | `/api/processes/{businessId}/status` |
 | 流程列表 | GET | `/api/processes` |
 | Flowable 回调 | POST | `/api/callback/flowable` |
+---
+
+## 当前有效说明：slotConfigJson / slots 配置
+
+> 本节是当前代码和实际 API 验证后的准则。下方历史章节里如有描述冲突，以本节为准。
+
+### 认证与启动变量
+
+当前接口使用 `Authorization: Bearer {jwt}` 解析当前用户，JWT 中按 `Jwt:UseridClaim` 读取用户工号，默认 claim 为 `userid`。旧文档中的 `X-User-Id` 只作为历史说明，不是当前认证入口。
+
+启动流程时，`businessType` 必须能映射到 Flowable 的 `processDefinitionKey`。映射来自 `appsettings.json`：
+
+```json
+{
+  "BusinessTypeProcessMapping": {
+    "Mappings": {
+      "problem_zero": "problem_zero"
+    }
+  }
+}
+```
+
+问题归零 BPMN 首节点使用 `${starterAssignee}`，当前代码不会自动注入该变量，所以启动请求需要在 `businessVariables` 中传入：
+
+```json
+{
+  "businessType": "problem_zero",
+  "businessId": "PZ_001",
+  "initialSlotSelections": [
+    { "slotKey": "team_leader", "users": ["EMP_TL1"] }
+  ],
+  "businessVariables": {
+    "starterAssignee": "EMP_STARTER"
+  }
+}
+```
+
+### 节点配置字段
+
+`slotConfigJson` 是随 BPMN 部署提交的节点配置数组。数组中每个对象对应一个 BPMN `userTask`。
+
+```json
+{
+  "taskDefinitionKey": "ut03_quality_group_confirm",
+  "nodeSemantic": "PROBLEM_ZERO_QUALITY_GROUP_CONFIRM",
+  "pageCode": "ProblemZero/QualityGroupConfirmForm",
+  "roleKey": "problem_zero_quality_member",
+  "assigneeMode": "multiple",
+  "canReject": true,
+  "rejectOptions": [
+    {
+      "rejectCode": "TO_STARTER",
+      "label": "退回发起人修改",
+      "description": "质控确认不通过，退回问题发起人修改"
+    }
+  ],
+  "isRejectTarget": false,
+  "rejectCode": null,
+  "isStarterNode": false,
+  "isConvergencePoint": false,
+  "slots": []
+}
+```
+
+| 字段 | 含义 |
+|---|---|
+| `taskDefinitionKey` | 必须等于 BPMN 中的 `userTask id` |
+| `nodeSemantic` | 当前节点业务语义，供前端路由表单和业务系统识别 |
+| `pageCode` | 前端页面/组件编码；如果是 http/https URL，待办接口会拼 `pageUrl` |
+| `roleKey` | 当前节点处理角色，即“谁处理当前节点” |
+| `assigneeMode` | 当前节点处理模式，`single` 或 `multiple`，用于前端/语义展示 |
+| `canReject` | 当前节点是否允许驳回 |
+| `rejectOptions` | 当前节点可驳回到哪些目标，提交驳回时使用其中的 `rejectCode` |
+| `isRejectTarget` | 当前节点是否能作为驳回落点 |
+| `rejectCode` | 当前节点作为驳回落点时的代码 |
+| `isStarterNode` | 是否发起节点 |
+| `isConvergencePoint` | 是否汇聚/不可撤回节点 |
+| `callbackUrl` | 节点完成后的业务回调地址；空/null 表示禁用节点级回调 |
+| `slots` | 当前节点完成时，前端需要渲染并提交的路径/选人槽 |
+
+### slots 的真实职责
+
+`slots` 描述的是“当前节点完成时，用户需要为后续路径提交什么”。它既可以是下一人工节点的选人槽，也可以是前端用于展示路径选择的 no-op 槽。
+
+| 字段 | 含义 |
+|---|---|
+| `slotKey` | 前端提交 `nextSlotSelections` / `initialSlotSelections` 时使用的唯一 key |
+| `roleKey` | 该槽位候选人来自哪个推荐池，即 `RecommendedAssigneesSnapshot[slot.roleKey]` |
+| `label` | 前端展示文案 |
+| `mode` | `single` 或 `multiple`；转换为变量时决定写 string 还是 string list |
+| `variableName` | 最终写入 Flowable 的流程变量名 |
+| `required` | 当 `conditionalOn` 满足且该槽位参与转换时，是否必须提交 users |
+| `conditionalOn` | 条件表达式，如 `IS_SOLVED==false`；满足时该槽位才生效 |
+| `restrictToRecommended` | 是否建议前端限制在推荐人范围内；后端只做越界审计，不强拦截 |
+
+三键不要混用：
+
+| 字段 | 不能替代谁 | 原因 |
+|---|---|---|
+| `slotKey` | 不能替代 `variableName` | 它只是前端提交 key，不写入 Flowable |
+| `roleKey` | 不能替代 `slotKey` | 它只是推荐人池 key，不是提交 key |
+| `variableName` | 不能替代 `slotKey` | 它只给 Flowable 用，前端不应按它提交 |
+
+通常，选“下一个人工节点处理人”时，`slots[].roleKey` 应该与下一个节点外层 `roleKey` 一致，因为它们指向同一个业务角色推荐池。但这不是靠命名推导，而是配置明确声明。
+
+### conditionalOn 的行为
+
+`conditionalOn` 由完成任务时的 `businessVariables` 触发。当前支持：
+
+```text
+IS_SOLVED==true
+IS_SOLVED==false
+PROBLEM_ATTRIBUTE=true
+!SOME_FLAG=true
+SOME_VALUE=abc
+```
+
+运行时转换规则：
+
+1. 条件不满足的 slot 会被跳过。
+2. 被跳过的 slot 不校验 `required`，也不写入 `variableName`。
+3. 条件满足且 `required=true` 时，必须提交非空 `users`。
+4. `nextSlotSelections` 里提交未知 `slotKey` 会报错。
+
+注意：当前 `/api/tasks/pending` 会返回节点配置里的全部 `requiredSlots`，不会根据尚未提交的 `businessVariables` 动态过滤条件槽。前端需要用页面上的业务选项，例如“是否已解决”，配合 `conditionalOn` 自己决定当前显示哪个槽。
+
+### 直接结束路径怎么写
+
+从 Flowable 执行角度，直接结束路径不需要下一人工节点，也不需要写 assignee 变量。真正驱动路径的是 BPMN 网关条件变量，例如：
+
+```json
+{
+  "businessVariables": {
+    "IS_SOLVED": true
+  },
+  "nextSlotSelections": []
+}
+```
+
+如果前端需要依赖 `slots` 数量和 `conditionalOn` 渲染“true/false 两个选项”，可以配置一个 no-op 路径槽。它用于前端展示，不负责选人：
+
+```json
+{
+  "slotKey": "direct_end_when_solved",
+  "roleKey": "problem_zero_quality_member",
+  "label": "已解决，直接结束",
+  "mode": "single",
+  "variableName": "__noopDirectEnd",
+  "required": false,
+  "conditionalOn": "IS_SOLVED==true",
+  "restrictToRecommended": false
+}
+```
+
+用户选择 true 时可以提交：
+
+```json
+{
+  "businessId": "PZ_001",
+  "employeeId": "EMP_Q1",
+  "action": 1,
+  "businessVariables": {
+    "IS_SOLVED": true
+  },
+  "nextSlotSelections": [
+    { "slotKey": "direct_end_when_solved", "users": [] }
+  ]
+}
+```
+
+因为 `required=false` 且 `users=[]`，转换器不会写入 `__noopDirectEnd`。流程仍由 `IS_SOLVED=true` 走到 BPMN 的结束路径。
+
+### 问题归零 UT-03 推荐配置
+
+```json
+{
+  "taskDefinitionKey": "ut03_quality_group_confirm",
+  "roleKey": "problem_zero_quality_member",
+  "assigneeMode": "multiple",
+  "slots": [
+    {
+      "slotKey": "direct_end_when_solved",
+      "roleKey": "problem_zero_quality_member",
+      "label": "已解决，直接结束",
+      "mode": "single",
+      "variableName": "__noopDirectEnd",
+      "required": false,
+      "conditionalOn": "IS_SOLVED==true",
+      "restrictToRecommended": false
+    },
+    {
+      "slotKey": "responsible_person",
+      "roleKey": "problem_zero_responsible_person",
+      "label": "责任人",
+      "mode": "multiple",
+      "variableName": "responsibleAssigneeList",
+      "required": true,
+      "conditionalOn": "IS_SOLVED==false",
+      "restrictToRecommended": true
+    }
+  ]
+}
+```
+
+用户选择 false 时：
+
+```json
+{
+  "businessVariables": {
+    "IS_SOLVED": false
+  },
+  "nextSlotSelections": [
+    { "slotKey": "responsible_person", "users": ["EMP_R1"] }
+  ]
+}
+```
+
+### 问题归零 UT-04 条件路径
+
+专项工作：
+
+```json
+{
+  "businessVariables": {
+    "PROBLEM_ATTRIBUTE": true
+  },
+  "nextSlotSelections": [
+    { "slotKey": "counterpart_leader", "users": ["EMP_C1"] }
+  ]
+}
+```
+
+非专项工作：
+
+```json
+{
+  "businessVariables": {
+    "PROBLEM_ATTRIBUTE": false
+  },
+  "nextSlotSelections": [
+    { "slotKey": "discoverer_direct", "users": ["EMP_D1"] }
+  ]
+}
+```
+
+### 多实例、会签、或签
+
+BPMN 中的 `multiInstanceLoopCharacteristics` 只表示多实例任务，不天然等于会签或或签。
+
+```xml
+<multiInstanceLoopCharacteristics isSequential="false"
+                                  flowable:collection="${teamLeaderAssigneeList}"
+                                  flowable:elementVariable="teamLeaderAssignee">
+  <completionCondition>${nrOfCompletedInstances &gt;= 1}</completionCondition>
+</multiInstanceLoopCharacteristics>
+```
+
+| 配置 | 含义 |
+|---|---|
+| `isSequential="false"` | 并行创建多个人的任务 |
+| `flowable:collection` | 人员列表变量 |
+| `flowable:elementVariable` | 当前实例中的单个人变量 |
+| `completionCondition >= 1` | 任意一人完成后，整个多实例节点结束 |
+
+所以当前问题归零这些节点是“并行或签”。如果要会签，通常使用：
+
+```xml
+<completionCondition>${nrOfCompletedInstances == nrOfInstances}</completionCondition>
+```
+
+或者不配置 `completionCondition`，让 Flowable 默认等待所有多实例完成。

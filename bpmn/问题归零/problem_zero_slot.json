@@ -77,6 +77,16 @@
     "assigneeMode": "multiple",
     "slots": [
       {
+        "slotKey": "direct_end_when_solved",
+        "roleKey": "problem_zero_quality_member",
+        "label": "已解决，直接结束",
+        "mode": "single",
+        "variableName": "__noopDirectEnd",
+        "required": false,
+        "conditionalOn": "IS_SOLVED==true",
+        "restrictToRecommended": false
+      },
+      {
         "slotKey": "responsible_person",
         "roleKey": "problem_zero_responsible_person",
         "label": "责任人",
