@@ -2,7 +2,7 @@
   {
     "taskDefinitionKey": "ut01_applicant_submit",
     "nodeSemantic": "LC_KEY_NODE_APPLICANT_SUBMIT",
-    "pageCode": "LaborCompetition/KeyNode/ApplicantSubmitForm",
+    "pageCode": "http://192.168.124.3:1919/contest/audit/competition/midterm/resubmit",
     "isStarterNode": true,
     "isConvergencePoint": false,
     "canReject": false,
@@ -28,7 +28,7 @@
   {
     "taskDefinitionKey": "ut02_grassroots_chair_approve",
     "nodeSemantic": "LC_KEY_NODE_GRASSROOTS_CHAIR_APPROVE",
-    "pageCode": "LaborCompetition/KeyNode/GrassrootsChairApproveForm",
+    "pageCode": "http://192.168.124.3:1919/contest/audit/competition/midterm",
     "isStarterNode": false,
     "isConvergencePoint": false,
     "canReject": true,
@@ -60,7 +60,7 @@
   {
     "taskDefinitionKey": "ut03_competition_supervisor_approve",
     "nodeSemantic": "LC_KEY_NODE_COMPETITION_SUPERVISOR_APPROVE",
-    "pageCode": "LaborCompetition/KeyNode/CompetitionSupervisorApproveForm",
+    "pageCode": "http://192.168.124.3:1919/contest/audit/competition/midterm",
     "isStarterNode": false,
     "isConvergencePoint": true,
     "canReject": true,
