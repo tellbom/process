@@ -1,7 +1,7 @@
 [
   {
     "taskDefinitionKey": "ut01_applicant_submit",
-    "nodeSemantic": "LC_CLOSURE_APPLICANT_SUBMIT",
+    "nodeSemantic": "LC_SPECIAL_JOINT_CLOSURE_APPLICANT_SUBMIT",
     "pageCode": "http://192.168.124.3:1919/contest/audit/competition/final/company",
     "isStarterNode": true,
     "isConvergencePoint": false,
@@ -9,7 +9,7 @@
     "rejectOptions": [],
     "isRejectTarget": true,
     "rejectCode": "TO_APPLICANT_SUBMIT",
-    "roleKey": "lc_closure_applicant",
+    "roleKey": "lc_special_joint_closure_applicant",
     "assigneeMode": "single",
     "slots": [
       {
@@ -27,7 +27,7 @@
   },
   {
     "taskDefinitionKey": "ut02_grassroots_chair_approve",
-    "nodeSemantic": "LC_CLOSURE_GRASSROOTS_CHAIR_APPROVE",
+    "nodeSemantic": "LC_SPECIAL_JOINT_CLOSURE_GRASSROOTS_CHAIR_APPROVE",
     "pageCode": "http://192.168.124.3:1919/contest/audit/competition/final/company/readOnly",
     "isStarterNode": false,
     "isConvergencePoint": false,
@@ -59,7 +59,7 @@
   },
   {
     "taskDefinitionKey": "ut03_competition_supervisor_approve",
-    "nodeSemantic": "LC_CLOSURE_COMPETITION_SUPERVISOR_APPROVE",
+    "nodeSemantic": "LC_SPECIAL_JOINT_CLOSURE_COMPETITION_SUPERVISOR_APPROVE",
     "pageCode": "http://192.168.124.3:1919/contest/audit/competition/final/company",
     "isStarterNode": false,
     "isConvergencePoint": false,
@@ -91,7 +91,7 @@
   },
   {
     "taskDefinitionKey": "ut04_rights_production_director_approve",
-    "nodeSemantic": "LC_CLOSURE_RIGHTS_PRODUCTION_DIRECTOR_APPROVE",
+    "nodeSemantic": "LC_SPECIAL_JOINT_CLOSURE_RIGHTS_PRODUCTION_DIRECTOR_APPROVE",
     "pageCode": "http://192.168.124.3:1919/contest/audit/competition/final/company/readOnly",
     "isStarterNode": false,
     "isConvergencePoint": false,
@@ -123,7 +123,7 @@
   },
   {
     "taskDefinitionKey": "ut05_executive_vice_chair_approve",
-    "nodeSemantic": "LC_CLOSURE_EXECUTIVE_VICE_CHAIR_APPROVE",
+    "nodeSemantic": "LC_SPECIAL_JOINT_CLOSURE_EXECUTIVE_VICE_CHAIR_APPROVE",
     "pageCode": "http://192.168.124.3:1919/contest/audit/competition/final/company/readOnly",
     "isStarterNode": false,
     "isConvergencePoint": false,
@@ -155,7 +155,7 @@
   },
   {
     "taskDefinitionKey": "ut06_company_union_chair_approve",
-    "nodeSemantic": "LC_CLOSURE_COMPANY_UNION_CHAIR_APPROVE",
+    "nodeSemantic": "LC_SPECIAL_JOINT_CLOSURE_COMPANY_UNION_CHAIR_APPROVE",
     "pageCode": "http://192.168.124.3:1919/contest/audit/competition/final/company/readOnly",
     "isStarterNode": false,
     "isConvergencePoint": false,
@@ -174,7 +174,7 @@
     "slots": [
       {
         "slotKey": "upload_applicant",
-        "roleKey": "lc_closure_upload_applicant",
+        "roleKey": "lc_special_joint_closure_upload_applicant",
         "label": "申请人（上传表格）",
         "mode": "single",
         "variableName": "uploadApplicantAssignee",
@@ -187,7 +187,7 @@
   },
   {
     "taskDefinitionKey": "ut07_applicant_upload_form",
-    "nodeSemantic": "LC_CLOSURE_APPLICANT_UPLOAD_FORM",
+    "nodeSemantic": "LC_SPECIAL_JOINT_CLOSURE_APPLICANT_UPLOAD_FORM",
     "pageCode": "http://192.168.124.3:1919/contest/audit/competition/final",
     "isStarterNode": false,
     "isConvergencePoint": false,
@@ -195,7 +195,7 @@
     "rejectOptions": [],
     "isRejectTarget": true,
     "rejectCode": "TO_UPLOAD_FORM",
-    "roleKey": "lc_closure_upload_applicant",
+    "roleKey": "lc_special_joint_closure_upload_applicant",
     "assigneeMode": "single",
     "slots": [
       {
@@ -213,7 +213,7 @@
   },
   {
     "taskDefinitionKey": "ut08_grassroots_chair_after_upload_approve",
-    "nodeSemantic": "LC_CLOSURE_GRASSROOTS_CHAIR_AFTER_UPLOAD_APPROVE",
+    "nodeSemantic": "LC_SPECIAL_JOINT_CLOSURE_GRASSROOTS_CHAIR_AFTER_UPLOAD_APPROVE",
     "pageCode": "http://192.168.124.3:1919/contest/audit/competition/final/readOnly",
     "isStarterNode": false,
     "isConvergencePoint": false,
@@ -245,7 +245,7 @@
   },
   {
     "taskDefinitionKey": "ut09_competition_supervisor_after_upload_approve",
-    "nodeSemantic": "LC_CLOSURE_COMPETITION_SUPERVISOR_AFTER_UPLOAD_APPROVE",
+    "nodeSemantic": "LC_SPECIAL_JOINT_CLOSURE_COMPETITION_SUPERVISOR_AFTER_UPLOAD_APPROVE",
     "pageCode": "http://192.168.124.3:1919/contest/audit/competition/final/readOnly",
     "isStarterNode": false,
     "isConvergencePoint": true,

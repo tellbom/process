@@ -1,0 +1,231 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:flowable="http://flowable.org/bpmn"
+             typeLanguage="http://www.w3.org/2001/XMLSchema"
+             expressionLanguage="http://www.w3.org/1999/XPath"
+             targetNamespace="http://www.flowable.org/processdef">
+
+  <!--
+    流程：专题/联合劳动竞赛结题审批
+    ProcessDefinitionKey : labor_competition_special_joint_closure_approval
+    BusinessType         : labor_competition_special_joint_closure_approval
+
+    前半段驳回：退回 UT-01 申请人。
+    后半段驳回：从 UT-07 申请人（上传表格）开始，退回 UT-07。
+
+    路径：
+      UT-01 申请人
+      UT-02 基层工会主席
+      UT-03 公司工会劳动竞赛主管
+      UT-04 公司工会权益与生产室室主任
+      UT-05 公司工会常务副主席
+      UT-06 公司工会主席
+      UT-07 申请人（上传表格）
+      UT-08 基层工会主席
+      UT-09 公司工会劳动竞赛主管
+      ST-10 框架回调
+  -->
+  <process id="labor_competition_special_joint_closure_approval"
+           name="专题/联合劳动竞赛结题审批"
+           isExecutable="true">
+
+    <startEvent id="start_event" name="开始"/>
+    <sequenceFlow id="flow_start_to_ut01" sourceRef="start_event" targetRef="ut01_applicant_submit"/>
+
+    <userTask id="ut01_applicant_submit"
+              name="申请人"
+              flowable:assignee="${applicantAssignee}">
+      <documentation>
+        操作: 申请人提交专题/联合劳动竞赛结题审批申请。
+        slots: 选基层工会主席 -> grassrootsChairAssigneeList
+        前半段驳回落点。
+      </documentation>
+      <extensionElements>
+        <flowable:field name="nodeSemantic" stringValue="LC_SPECIAL_JOINT_CLOSURE_APPLICANT_SUBMIT"/>
+        <flowable:field name="pageCode" stringValue="LaborCompetition/SpecialJointClosure/ApplicantSubmitForm"/>
+        <flowable:field name="isConvergencePoint" stringValue="false"/>
+      </extensionElements>
+    </userTask>
+
+    <sequenceFlow id="flow_ut01_to_ut02" sourceRef="ut01_applicant_submit" targetRef="ut02_grassroots_chair_approve"/>
+
+    <userTask id="ut02_grassroots_chair_approve"
+              name="基层工会主席"
+              flowable:assignee="${grassrootsChairAssignee.asText()}">
+      <documentation>
+        操作: 基层工会主席审批，可同意或驳回到申请人。
+        slots: 选公司工会劳动竞赛主管 -> competitionSupervisorAssigneeList
+      </documentation>
+      <extensionElements>
+        <flowable:field name="nodeSemantic" stringValue="LC_SPECIAL_JOINT_CLOSURE_GRASSROOTS_CHAIR_APPROVE"/>
+        <flowable:field name="pageCode" stringValue="LaborCompetition/SpecialJointClosure/GrassrootsChairApproveForm"/>
+        <flowable:field name="isConvergencePoint" stringValue="false"/>
+      </extensionElements>
+      <multiInstanceLoopCharacteristics isSequential="false"
+                                        flowable:collection="${grassrootsChairAssigneeList}"
+                                        flowable:elementVariable="grassrootsChairAssignee">
+        <completionCondition>${nrOfCompletedInstances &gt;= 1}</completionCondition>
+      </multiInstanceLoopCharacteristics>
+    </userTask>
+
+    <sequenceFlow id="flow_ut02_to_ut03" sourceRef="ut02_grassroots_chair_approve" targetRef="ut03_competition_supervisor_approve"/>
+
+    <userTask id="ut03_competition_supervisor_approve"
+              name="公司工会劳动竞赛主管"
+              flowable:assignee="${competitionSupervisorAssignee.asText()}">
+      <documentation>
+        操作: 公司工会劳动竞赛主管审批，可同意或驳回到申请人。
+        slots: 选公司工会权益与生产室室主任 -> rightsProductionDirectorAssigneeList
+      </documentation>
+      <extensionElements>
+        <flowable:field name="nodeSemantic" stringValue="LC_SPECIAL_JOINT_CLOSURE_COMPETITION_SUPERVISOR_APPROVE"/>
+        <flowable:field name="pageCode" stringValue="LaborCompetition/SpecialJointClosure/CompetitionSupervisorApproveForm"/>
+        <flowable:field name="isConvergencePoint" stringValue="false"/>
+      </extensionElements>
+      <multiInstanceLoopCharacteristics isSequential="false"
+                                        flowable:collection="${competitionSupervisorAssigneeList}"
+                                        flowable:elementVariable="competitionSupervisorAssignee">
+        <completionCondition>${nrOfCompletedInstances &gt;= 1}</completionCondition>
+      </multiInstanceLoopCharacteristics>
+    </userTask>
+
+    <sequenceFlow id="flow_ut03_to_ut04" sourceRef="ut03_competition_supervisor_approve" targetRef="ut04_rights_production_director_approve"/>
+
+    <userTask id="ut04_rights_production_director_approve"
+              name="公司工会权益与生产室室主任"
+              flowable:assignee="${rightsProductionDirectorAssignee.asText()}">
+      <documentation>
+        操作: 权益与生产室室主任审批，可同意或驳回到申请人。
+        slots: 选公司工会常务副主席 -> executiveViceChairAssigneeList
+      </documentation>
+      <extensionElements>
+        <flowable:field name="nodeSemantic" stringValue="LC_SPECIAL_JOINT_CLOSURE_RIGHTS_PRODUCTION_DIRECTOR_APPROVE"/>
+        <flowable:field name="pageCode" stringValue="LaborCompetition/SpecialJointClosure/RightsProductionDirectorApproveForm"/>
+        <flowable:field name="isConvergencePoint" stringValue="false"/>
+      </extensionElements>
+      <multiInstanceLoopCharacteristics isSequential="false"
+                                        flowable:collection="${rightsProductionDirectorAssigneeList}"
+                                        flowable:elementVariable="rightsProductionDirectorAssignee">
+        <completionCondition>${nrOfCompletedInstances &gt;= 1}</completionCondition>
+      </multiInstanceLoopCharacteristics>
+    </userTask>
+
+    <sequenceFlow id="flow_ut04_to_ut05" sourceRef="ut04_rights_production_director_approve" targetRef="ut05_executive_vice_chair_approve"/>
+
+    <userTask id="ut05_executive_vice_chair_approve"
+              name="公司工会常务副主席"
+              flowable:assignee="${executiveViceChairAssignee.asText()}">
+      <documentation>
+        操作: 常务副主席审批，可同意或驳回到申请人。
+        slots: 选公司工会主席 -> companyUnionChairAssigneeList
+      </documentation>
+      <extensionElements>
+        <flowable:field name="nodeSemantic" stringValue="LC_SPECIAL_JOINT_CLOSURE_EXECUTIVE_VICE_CHAIR_APPROVE"/>
+        <flowable:field name="pageCode" stringValue="LaborCompetition/SpecialJointClosure/ExecutiveViceChairApproveForm"/>
+        <flowable:field name="isConvergencePoint" stringValue="false"/>
+      </extensionElements>
+      <multiInstanceLoopCharacteristics isSequential="false"
+                                        flowable:collection="${executiveViceChairAssigneeList}"
+                                        flowable:elementVariable="executiveViceChairAssignee">
+        <completionCondition>${nrOfCompletedInstances &gt;= 1}</completionCondition>
+      </multiInstanceLoopCharacteristics>
+    </userTask>
+
+    <sequenceFlow id="flow_ut05_to_ut06" sourceRef="ut05_executive_vice_chair_approve" targetRef="ut06_company_union_chair_approve"/>
+
+    <userTask id="ut06_company_union_chair_approve"
+              name="公司工会主席"
+              flowable:assignee="${companyUnionChairAssignee.asText()}">
+      <documentation>
+        操作: 公司工会主席审批，可同意或驳回到申请人。
+        slots: 选申请人（上传表格） -> uploadApplicantAssignee
+      </documentation>
+      <extensionElements>
+        <flowable:field name="nodeSemantic" stringValue="LC_SPECIAL_JOINT_CLOSURE_COMPANY_UNION_CHAIR_APPROVE"/>
+        <flowable:field name="pageCode" stringValue="LaborCompetition/SpecialJointClosure/CompanyUnionChairApproveForm"/>
+        <flowable:field name="isConvergencePoint" stringValue="false"/>
+      </extensionElements>
+      <multiInstanceLoopCharacteristics isSequential="false"
+                                        flowable:collection="${companyUnionChairAssigneeList}"
+                                        flowable:elementVariable="companyUnionChairAssignee">
+        <completionCondition>${nrOfCompletedInstances &gt;= 1}</completionCondition>
+      </multiInstanceLoopCharacteristics>
+    </userTask>
+
+    <sequenceFlow id="flow_ut06_to_ut07" sourceRef="ut06_company_union_chair_approve" targetRef="ut07_applicant_upload_form"/>
+
+    <userTask id="ut07_applicant_upload_form"
+              name="申请人（上传表格）"
+              flowable:assignee="${uploadApplicantAssignee}">
+      <documentation>
+        操作: 申请人上传表格，不可驳回，只能同意。
+        slots: 选基层工会主席 -> grassrootsChairAfterUploadAssigneeList
+        后半段驳回落点。
+      </documentation>
+      <extensionElements>
+        <flowable:field name="nodeSemantic" stringValue="LC_SPECIAL_JOINT_CLOSURE_APPLICANT_UPLOAD_FORM"/>
+        <flowable:field name="pageCode" stringValue="LaborCompetition/SpecialJointClosure/ApplicantUploadForm"/>
+        <flowable:field name="isConvergencePoint" stringValue="false"/>
+      </extensionElements>
+    </userTask>
+
+    <sequenceFlow id="flow_ut07_to_ut08" sourceRef="ut07_applicant_upload_form" targetRef="ut08_grassroots_chair_after_upload_approve"/>
+
+    <userTask id="ut08_grassroots_chair_after_upload_approve"
+              name="基层工会主席"
+              flowable:assignee="${grassrootsChairAfterUploadAssignee.asText()}">
+      <documentation>
+        操作: 基层工会主席审批上传表格，可同意或驳回到申请人（上传表格）。
+        slots: 选公司工会劳动竞赛主管 -> competitionSupervisorAfterUploadAssigneeList
+      </documentation>
+      <extensionElements>
+        <flowable:field name="nodeSemantic" stringValue="LC_SPECIAL_JOINT_CLOSURE_GRASSROOTS_CHAIR_AFTER_UPLOAD_APPROVE"/>
+        <flowable:field name="pageCode" stringValue="LaborCompetition/SpecialJointClosure/GrassrootsChairAfterUploadApproveForm"/>
+        <flowable:field name="isConvergencePoint" stringValue="false"/>
+      </extensionElements>
+      <multiInstanceLoopCharacteristics isSequential="false"
+                                        flowable:collection="${grassrootsChairAfterUploadAssigneeList}"
+                                        flowable:elementVariable="grassrootsChairAfterUploadAssignee">
+        <completionCondition>${nrOfCompletedInstances &gt;= 1}</completionCondition>
+      </multiInstanceLoopCharacteristics>
+    </userTask>
+
+    <sequenceFlow id="flow_ut08_to_ut09" sourceRef="ut08_grassroots_chair_after_upload_approve" targetRef="ut09_competition_supervisor_after_upload_approve"/>
+
+    <userTask id="ut09_competition_supervisor_after_upload_approve"
+              name="公司工会劳动竞赛主管"
+              flowable:assignee="${competitionSupervisorAfterUploadAssignee.asText()}">
+      <documentation>
+        操作: 公司工会劳动竞赛主管审批上传表格，可同意或驳回到申请人（上传表格）。
+        slots: 无
+      </documentation>
+      <extensionElements>
+        <flowable:field name="nodeSemantic" stringValue="LC_SPECIAL_JOINT_CLOSURE_COMPETITION_SUPERVISOR_AFTER_UPLOAD_APPROVE"/>
+        <flowable:field name="pageCode" stringValue="LaborCompetition/SpecialJointClosure/CompetitionSupervisorAfterUploadApproveForm"/>
+        <flowable:field name="isConvergencePoint" stringValue="true"/>
+      </extensionElements>
+      <multiInstanceLoopCharacteristics isSequential="false"
+                                        flowable:collection="${competitionSupervisorAfterUploadAssigneeList}"
+                                        flowable:elementVariable="competitionSupervisorAfterUploadAssignee">
+        <completionCondition>${nrOfCompletedInstances &gt;= 1}</completionCondition>
+      </multiInstanceLoopCharacteristics>
+    </userTask>
+
+    <sequenceFlow id="flow_ut09_to_st10" sourceRef="ut09_competition_supervisor_after_upload_approve" targetRef="st10_framework_callback"/>
+
+    <serviceTask id="st10_framework_callback" name="框架回调业务系统" flowable:type="http">
+      <extensionElements>
+        <flowable:field name="requestMethod"><flowable:string>POST</flowable:string></flowable:field>
+        <flowable:field name="requestUrl"><flowable:expression>${frameworkCallbackUrl}</flowable:expression></flowable:field>
+        <flowable:field name="requestHeaders"><flowable:string>Content-Type: application/json</flowable:string></flowable:field>
+        <flowable:field name="requestBody">
+          <flowable:expression>{"processInstanceId":"${execution.processInstanceId}","businessId":"${businessId}","processDefinitionKey":"${processDefinitionKey}"}</flowable:expression>
+        </flowable:field>
+        <flowable:field name="saveResponseParameters"><flowable:string>false</flowable:string></flowable:field>
+      </extensionElements>
+    </serviceTask>
+
+    <sequenceFlow id="flow_st10_to_end" sourceRef="st10_framework_callback" targetRef="end_event"/>
+    <endEvent id="end_event" name="结束"/>
+  </process>
+</definitions>

@@ -32,7 +32,7 @@
               flowable:assignee="${applicantAssignee}">
       <documentation>
         操作: 申请人提交劳动竞赛关键节点审批材料。
-        slots: 选基层工会主席 -> grassrootsChairAssignee
+        slots: 选基层工会主席 -> grassrootsChairAssigneeList
       </documentation>
       <extensionElements>
         <flowable:field name="nodeSemantic" stringValue="LC_KEY_NODE_APPLICANT_SUBMIT"/>
@@ -47,16 +47,21 @@
 
     <userTask id="ut02_grassroots_chair_approve"
               name="基层工会主席"
-              flowable:assignee="${grassrootsChairAssignee}">
+              flowable:assignee="${grassrootsChairAssignee.asText()}">
       <documentation>
         操作: 基层工会主席审批，可同意或驳回到申请人。
-        slots: 选公司工会劳动竞赛主管 -> competitionSupervisorAssignee
+        slots: 选公司工会劳动竞赛主管 -> competitionSupervisorAssigneeList
       </documentation>
       <extensionElements>
         <flowable:field name="nodeSemantic" stringValue="LC_KEY_NODE_GRASSROOTS_CHAIR_APPROVE"/>
         <flowable:field name="pageCode" stringValue="LaborCompetition/KeyNode/GrassrootsChairApproveForm"/>
         <flowable:field name="isConvergencePoint" stringValue="false"/>
       </extensionElements>
+      <multiInstanceLoopCharacteristics isSequential="false"
+                                        flowable:collection="${grassrootsChairAssigneeList}"
+                                        flowable:elementVariable="grassrootsChairAssignee">
+        <completionCondition>${nrOfCompletedInstances &gt;= 1}</completionCondition>
+      </multiInstanceLoopCharacteristics>
     </userTask>
 
     <sequenceFlow id="flow_ut02_to_ut03"
@@ -65,7 +70,7 @@
 
     <userTask id="ut03_competition_supervisor_approve"
               name="公司工会劳动竞赛主管"
-              flowable:assignee="${competitionSupervisorAssignee}">
+              flowable:assignee="${competitionSupervisorAssignee.asText()}">
       <documentation>
         操作: 公司工会劳动竞赛主管审批，可同意或驳回到申请人。
         slots: 无
@@ -75,6 +80,11 @@
         <flowable:field name="pageCode" stringValue="LaborCompetition/KeyNode/CompetitionSupervisorApproveForm"/>
         <flowable:field name="isConvergencePoint" stringValue="true"/>
       </extensionElements>
+      <multiInstanceLoopCharacteristics isSequential="false"
+                                        flowable:collection="${competitionSupervisorAssigneeList}"
+                                        flowable:elementVariable="competitionSupervisorAssignee">
+        <completionCondition>${nrOfCompletedInstances &gt;= 1}</completionCondition>
+      </multiInstanceLoopCharacteristics>
     </userTask>
 
     <sequenceFlow id="flow_ut03_to_st04"

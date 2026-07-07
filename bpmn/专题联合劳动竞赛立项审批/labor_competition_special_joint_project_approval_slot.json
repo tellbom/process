@@ -1,7 +1,7 @@
 [
   {
     "taskDefinitionKey": "ut01_applicant_submit",
-    "nodeSemantic": "LC_PROJECT_APPLICANT_SUBMIT",
+    "nodeSemantic": "LC_SPECIAL_JOINT_PROJECT_APPLICANT_SUBMIT",
     "pageCode": "http://192.168.124.3:1919/contest/audit/competition/resubmit",
     "isStarterNode": true,
     "isConvergencePoint": false,
@@ -9,7 +9,7 @@
     "rejectOptions": [],
     "isRejectTarget": true,
     "rejectCode": "TO_APPLICANT_SUBMIT",
-    "roleKey": "lc_project_applicant",
+    "roleKey": "lc_special_joint_project_applicant",
     "assigneeMode": "single",
     "slots": [
       {
@@ -27,7 +27,7 @@
   },
   {
     "taskDefinitionKey": "ut02_grassroots_chair_approve",
-    "nodeSemantic": "LC_PROJECT_GRASSROOTS_CHAIR_APPROVE",
+    "nodeSemantic": "LC_SPECIAL_JOINT_PROJECT_GRASSROOTS_CHAIR_APPROVE",
     "pageCode": "http://192.168.124.3:1919/contest/audit/competition/grassroots",
     "isStarterNode": false,
     "isConvergencePoint": false,
@@ -45,11 +45,21 @@
     "assigneeMode": "multiple",
     "slots": [
       {
-        "slotKey": "competition_supervisor",
-        "roleKey": "lc_competition_supervisor",
-        "label": "公司工会劳动竞赛主管",
+        "slotKey": "joint_unit_union_chair",
+        "roleKey": "lc_joint_unit_union_chair",
+        "label": "联合单位工会主席",
         "mode": "multiple",
-        "variableName": "competitionSupervisorAssigneeList",
+        "variableName": "jointUnitUnionChairAssigneeList",
+        "required": true,
+        "conditionalOn": "IS_JOINT_COMPETITION==true",
+        "restrictToRecommended": true
+      },
+      {
+        "slotKey": "company_business_supervisor",
+        "roleKey": "lc_company_union_business_supervisor",
+        "label": "公司工会业务主管",
+        "mode": "multiple",
+        "variableName": "companyBusinessSupervisorAssigneeList",
         "required": true,
         "conditionalOn": null,
         "restrictToRecommended": true
@@ -58,8 +68,29 @@
     "callbackUrl": null
   },
   {
-    "taskDefinitionKey": "ut03_competition_supervisor_approve",
-    "nodeSemantic": "LC_PROJECT_COMPETITION_SUPERVISOR_APPROVE",
+    "taskDefinitionKey": "ut03_joint_unit_union_chair_countersign",
+    "nodeSemantic": "LC_SPECIAL_JOINT_PROJECT_JOINT_UNIT_UNION_CHAIR_COUNTERSIGN",
+    "pageCode": "http://192.168.124.3:1919/contest/audit/competition/readOnly",
+    "isStarterNode": false,
+    "isConvergencePoint": false,
+    "canReject": true,
+    "rejectOptions": [
+      {
+        "rejectCode": "TO_APPLICANT_SUBMIT",
+        "label": "驳回申请人修改",
+        "description": "联合单位工会主席会签不通过，退回申请人发起节点"
+      }
+    ],
+    "isRejectTarget": false,
+    "rejectCode": null,
+    "roleKey": "lc_joint_unit_union_chair",
+    "assigneeMode": "multiple",
+    "slots": [],
+    "callbackUrl": null
+  },
+  {
+    "taskDefinitionKey": "ut04_company_business_supervisor_approve",
+    "nodeSemantic": "LC_SPECIAL_JOINT_PROJECT_COMPANY_BUSINESS_SUPERVISOR_APPROVE",
     "pageCode": "http://192.168.124.3:1919/contest/audit/competition",
     "isStarterNode": false,
     "isConvergencePoint": true,
@@ -68,12 +99,12 @@
       {
         "rejectCode": "TO_APPLICANT_SUBMIT",
         "label": "驳回申请人修改",
-        "description": "公司工会劳动竞赛主管审批不通过，退回申请人发起节点"
+        "description": "公司工会业务主管审批不通过，退回申请人发起节点"
       }
     ],
     "isRejectTarget": false,
     "rejectCode": null,
-    "roleKey": "lc_competition_supervisor",
+    "roleKey": "lc_company_union_business_supervisor",
     "assigneeMode": "multiple",
     "slots": [],
     "callbackUrl": null
