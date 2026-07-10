@@ -23,7 +23,7 @@
         "restrictToRecommended": true
       }
     ],
-    "callbackUrl": null
+    "callbackUrl": "http://192.168.124.5:5012/api/test/node-callback"
   },
   {
     "taskDefinitionKey": "ut02_team_leader_confirm",
@@ -55,7 +55,7 @@
         "restrictToRecommended": true
       }
     ],
-    "callbackUrl": null
+    "callbackUrl": "http://192.168.124.5:5012/api/test/node-callback"
   },
   {
     "taskDefinitionKey": "ut03_quality_group_confirm",
@@ -97,7 +97,7 @@
         "restrictToRecommended": true
       }
     ],
-    "callbackUrl": null
+    "callbackUrl": "http://192.168.124.5:5012/api/test/node-callback"
   },
   {
     "taskDefinitionKey": "ut04_responsible_confirm",
@@ -139,7 +139,7 @@
         "restrictToRecommended": true
       }
     ],
-    "callbackUrl": null
+    "callbackUrl": "http://192.168.124.5:5012/api/test/node-callback"
   },
   {
     "taskDefinitionKey": "ut05_counterpart_leader_review",
@@ -171,7 +171,7 @@
         "restrictToRecommended": true
       }
     ],
-    "callbackUrl": null
+    "callbackUrl": "http://192.168.124.5:5012/api/test/node-callback"
   },
   {
     "taskDefinitionKey": "ut06_discoverer_confirm",
@@ -186,6 +186,6 @@
     "roleKey": "problem_zero_discoverer",
     "assigneeMode": "multiple",
     "slots": [],
-    "callbackUrl": null
+    "callbackUrl": "http://192.168.124.5:5012/api/test/node-callback"
   }
 ]

@@ -1,0 +1,169 @@
+﻿{
+    "success":  true,
+    "data":  {
+                 "businessId":  "PZ_E2E_NONSPECIAL_20260710092431",
+                 "processInstanceId":  "3817f5f7-7bfe-11f1-a767-0242ac110004",
+                 "processDefinitionKey":  "problem_zero",
+                 "businessType":  "problem_zero",
+                 "status":  "completed",
+                 "createdBy":  "PZ_START",
+                 "createdTime":  "2026-07-10T01:25:21.6725419Z",
+                 "completedTime":  "2026-07-10T01:25:47.4738141Z",
+                 "currentNodes":  [
+
+                                  ],
+                 "auditHistory":  [
+                                      {
+                                          "taskDefinitionKey":  "ut01_starter_submit",
+                                          "nodeSemantic":  "PROBLEM_ZERO_STARTER_SUBMIT",
+                                          "pageCode":  "ProblemZero/StarterSubmitForm",
+                                          "action":  "approve",
+                                          "operatorId":  "PZ_START",
+                                          "comment":  "E2E approve ut01_starter_submit",
+                                          "rejectReason":  null,
+                                          "rejectCode":  null,
+                                          "rejectTargetNodeKey":  null,
+                                          "operatedAt":  "2026-07-10T01:25:23.4516285Z",
+                                          "slotSelections":  [
+                                                                 {
+                                                                     "slotKey":  "team_leader",
+                                                                     "label":  "发现问题班组负责人",
+                                                                     "users":  [
+                                                                                   "PZ_TEAM"
+                                                                               ]
+                                                                 }
+                                                             ],
+                                          "hasOutOfRecommendedRange":  false,
+                                          "recommendedUsersSnapshot":  {
+                                                                           "team_leader":  [
+                                                                                               "PZ_TEAM"
+                                                                                           ]
+                                                                       },
+                                          "restrictToRecommendedSnapshot":  {
+                                                                                "team_leader":  true
+                                                                            }
+                                      },
+                                      {
+                                          "taskDefinitionKey":  "ut02_team_leader_confirm",
+                                          "nodeSemantic":  "PROBLEM_ZERO_TEAM_LEADER_CONFIRM",
+                                          "pageCode":  "ProblemZero/TeamLeaderConfirmForm",
+                                          "action":  "approve",
+                                          "operatorId":  "PZ_TEAM",
+                                          "comment":  "E2E approve ut02_team_leader_confirm",
+                                          "rejectReason":  null,
+                                          "rejectCode":  null,
+                                          "rejectTargetNodeKey":  null,
+                                          "operatedAt":  "2026-07-10T01:25:33.8613978Z",
+                                          "slotSelections":  [
+                                                                 {
+                                                                     "slotKey":  "quality_group",
+                                                                     "label":  "质控人员组",
+                                                                     "users":  [
+                                                                                   "PZ_QUALITY"
+                                                                               ]
+                                                                 }
+                                                             ],
+                                          "hasOutOfRecommendedRange":  false,
+                                          "recommendedUsersSnapshot":  {
+                                                                           "quality_group":  [
+                                                                                                 "PZ_QUALITY"
+                                                                                             ]
+                                                                       },
+                                          "restrictToRecommendedSnapshot":  {
+                                                                                "quality_group":  true
+                                                                            }
+                                      },
+                                      {
+                                          "taskDefinitionKey":  "ut03_quality_group_confirm",
+                                          "nodeSemantic":  "PROBLEM_ZERO_QUALITY_GROUP_CONFIRM",
+                                          "pageCode":  "ProblemZero/QualityGroupConfirmForm",
+                                          "action":  "approve",
+                                          "operatorId":  "PZ_QUALITY",
+                                          "comment":  "E2E approve ut03_quality_group_confirm",
+                                          "rejectReason":  null,
+                                          "rejectCode":  null,
+                                          "rejectTargetNodeKey":  null,
+                                          "operatedAt":  "2026-07-10T01:25:42.1200993Z",
+                                          "slotSelections":  [
+                                                                 {
+                                                                     "slotKey":  "responsible_person",
+                                                                     "label":  "责任人",
+                                                                     "users":  [
+                                                                                   "PZ_RESP"
+                                                                               ]
+                                                                 }
+                                                             ],
+                                          "hasOutOfRecommendedRange":  false,
+                                          "recommendedUsersSnapshot":  {
+                                                                           "direct_end_when_solved":  [
+                                                                                                          "PZ_QUALITY"
+                                                                                                      ],
+                                                                           "responsible_person":  [
+                                                                                                      "PZ_RESP"
+                                                                                                  ]
+                                                                       },
+                                          "restrictToRecommendedSnapshot":  {
+                                                                                "direct_end_when_solved":  false,
+                                                                                "responsible_person":  true
+                                                                            }
+                                      },
+                                      {
+                                          "taskDefinitionKey":  "ut04_responsible_confirm",
+                                          "nodeSemantic":  "PROBLEM_ZERO_RESPONSIBLE_CONFIRM",
+                                          "pageCode":  "ProblemZero/ResponsibleConfirmForm",
+                                          "action":  "approve",
+                                          "operatorId":  "PZ_RESP",
+                                          "comment":  "E2E approve ut04_responsible_confirm",
+                                          "rejectReason":  null,
+                                          "rejectCode":  null,
+                                          "rejectTargetNodeKey":  null,
+                                          "operatedAt":  "2026-07-10T01:25:44.9610634Z",
+                                          "slotSelections":  [
+                                                                 {
+                                                                     "slotKey":  "discoverer_direct",
+                                                                     "label":  "发现问题人（非专项工作路径）",
+                                                                     "users":  [
+                                                                                   "PZ_DISC"
+                                                                               ]
+                                                                 }
+                                                             ],
+                                          "hasOutOfRecommendedRange":  false,
+                                          "recommendedUsersSnapshot":  {
+                                                                           "counterpart_leader":  [
+                                                                                                      "PZ_COUNTER"
+                                                                                                  ],
+                                                                           "discoverer_direct":  [
+                                                                                                     "PZ_DISC"
+                                                                                                 ]
+                                                                       },
+                                          "restrictToRecommendedSnapshot":  {
+                                                                                "counterpart_leader":  true,
+                                                                                "discoverer_direct":  true
+                                                                            }
+                                      },
+                                      {
+                                          "taskDefinitionKey":  "ut06_discoverer_confirm",
+                                          "nodeSemantic":  "PROBLEM_ZERO_DISCOVERER_CONFIRM",
+                                          "pageCode":  "ProblemZero/DiscovererConfirmForm",
+                                          "action":  "approve",
+                                          "operatorId":  "PZ_DISC",
+                                          "comment":  "E2E approve ut06_discoverer_confirm",
+                                          "rejectReason":  null,
+                                          "rejectCode":  null,
+                                          "rejectTargetNodeKey":  null,
+                                          "operatedAt":  "2026-07-10T01:25:46.6828992Z",
+                                          "slotSelections":  [
+
+                                                             ],
+                                          "hasOutOfRecommendedRange":  null,
+                                          "recommendedUsersSnapshot":  {
+
+                                                                       },
+                                          "restrictToRecommendedSnapshot":  {
+
+                                                                            }
+                                      }
+                                  ]
+             },
+    "message":  null
+}

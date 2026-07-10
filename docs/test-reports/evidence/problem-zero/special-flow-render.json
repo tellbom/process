@@ -1,0 +1,362 @@
+﻿{
+    "success":  true,
+    "data":  {
+                 "businessId":  "PZ_E2E_SPECIAL_20260710092431",
+                 "processInstanceId":  "265c51d7-7bfe-11f1-a767-0242ac110004",
+                 "processDefinitionKey":  "problem_zero",
+                 "businessType":  "problem_zero",
+                 "status":  "completed",
+                 "createdBy":  "PZ_START",
+                 "createdTime":  "2026-07-10T01:24:51.9229159Z",
+                 "completedTime":  "2026-07-10T01:25:14.9622453Z",
+                 "hasRejectHistory":  false,
+                 "walkedNodeIds":  [
+                                       "ut01_starter_submit",
+                                       "ut02_team_leader_confirm",
+                                       "ut03_quality_group_confirm",
+                                       "ut04_responsible_confirm",
+                                       "ut05_counterpart_leader_review",
+                                       "ut06_discoverer_confirm"
+                                   ],
+                 "nodes":  [
+                               {
+                                   "id":  "start_event",
+                                   "label":  "开始",
+                                   "nodeType":  "startEvent",
+                                   "state":  "pending",
+                                   "assignees":  [
+
+                                                 ],
+                                   "completedAt":  null,
+                                   "isMultiInstance":  false,
+                                   "x":  82,
+                                   "y":  142,
+                                   "width":  36,
+                                   "height":  36
+                               },
+                               {
+                                   "id":  "ut01_starter_submit",
+                                   "label":  "问题发起人启动流程",
+                                   "nodeType":  "userTask",
+                                   "state":  "completed",
+                                   "assignees":  [
+                                                     "PZ_START"
+                                                 ],
+                                   "completedAt":  "2026-07-10T01:24:55.564Z",
+                                   "isMultiInstance":  false,
+                                   "x":  160,
+                                   "y":  120,
+                                   "width":  180,
+                                   "height":  80
+                               },
+                               {
+                                   "id":  "ut02_team_leader_confirm",
+                                   "label":  "发现问题班组负责人问题确认",
+                                   "nodeType":  "userTask",
+                                   "state":  "completed",
+                                   "assignees":  [
+                                                     "PZ_TEAM"
+                                                 ],
+                                   "completedAt":  "2026-07-10T01:24:57.896Z",
+                                   "isMultiInstance":  true,
+                                   "x":  390,
+                                   "y":  120,
+                                   "width":  200,
+                                   "height":  80
+                               },
+                               {
+                                   "id":  "ut03_quality_group_confirm",
+                                   "label":  "质控人员组确认",
+                                   "nodeType":  "userTask",
+                                   "state":  "completed",
+                                   "assignees":  [
+                                                     "PZ_QUALITY"
+                                                 ],
+                                   "completedAt":  "2026-07-10T01:25:00.325Z",
+                                   "isMultiInstance":  true,
+                                   "x":  640,
+                                   "y":  120,
+                                   "width":  190,
+                                   "height":  80
+                               },
+                               {
+                                   "id":  "eg01_is_solved",
+                                   "label":  "是否已解决？",
+                                   "nodeType":  "exclusiveGateway",
+                                   "state":  "pending",
+                                   "assignees":  [
+
+                                                 ],
+                                   "completedAt":  null,
+                                   "isMultiInstance":  false,
+                                   "x":  885,
+                                   "y":  135,
+                                   "width":  50,
+                                   "height":  50
+                               },
+                               {
+                                   "id":  "ut04_responsible_confirm",
+                                   "label":  "责任人确认",
+                                   "nodeType":  "userTask",
+                                   "state":  "completed",
+                                   "assignees":  [
+                                                     "PZ_RESP"
+                                                 ],
+                                   "completedAt":  "2026-07-10T01:25:03.438Z",
+                                   "isMultiInstance":  true,
+                                   "x":  990,
+                                   "y":  120,
+                                   "width":  180,
+                                   "height":  80
+                               },
+                               {
+                                   "id":  "eg02_problem_attribute",
+                                   "label":  "是否专项工作？",
+                                   "nodeType":  "exclusiveGateway",
+                                   "state":  "pending",
+                                   "assignees":  [
+
+                                                 ],
+                                   "completedAt":  null,
+                                   "isMultiInstance":  false,
+                                   "x":  1225,
+                                   "y":  135,
+                                   "width":  50,
+                                   "height":  50
+                               },
+                               {
+                                   "id":  "ut05_counterpart_leader_review",
+                                   "label":  "对口领导审核",
+                                   "nodeType":  "userTask",
+                                   "state":  "completed",
+                                   "assignees":  [
+                                                     "PZ_COUNTER"
+                                                 ],
+                                   "completedAt":  "2026-07-10T01:25:07.794Z",
+                                   "isMultiInstance":  true,
+                                   "x":  1330,
+                                   "y":  40,
+                                   "width":  180,
+                                   "height":  80
+                               },
+                               {
+                                   "id":  "ut06_discoverer_confirm",
+                                   "label":  "发现问题人确认",
+                                   "nodeType":  "userTask",
+                                   "state":  "completed",
+                                   "assignees":  [
+                                                     "PZ_DISC"
+                                                 ],
+                                   "completedAt":  "2026-07-10T01:25:15.127Z",
+                                   "isMultiInstance":  true,
+                                   "x":  1330,
+                                   "y":  200,
+                                   "width":  200,
+                                   "height":  80
+                               },
+                               {
+                                   "id":  "st07_framework_callback",
+                                   "label":  "框架回调业务系统",
+                                   "nodeType":  "serviceTask",
+                                   "state":  "pending",
+                                   "assignees":  [
+
+                                                 ],
+                                   "completedAt":  null,
+                                   "isMultiInstance":  false,
+                                   "x":  1600,
+                                   "y":  200,
+                                   "width":  180,
+                                   "height":  80
+                               },
+                               {
+                                   "id":  "end_event",
+                                   "label":  "结束",
+                                   "nodeType":  "endEvent",
+                                   "state":  "pending",
+                                   "assignees":  [
+
+                                                 ],
+                                   "completedAt":  null,
+                                   "isMultiInstance":  false,
+                                   "x":  1840,
+                                   "y":  222,
+                                   "width":  36,
+                                   "height":  36
+                               }
+                           ],
+                 "edges":  [
+                               {
+                                   "id":  "flow_start_to_ut01",
+                                   "source":  "start_event",
+                                   "target":  "ut01_starter_submit",
+                                   "state":  "pending",
+                                   "label":  null
+                               },
+                               {
+                                   "id":  "flow_ut01_to_ut02",
+                                   "source":  "ut01_starter_submit",
+                                   "target":  "ut02_team_leader_confirm",
+                                   "state":  "walked",
+                                   "label":  null
+                               },
+                               {
+                                   "id":  "flow_ut02_to_ut03",
+                                   "source":  "ut02_team_leader_confirm",
+                                   "target":  "ut03_quality_group_confirm",
+                                   "state":  "walked",
+                                   "label":  null
+                               },
+                               {
+                                   "id":  "flow_ut03_to_eg01",
+                                   "source":  "ut03_quality_group_confirm",
+                                   "target":  "eg01_is_solved",
+                                   "state":  "walked",
+                                   "label":  null
+                               },
+                               {
+                                   "id":  "flow_eg01_true_to_st07",
+                                   "source":  "eg01_is_solved",
+                                   "target":  "st07_framework_callback",
+                                   "state":  "pending",
+                                   "label":  null
+                               },
+                               {
+                                   "id":  "flow_eg01_false_to_ut04",
+                                   "source":  "eg01_is_solved",
+                                   "target":  "ut04_responsible_confirm",
+                                   "state":  "pending",
+                                   "label":  null
+                               },
+                               {
+                                   "id":  "flow_ut04_to_eg02",
+                                   "source":  "ut04_responsible_confirm",
+                                   "target":  "eg02_problem_attribute",
+                                   "state":  "walked",
+                                   "label":  null
+                               },
+                               {
+                                   "id":  "flow_eg02_true_to_ut05",
+                                   "source":  "eg02_problem_attribute",
+                                   "target":  "ut05_counterpart_leader_review",
+                                   "state":  "pending",
+                                   "label":  null
+                               },
+                               {
+                                   "id":  "flow_eg02_false_to_ut06",
+                                   "source":  "eg02_problem_attribute",
+                                   "target":  "ut06_discoverer_confirm",
+                                   "state":  "pending",
+                                   "label":  null
+                               },
+                               {
+                                   "id":  "flow_ut05_to_ut06",
+                                   "source":  "ut05_counterpart_leader_review",
+                                   "target":  "ut06_discoverer_confirm",
+                                   "state":  "walked",
+                                   "label":  null
+                               },
+                               {
+                                   "id":  "flow_ut06_to_st07",
+                                   "source":  "ut06_discoverer_confirm",
+                                   "target":  "st07_framework_callback",
+                                   "state":  "walked",
+                                   "label":  null
+                               },
+                               {
+                                   "id":  "flow_st07_to_end",
+                                   "source":  "st07_framework_callback",
+                                   "target":  "end_event",
+                                   "state":  "pending",
+                                   "label":  null
+                               }
+                           ],
+                 "activeTasks":  [
+
+                                 ],
+                 "completedRecords":  [
+                                          {
+                                              "taskId":  "265c78f7-7bfe-11f1-a767-0242ac110004",
+                                              "nodeId":  "ut01_starter_submit",
+                                              "nodeName":  "PROBLEM_ZERO_STARTER_SUBMIT",
+                                              "operatorId":  "PZ_START",
+                                              "startTime":  "2026-07-10T01:24:52.07Z",
+                                              "endTime":  "2026-07-10T01:24:55.564Z",
+                                              "durationSeconds":  3,
+                                              "outcome":  "approved",
+                                              "rejectReason":  null,
+                                              "comment":  "E2E approve ut01_starter_submit",
+                                              "round":  1
+                                          },
+                                          {
+                                              "taskId":  "2871c482-7bfe-11f1-a767-0242ac110004",
+                                              "nodeId":  "ut02_team_leader_confirm",
+                                              "nodeName":  "PROBLEM_ZERO_TEAM_LEADER_CONFIRM",
+                                              "operatorId":  "PZ_TEAM",
+                                              "startTime":  "2026-07-10T01:24:55.565Z",
+                                              "endTime":  "2026-07-10T01:24:57.896Z",
+                                              "durationSeconds":  2,
+                                              "outcome":  "approved",
+                                              "rejectReason":  null,
+                                              "comment":  "E2E approve ut02_team_leader_confirm",
+                                              "round":  1
+                                          },
+                                          {
+                                              "taskId":  "29d8cead-7bfe-11f1-a767-0242ac110004",
+                                              "nodeId":  "ut03_quality_group_confirm",
+                                              "nodeName":  "PROBLEM_ZERO_QUALITY_GROUP_CONFIRM",
+                                              "operatorId":  "PZ_QUALITY",
+                                              "startTime":  "2026-07-10T01:24:57.918Z",
+                                              "endTime":  "2026-07-10T01:25:00.325Z",
+                                              "durationSeconds":  2,
+                                              "outcome":  "approved",
+                                              "rejectReason":  null,
+                                              "comment":  "E2E approve ut03_quality_group_confirm",
+                                              "round":  1
+                                          },
+                                          {
+                                              "taskId":  "2b4de29c-7bfe-11f1-a767-0242ac110004",
+                                              "nodeId":  "ut04_responsible_confirm",
+                                              "nodeName":  "PROBLEM_ZERO_RESPONSIBLE_CONFIRM",
+                                              "operatorId":  "PZ_RESP",
+                                              "startTime":  "2026-07-10T01:25:00.351Z",
+                                              "endTime":  "2026-07-10T01:25:03.438Z",
+                                              "durationSeconds":  3,
+                                              "outcome":  "approved",
+                                              "rejectReason":  null,
+                                              "comment":  "E2E approve ut04_responsible_confirm",
+                                              "round":  1
+                                          },
+                                          {
+                                              "taskId":  "2d2539cb-7bfe-11f1-a767-0242ac110004",
+                                              "nodeId":  "ut05_counterpart_leader_review",
+                                              "nodeName":  "PROBLEM_ZERO_COUNTERPART_LEADER_REVIEW",
+                                              "operatorId":  "PZ_COUNTER",
+                                              "startTime":  "2026-07-10T01:25:03.452Z",
+                                              "endTime":  "2026-07-10T01:25:07.794Z",
+                                              "durationSeconds":  4,
+                                              "outcome":  "approved",
+                                              "rejectReason":  null,
+                                              "comment":  "E2E approve ut05_counterpart_leader_review",
+                                              "round":  1
+                                          },
+                                          {
+                                              "taskId":  "2fbc5f86-7bfe-11f1-a767-0242ac110004",
+                                              "nodeId":  "ut06_discoverer_confirm",
+                                              "nodeName":  "PROBLEM_ZERO_DISCOVERER_CONFIRM",
+                                              "operatorId":  "PZ_DISC",
+                                              "startTime":  "2026-07-10T01:25:07.798Z",
+                                              "endTime":  "2026-07-10T01:25:15.127Z",
+                                              "durationSeconds":  7,
+                                              "outcome":  "approved",
+                                              "rejectReason":  null,
+                                              "comment":  "E2E approve ut06_discoverer_confirm",
+                                              "round":  1
+                                          }
+                                      ],
+                 "rejectHistory":  [
+
+                                   ]
+             },
+    "message":  null
+}

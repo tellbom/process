@@ -1,0 +1,24 @@
+﻿{
+    "generatedAt":  "2026-07-10T09:25:47.8927328+08:00",
+    "baseUrl":  "http://192.168.124.5:5012",
+    "scenarios":  [
+                      {
+                          "expectedNodes":  3,
+                          "name":  "solved",
+                          "businessId":  "PZ_E2E_SOLVED_20260710092431",
+                          "actualCallbacks":  4
+                      },
+                      {
+                          "expectedNodes":  6,
+                          "name":  "special",
+                          "businessId":  "PZ_E2E_SPECIAL_20260710092431",
+                          "actualCallbacks":  7
+                      },
+                      {
+                          "expectedNodes":  5,
+                          "name":  "nonspecial",
+                          "businessId":  "PZ_E2E_NONSPECIAL_20260710092431",
+                          "actualCallbacks":  6
+                      }
+                  ]
+}

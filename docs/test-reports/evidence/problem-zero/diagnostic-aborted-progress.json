@@ -1,0 +1,39 @@
+﻿{
+    "success":  true,
+    "data":  {
+                 "businessId":  "PZ_E2E_SOLVED_20260710092343",
+                 "processInstanceId":  "ff111d29-7bfd-11f1-a767-0242ac110004",
+                 "processDefinitionKey":  "problem_zero",
+                 "businessType":  "problem_zero",
+                 "status":  "running",
+                 "createdBy":  "PZ_START",
+                 "createdTime":  "2026-07-10T01:23:46.7318451Z",
+                 "completedTime":  null,
+                 "currentNodes":  [
+                                      {
+                                          "taskId":  "ff162649-7bfd-11f1-a767-0242ac110004",
+                                          "nodeId":  "ut01_starter_submit",
+                                          "nodeName":  "问题发起人启动流程",
+                                          "nodeSemantic":  "PROBLEM_ZERO_STARTER_SUBMIT",
+                                          "pageCode":  "ProblemZero/StarterSubmitForm",
+                                          "assignee":  "PZ_START",
+                                          "candidateUsers":  [
+
+                                                             ],
+                                          "createTime":  "2026-07-10T01:23:46.169Z",
+                                          "slotRecommendedUsers":  {
+                                                                       "team_leader":  [
+                                                                                           "PZ_TEAM"
+                                                                                       ]
+                                                                   },
+                                          "restrictToRecommended":  {
+                                                                        "team_leader":  true
+                                                                    }
+                                      }
+                                  ],
+                 "auditHistory":  [
+
+                                  ]
+             },
+    "message":  null
+}

@@ -1,0 +1,281 @@
+﻿{
+    "ok":  true,
+    "count":  7,
+    "records":  [
+                    {
+                        "kind":  "node",
+                        "businessId":  "PZ_E2E_SPECIAL_20260710092431",
+                        "processInstanceId":  "265c51d7-7bfe-11f1-a767-0242ac110004",
+                        "callbackType":  "NODE_COMPLETED",
+                        "taskDefinitionKey":  "ut01_starter_submit",
+                        "nodeSemantic":  "PROBLEM_ZERO_STARTER_SUBMIT",
+                        "receivedAt":  "2026-07-10T01:24:55.5377077Z",
+                        "payload":  {
+                                        "businessId":  "PZ_E2E_SPECIAL_20260710092431",
+                                        "processInstanceId":  "265c51d7-7bfe-11f1-a767-0242ac110004",
+                                        "processDefinitionKey":  "problem_zero",
+                                        "businessType":  "problem_zero",
+                                        "callbackType":  "NODE_COMPLETED",
+                                        "taskDefinitionKey":  "ut01_starter_submit",
+                                        "nodeSemantic":  "PROBLEM_ZERO_STARTER_SUBMIT",
+                                        "rejectTargetNodeKey":  "",
+                                        "lastAuditRecord":  {
+                                                                "action":  "approve",
+                                                                "operatorId":  "PZ_START",
+                                                                "comment":  "E2E approve ut01_starter_submit",
+                                                                "rejectReason":  "",
+                                                                "rejectCode":  "",
+                                                                "rejectTargetNodeKey":  "",
+                                                                "operatedAt":  "2026-07-10T01:24:54.1879372Z",
+                                                                "slotSelections":  [
+                                                                                       {
+                                                                                           "slotKey":  "team_leader",
+                                                                                           "label":  "发现问题班组负责人",
+                                                                                           "users":  [
+                                                                                                         "PZ_TEAM"
+                                                                                                     ]
+                                                                                       }
+                                                                                   ]
+                                                            },
+                                        "triggeredAt":  "2026-07-10T01:24:55.5354652Z",
+                                        "multiInstance":  {
+                                                              "enabled":  false,
+                                                              "nrOfInstances":  0,
+                                                              "nrOfCompletedInstances":  0,
+                                                              "nrOfActiveInstances":  0
+                                                          }
+                                    }
+                    },
+                    {
+                        "kind":  "node",
+                        "businessId":  "PZ_E2E_SPECIAL_20260710092431",
+                        "processInstanceId":  "265c51d7-7bfe-11f1-a767-0242ac110004",
+                        "callbackType":  "NODE_COMPLETED",
+                        "taskDefinitionKey":  "ut02_team_leader_confirm",
+                        "nodeSemantic":  "PROBLEM_ZERO_TEAM_LEADER_CONFIRM",
+                        "receivedAt":  "2026-07-10T01:24:57.9927729Z",
+                        "payload":  {
+                                        "businessId":  "PZ_E2E_SPECIAL_20260710092431",
+                                        "processInstanceId":  "265c51d7-7bfe-11f1-a767-0242ac110004",
+                                        "processDefinitionKey":  "problem_zero",
+                                        "businessType":  "problem_zero",
+                                        "callbackType":  "NODE_COMPLETED",
+                                        "taskDefinitionKey":  "ut02_team_leader_confirm",
+                                        "nodeSemantic":  "PROBLEM_ZERO_TEAM_LEADER_CONFIRM",
+                                        "rejectTargetNodeKey":  "",
+                                        "lastAuditRecord":  {
+                                                                "action":  "approve",
+                                                                "operatorId":  "PZ_TEAM",
+                                                                "comment":  "E2E approve ut02_team_leader_confirm",
+                                                                "rejectReason":  "",
+                                                                "rejectCode":  "",
+                                                                "rejectTargetNodeKey":  "",
+                                                                "operatedAt":  "2026-07-10T01:24:56.5385047Z",
+                                                                "slotSelections":  [
+                                                                                       {
+                                                                                           "slotKey":  "quality_group",
+                                                                                           "label":  "质控人员组",
+                                                                                           "users":  [
+                                                                                                         "PZ_QUALITY"
+                                                                                                     ]
+                                                                                       }
+                                                                                   ]
+                                                            },
+                                        "triggeredAt":  "2026-07-10T01:24:57.991177Z",
+                                        "multiInstance":  {
+                                                              "enabled":  false,
+                                                              "nrOfInstances":  0,
+                                                              "nrOfCompletedInstances":  0,
+                                                              "nrOfActiveInstances":  0
+                                                          }
+                                    }
+                    },
+                    {
+                        "kind":  "node",
+                        "businessId":  "PZ_E2E_SPECIAL_20260710092431",
+                        "processInstanceId":  "265c51d7-7bfe-11f1-a767-0242ac110004",
+                        "callbackType":  "NODE_COMPLETED",
+                        "taskDefinitionKey":  "ut03_quality_group_confirm",
+                        "nodeSemantic":  "PROBLEM_ZERO_QUALITY_GROUP_CONFIRM",
+                        "receivedAt":  "2026-07-10T01:25:00.5465319Z",
+                        "payload":  {
+                                        "businessId":  "PZ_E2E_SPECIAL_20260710092431",
+                                        "processInstanceId":  "265c51d7-7bfe-11f1-a767-0242ac110004",
+                                        "processDefinitionKey":  "problem_zero",
+                                        "businessType":  "problem_zero",
+                                        "callbackType":  "NODE_COMPLETED",
+                                        "taskDefinitionKey":  "ut03_quality_group_confirm",
+                                        "nodeSemantic":  "PROBLEM_ZERO_QUALITY_GROUP_CONFIRM",
+                                        "rejectTargetNodeKey":  "",
+                                        "lastAuditRecord":  {
+                                                                "action":  "approve",
+                                                                "operatorId":  "PZ_QUALITY",
+                                                                "comment":  "E2E approve ut03_quality_group_confirm",
+                                                                "rejectReason":  "",
+                                                                "rejectCode":  "",
+                                                                "rejectTargetNodeKey":  "",
+                                                                "operatedAt":  "2026-07-10T01:24:58.8840438Z",
+                                                                "slotSelections":  [
+                                                                                       {
+                                                                                           "slotKey":  "responsible_person",
+                                                                                           "label":  "责任人",
+                                                                                           "users":  [
+                                                                                                         "PZ_RESP"
+                                                                                                     ]
+                                                                                       }
+                                                                                   ]
+                                                            },
+                                        "triggeredAt":  "2026-07-10T01:25:00.544082Z",
+                                        "multiInstance":  {
+                                                              "enabled":  false,
+                                                              "nrOfInstances":  0,
+                                                              "nrOfCompletedInstances":  0,
+                                                              "nrOfActiveInstances":  0
+                                                          }
+                                    }
+                    },
+                    {
+                        "kind":  "node",
+                        "businessId":  "PZ_E2E_SPECIAL_20260710092431",
+                        "processInstanceId":  "265c51d7-7bfe-11f1-a767-0242ac110004",
+                        "callbackType":  "NODE_COMPLETED",
+                        "taskDefinitionKey":  "ut04_responsible_confirm",
+                        "nodeSemantic":  "PROBLEM_ZERO_RESPONSIBLE_CONFIRM",
+                        "receivedAt":  "2026-07-10T01:25:03.5259141Z",
+                        "payload":  {
+                                        "businessId":  "PZ_E2E_SPECIAL_20260710092431",
+                                        "processInstanceId":  "265c51d7-7bfe-11f1-a767-0242ac110004",
+                                        "processDefinitionKey":  "problem_zero",
+                                        "businessType":  "problem_zero",
+                                        "callbackType":  "NODE_COMPLETED",
+                                        "taskDefinitionKey":  "ut04_responsible_confirm",
+                                        "nodeSemantic":  "PROBLEM_ZERO_RESPONSIBLE_CONFIRM",
+                                        "rejectTargetNodeKey":  "",
+                                        "lastAuditRecord":  {
+                                                                "action":  "approve",
+                                                                "operatorId":  "PZ_RESP",
+                                                                "comment":  "E2E approve ut04_responsible_confirm",
+                                                                "rejectReason":  "",
+                                                                "rejectCode":  "",
+                                                                "rejectTargetNodeKey":  "",
+                                                                "operatedAt":  "2026-07-10T01:25:02.0672163Z",
+                                                                "slotSelections":  [
+                                                                                       {
+                                                                                           "slotKey":  "counterpart_leader",
+                                                                                           "label":  "对口领导",
+                                                                                           "users":  [
+                                                                                                         "PZ_COUNTER"
+                                                                                                     ]
+                                                                                       }
+                                                                                   ]
+                                                            },
+                                        "triggeredAt":  "2026-07-10T01:25:03.5231566Z",
+                                        "multiInstance":  {
+                                                              "enabled":  false,
+                                                              "nrOfInstances":  0,
+                                                              "nrOfCompletedInstances":  0,
+                                                              "nrOfActiveInstances":  0
+                                                          }
+                                    }
+                    },
+                    {
+                        "kind":  "node",
+                        "businessId":  "PZ_E2E_SPECIAL_20260710092431",
+                        "processInstanceId":  "265c51d7-7bfe-11f1-a767-0242ac110004",
+                        "callbackType":  "NODE_COMPLETED",
+                        "taskDefinitionKey":  "ut05_counterpart_leader_review",
+                        "nodeSemantic":  "PROBLEM_ZERO_COUNTERPART_LEADER_REVIEW",
+                        "receivedAt":  "2026-07-10T01:25:07.8328329Z",
+                        "payload":  {
+                                        "businessId":  "PZ_E2E_SPECIAL_20260710092431",
+                                        "processInstanceId":  "265c51d7-7bfe-11f1-a767-0242ac110004",
+                                        "processDefinitionKey":  "problem_zero",
+                                        "businessType":  "problem_zero",
+                                        "callbackType":  "NODE_COMPLETED",
+                                        "taskDefinitionKey":  "ut05_counterpart_leader_review",
+                                        "nodeSemantic":  "PROBLEM_ZERO_COUNTERPART_LEADER_REVIEW",
+                                        "rejectTargetNodeKey":  "",
+                                        "lastAuditRecord":  {
+                                                                "action":  "approve",
+                                                                "operatorId":  "PZ_COUNTER",
+                                                                "comment":  "E2E approve ut05_counterpart_leader_review",
+                                                                "rejectReason":  "",
+                                                                "rejectCode":  "",
+                                                                "rejectTargetNodeKey":  "",
+                                                                "operatedAt":  "2026-07-10T01:25:06.6840043Z",
+                                                                "slotSelections":  [
+                                                                                       {
+                                                                                           "slotKey":  "discoverer_after_counterpart",
+                                                                                           "label":  "发现问题人（专项工作路径）",
+                                                                                           "users":  [
+                                                                                                         "PZ_DISC"
+                                                                                                     ]
+                                                                                       }
+                                                                                   ]
+                                                            },
+                                        "triggeredAt":  "2026-07-10T01:25:07.8294846Z",
+                                        "multiInstance":  {
+                                                              "enabled":  false,
+                                                              "nrOfInstances":  0,
+                                                              "nrOfCompletedInstances":  0,
+                                                              "nrOfActiveInstances":  0
+                                                          }
+                                    }
+                    },
+                    {
+                        "kind":  "process",
+                        "businessId":  "PZ_E2E_SPECIAL_20260710092431",
+                        "processInstanceId":  "265c51d7-7bfe-11f1-a767-0242ac110004",
+                        "callbackType":  "PROCESS_COMPLETED",
+                        "taskDefinitionKey":  null,
+                        "nodeSemantic":  null,
+                        "receivedAt":  "2026-07-10T01:25:14.9619066Z",
+                        "payload":  {
+                                        "businessId":  "PZ_E2E_SPECIAL_20260710092431",
+                                        "processInstanceId":  "265c51d7-7bfe-11f1-a767-0242ac110004",
+                                        "processDefinitionKey":  "problem_zero",
+                                        "businessType":  "problem_zero",
+                                        "status":  "completed",
+                                        "completedTime":  "2026-07-10T01:25:14.9601423Z"
+                                    }
+                    },
+                    {
+                        "kind":  "node",
+                        "businessId":  "PZ_E2E_SPECIAL_20260710092431",
+                        "processInstanceId":  "265c51d7-7bfe-11f1-a767-0242ac110004",
+                        "callbackType":  "NODE_COMPLETED",
+                        "taskDefinitionKey":  "ut06_discoverer_confirm",
+                        "nodeSemantic":  "PROBLEM_ZERO_DISCOVERER_CONFIRM",
+                        "receivedAt":  "2026-07-10T01:25:15.2406408Z",
+                        "payload":  {
+                                        "businessId":  "PZ_E2E_SPECIAL_20260710092431",
+                                        "processInstanceId":  "265c51d7-7bfe-11f1-a767-0242ac110004",
+                                        "processDefinitionKey":  "problem_zero",
+                                        "businessType":  "problem_zero",
+                                        "callbackType":  "NODE_COMPLETED",
+                                        "taskDefinitionKey":  "ut06_discoverer_confirm",
+                                        "nodeSemantic":  "PROBLEM_ZERO_DISCOVERER_CONFIRM",
+                                        "rejectTargetNodeKey":  "",
+                                        "lastAuditRecord":  {
+                                                                "action":  "approve",
+                                                                "operatorId":  "PZ_DISC",
+                                                                "comment":  "E2E approve ut06_discoverer_confirm",
+                                                                "rejectReason":  "",
+                                                                "rejectCode":  "",
+                                                                "rejectTargetNodeKey":  "",
+                                                                "operatedAt":  "2026-07-10T01:25:13.639415Z",
+                                                                "slotSelections":  [
+
+                                                                                   ]
+                                                            },
+                                        "triggeredAt":  "2026-07-10T01:25:15.2391341Z",
+                                        "multiInstance":  {
+                                                              "enabled":  false,
+                                                              "nrOfInstances":  0,
+                                                              "nrOfCompletedInstances":  0,
+                                                              "nrOfActiveInstances":  0
+                                                          }
+                                    }
+                    }
+                ]
+}
