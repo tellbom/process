@@ -135,6 +135,7 @@ namespace FlowableWrapper.Application.Services
                     IsStarterNode = n.IsStarterNode,
                     IsConvergencePoint = n.IsConvergencePoint,
                     CanReject = n.CanReject,
+                    CanReassign = n.CanReassign,
                     IsRejectTarget = n.IsRejectTarget,
                     RejectCode = n.RejectCode,
                     SlotCount = n.Slots?.Count ?? 0,
@@ -166,6 +167,7 @@ namespace FlowableWrapper.Application.Services
                 IsStarterNode = n.IsStarterNode,
                 IsConvergencePoint = n.IsConvergencePoint,
                 CanReject = n.CanReject,
+                CanReassign = n.CanReassign,
                 RejectOptions = n.RejectOptions ?? new List<RejectOption>(),
                 IsRejectTarget = n.IsRejectTarget,
                 RejectCode = n.RejectCode,
@@ -210,6 +212,8 @@ namespace FlowableWrapper.Application.Services
                 bool.TryParse(convStr, out var isConvergencePoint);
                 fields.TryGetValue("roleKey", out var roleKey);
                 fields.TryGetValue("assigneeMode", out var assigneeMode);
+                fields.TryGetValue("canReassign", out var canReassignStr);
+                bool.TryParse(canReassignStr, out var canReassign);
                 fields.TryGetValue("callbackUrl", out var callbackUrl);
                 var callbackUrlSpecified = fields.ContainsKey("callbackUrl");
 
@@ -221,6 +225,7 @@ namespace FlowableWrapper.Application.Services
                     IsConvergencePoint = isConvergencePoint,
                     RoleKey = roleKey,
                     AssigneeMode = assigneeMode,
+                    CanReassign = canReassign,
                     CallbackUrl = callbackUrl,
                     CallbackUrlSpecified = callbackUrlSpecified
                 };
@@ -418,6 +423,7 @@ namespace FlowableWrapper.Application.Services
                 info.IsConvergencePoint = node.IsConvergencePoint;
 
                 info.CanReject = node.CanReject;
+                info.CanReassign = node.CanReassign;
                 info.RejectOptions = node.RejectOptions?
                     .Select(o => new RejectOption
                     {

@@ -19,7 +19,11 @@ namespace FlowableWrapper.Application.Dtos
     public class GetPendingTasksRequest
     {
         public string? EmployeeId   { get; set; }
-        public string? BusinessType { get; set; }
+        /// <summary>
+        /// 按业务类型过滤。查询参数可重复传递，例如：
+        /// businessType=type_a&amp;businessType=type_b。多个值按 OR 匹配。
+        /// </summary>
+        public List<string>? BusinessType { get; set; }
         public int PageIndex       { get; set; } = 1;
         public int PageSize        { get; set; } = 20;
     }
@@ -110,6 +114,11 @@ namespace FlowableWrapper.Application.Dtos
         /// 当前节点是否可以被驳回
         /// </summary>
         public bool CanReject { get; set; }
+
+        /// <summary>
+        /// 当前节点是否允许转派。只有 true 时前端才展示转派入口。
+        /// </summary>
+        public bool CanReassign { get; set; }
 
 
         /// <summary>

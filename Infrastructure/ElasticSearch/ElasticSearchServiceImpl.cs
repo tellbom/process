@@ -46,8 +46,65 @@ namespace FlowableWrapper.Infrastructure.ElasticSearch
         public async Task InitializeIndexesAsync()
         {
             await EnsureIndexAsync<ProcessMetadataDocument>(_options.IndexName);
-            await EnsureIndexAsync<ProcessDefinitionSemanticDocument>(_options.SemanticIndexName);
+            await EnsureSemanticIndexAsync();
             await EnsureIndexAsync<ProcessAuditRecord>(_options.AuditIndexName);
+        }
+
+        /// <summary>
+        /// NodeSemanticMap 的 key 是动态 taskDefinitionKey，不是检索字段。
+        /// dynamic=false 会保留完整 _source，但不再为每个节点 key 创建映射，
+        /// 从根源上避免触发 index.mapping.total_fields.limit（默认 1000）。
+        /// </summary>
+        private async Task EnsureSemanticIndexAsync()
+        {
+            var existsResponse = await _client.Indices.ExistsAsync(
+                _options.SemanticIndexName);
+            if (!existsResponse.IsValid)
+            {
+                throw new Exception(
+                    $"检查 ES 语义索引失败: {existsResponse.DebugInformation}");
+            }
+
+            if (!existsResponse.Exists)
+            {
+                var createResponse = await _client.Indices.CreateAsync(
+                    _options.SemanticIndexName,
+                    c => c.Map<ProcessDefinitionSemanticDocument>(m => m
+                        .AutoMap()
+                        .Properties(p => p
+                            .Object<Dictionary<string, NodeSemanticInfo>>(o => o
+                                .Name(n => n.NodeSemanticMap)
+                                .Dynamic(false)))));
+
+                if (!createResponse.IsValid)
+                {
+                    throw new Exception(
+                        $"创建 ES 语义索引失败: {createResponse.DebugInformation}");
+                }
+
+                _logger.LogInformation(
+                    "ES 语义索引创建成功: {Index}",
+                    _options.SemanticIndexName);
+                return;
+            }
+
+            var mappingResponse =
+                await _client.MapAsync<ProcessDefinitionSemanticDocument>(m => m
+                    .Index(_options.SemanticIndexName)
+                    .Properties(p => p
+                        .Object<Dictionary<string, NodeSemanticInfo>>(o => o
+                            .Name(n => n.NodeSemanticMap)
+                            .Dynamic(false))));
+
+            if (!mappingResponse.IsValid)
+            {
+                throw new Exception(
+                    $"更新 ES 语义索引映射失败: {mappingResponse.DebugInformation}");
+            }
+
+            _logger.LogInformation(
+                "ES 语义索引已关闭 nodeSemanticMap 动态字段映射: {Index}",
+                _options.SemanticIndexName);
         }
 
         private async Task EnsureIndexAsync<TDocument>(string indexName)

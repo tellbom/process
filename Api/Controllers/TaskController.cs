@@ -43,7 +43,7 @@ namespace FlowableWrapper.Api.Controllers
 
         /// <summary>
         /// 查询待办任务列表
-        /// GET /api/tasks/pending?employeeId=EMP_001&amp;pageIndex=1&amp;pageSize=20
+        /// GET /api/tasks/pending?employeeId=EMP_001&amp;businessType=type_a&amp;businessType=type_b&amp;pageIndex=1&amp;pageSize=20
         ///
         /// 返回的每条记录包含 taskId，前端在 complete 时可传入以明确指定任务
         /// </summary>

@@ -34,6 +34,7 @@
 | `REJECT_CODE_REQUIRED` | 驳回未传 rejectCode |
 | `REJECT_REASON_REQUIRED` | 驳回未传 rejectReason |
 | `REJECT_NOT_ALLOWED` | 当前节点 canReject=false |
+| `REASSIGN_NOT_ALLOWED` | 当前节点未配置 canReassign=true |
 | `REJECT_CODE_INVALID` | rejectCode 不在 rejectOptions 中 |
 | `REJECT_TARGET_NOT_FOUND` | 找不到驳回目标节点 |
 | `METADATA_NOT_FOUND` | ES 元数据不存在（触发 Flowable 重试） |
@@ -76,11 +77,14 @@
 | `roleKey` | string | 业务角色 Key，对应 AssigneeContract.roles[].roleKey |
 | `assigneeMode` | string | `single` / `multiple` |
 | `callbackUrl` | string | 节点级回调 URL；显式 null/空表示禁用节点通知，未声明才降级到 callback.url |
+| `canReassign` | boolean | 当前节点是否允许转派；只有显式 `true` 才开放，未配置默认为 `false` |
 | `canReject` | bool | 当前节点是否可驳回 |
 | `rejectOptions` | array | 驳回目标列表，含 `rejectCode` / `label` / `description` |
 | `isRejectTarget` | bool | 是否可作为驳回落点 |
 | `rejectCode` | string | 本节点作为驳回落点时的标识 |
 | `slots` | array | 选人槽位定义 |
+
+`callbackUrl` 随节点语义写入 ES 索引 `flowable-process-definition-semantic`，实际位于 `_source.nodeSemanticMap.<taskDefinitionKey>.callbackUrl`。`nodeSemanticMap` 的 key 是动态节点 ID，不是关系库固定列；索引映射对该对象使用 `dynamic:false`，完整 JSON 仍保留在 `_source` 并可按流程定义 Key 整体读取，但不会再为每个节点 ID 创建 ES 字段，因此不会持续消耗默认 1000 个 mapping fields。
 
 **slot 字段**：
 
@@ -281,11 +285,11 @@ Pending task responses include `slotRecommendedUsers` keyed by `slotKey`, `restr
 | 参数 | 类型 | 说明 |
 |---|---|---|
 | `employeeId` | string | 优先于 Header |
-| `businessType` | string | 按业务类型过滤（可选） |
+| `businessType` | string[] | 按业务类型过滤（可选）；重复传参，多个值按 OR 匹配 |
 | `pageIndex` | int | 默认 1 |
 | `pageSize` | int | 默认 20 |
 
-**示例**：`GET /api/tasks/pending?employeeId=EMP_001&pageIndex=1&pageSize=20`
+**示例**：`GET /api/tasks/pending?employeeId=EMP_001&businessType=type_a&businessType=type_b&pageIndex=1&pageSize=20`
 
 **响应**：
 
@@ -304,6 +308,7 @@ Pending task responses include `slotRecommendedUsers` keyed by `slotKey`, `restr
         "pageCode": "https://httpbin.org/get?node=group_leader_confirm",
         "pageUrl": "https://httpbin.org/get?node=group_leader_confirm&businessId=SEMI_AUTO_001&taskId=task-uuid-001&businessType=personnel_selection_approval&nodeId=ut01_group_leader_confirm&nodeSemantic=GROUP_LEADER_CONFIRM",
         "canReject": true,
+        "canReassign": true,
         "rejectOptions": [
           { "rejectCode": "TO_STARTER", "label": "退回发起人重新提交" }
         ],
@@ -604,6 +609,8 @@ Pending task responses include `slotRecommendedUsers` keyed by `slotKey`, `restr
 **POST** `/api/tasks/reassign`
 `X-User-Id: EMP_ADMIN`
 
+转派由当前节点 slotConfig 的 `canReassign` 控制。只有 `canReassign=true` 时待办响应才返回可转派，前端显示按钮，后端接口也允许执行；未配置或为 `false` 时返回 `REASSIGN_NOT_ALLOWED`。因此发起人节点或其他不支持转派的节点无需配置该字段，不影响流程设计和正常审批。
+
 转派只作用于当前节点当前 Task，不改变其他节点预设推荐人。
 
 ```json
@@ -867,6 +874,7 @@ BPMN 中只保留最后一个流程完成契约 HTTP ServiceTask，用于调用 
   "pageCode": "ProblemZero/QualityGroupConfirmForm",
   "roleKey": "problem_zero_quality_member",
   "assigneeMode": "multiple",
+  "canReassign": true,
   "canReject": true,
   "rejectOptions": [
     {
@@ -890,6 +898,7 @@ BPMN 中只保留最后一个流程完成契约 HTTP ServiceTask，用于调用 
 | `pageCode` | 前端页面/组件编码；如果是 http/https URL，待办接口会拼 `pageUrl` |
 | `roleKey` | 当前节点处理角色，即“谁处理当前节点” |
 | `assigneeMode` | 当前节点处理模式，`single` 或 `multiple`，用于前端/语义展示 |
+| `canReassign` | 当前节点是否允许转派；默认 `false` |
 | `canReject` | 当前节点是否允许驳回 |
 | `rejectOptions` | 当前节点可驳回到哪些目标，提交驳回时使用其中的 `rejectCode` |
 | `isRejectTarget` | 当前节点是否能作为驳回落点 |

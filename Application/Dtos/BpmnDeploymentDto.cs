@@ -52,6 +52,8 @@ namespace FlowableWrapper.Application.Dtos
         // ── 驳回能力（源节点维度）────────────────────────────────────
         /// <summary>当前节点是否具备驳回能力，true = 前端显示驳回按钮</summary>
         public bool CanReject { get; set; }
+        /// <summary>true = 允许当前节点任务转派；未配置时默认为 false</summary>
+        public bool CanReassign { get; set; }
         /// <summary>CanReject=true 时必填，至少一个选项</summary>
         public List<RejectOptionConfig> RejectOptions { get; set; } = new();
 
@@ -111,6 +113,7 @@ namespace FlowableWrapper.Application.Dtos
         public bool IsStarterNode { get; set; }
         public bool IsConvergencePoint { get; set; }
         public bool CanReject { get; set; }
+        public bool CanReassign { get; set; }
         public bool IsRejectTarget { get; set; }
         public string RejectCode { get; set; }
         public int SlotCount { get; set; }
@@ -132,6 +135,7 @@ namespace FlowableWrapper.Application.Dtos
         public bool IsStarterNode { get; set; }
         public bool IsConvergencePoint { get; set; }
         public bool CanReject { get; set; }
+        public bool CanReassign { get; set; }
         public List<RejectOption> RejectOptions { get; set; } = new();
         public bool IsRejectTarget { get; set; }
         public string RejectCode { get; set; }

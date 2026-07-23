@@ -220,6 +220,11 @@ namespace FlowableWrapper.Application.Services
 
             var semanticMapCache = new Dictionary<string, Dictionary<string, NodeSemanticInfo>>(
                 StringComparer.OrdinalIgnoreCase);
+            var businessTypes = request.BusinessType?
+                .Where(value => !string.IsNullOrWhiteSpace(value))
+                .Select(value => value.Trim())
+                .ToHashSet(StringComparer.OrdinalIgnoreCase)
+                ?? new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
             var result = new List<PendingTaskDto>();
 
@@ -228,9 +233,8 @@ namespace FlowableWrapper.Application.Services
                 if (!metadataDict.TryGetValue(task.ProcessInstanceId, out var meta))
                     continue;
 
-                if (!string.IsNullOrWhiteSpace(request.BusinessType)
-                    && !string.Equals(meta.BusinessType, request.BusinessType,
-                        StringComparison.OrdinalIgnoreCase))
+                if (businessTypes.Count > 0
+                    && !businessTypes.Contains(meta.BusinessType))
                     continue;
 
                 if (!semanticMapCache.TryGetValue(meta.ProcessDefinitionKey, out var semanticMap))
@@ -280,8 +284,9 @@ namespace FlowableWrapper.Application.Services
                         meta.BusinessType,
                         task.TaskDefinitionKey,
                         nodeInfo?.NodeSemantic),
-                    CanReject = nodeInfo.CanReject,
-                    RejectOptions = nodeInfo.RejectOptions,
+                    CanReject = nodeInfo?.CanReject ?? false,
+                    CanReassign = nodeInfo?.CanReassign ?? false,
+                    RejectOptions = nodeInfo?.RejectOptions ?? new List<RejectOption>(),
                     RequiredSlots = nodeInfo?.Slots ?? new List<SlotDefinition>(),
                     // 前端通过 pageCode → COMPONENT_REGISTRY 找到表单组件，
                     // 表单组件自己知道要选哪些人
@@ -386,6 +391,24 @@ namespace FlowableWrapper.Application.Services
                 });
                 if (!tasksToReassign.Any())
                     throw new BusinessException("该流程下当前没有待办任务");
+            }
+
+            var semanticMap = await _slotConfigProvider
+                .GetNodeSemanticMapAsync(metadata.ProcessDefinitionKey);
+            var unsupportedTasks = tasksToReassign
+                .Where(task => !semanticMap.TryGetValue(
+                        task.TaskDefinitionKey, out var nodeInfo)
+                    || !nodeInfo.CanReassign)
+                .ToList();
+
+            if (unsupportedTasks.Any())
+            {
+                var unsupportedNodes = string.Join(
+                    ",",
+                    unsupportedTasks.Select(task => task.TaskDefinitionKey).Distinct());
+                throw new BusinessException(
+                    $"节点 [{unsupportedNodes}] 未开启转派能力",
+                    "REASSIGN_NOT_ALLOWED");
             }
 
             foreach (var task in tasksToReassign)

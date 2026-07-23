@@ -86,6 +86,12 @@ namespace FlowableWrapper.Domain.ElasticSearch
         public bool CanReject { get; set; }
 
         /// <summary>
+        /// 当前节点是否允许转派。
+        /// 仅显式配置为 true 时，前端展示转派按钮且后端允许执行转派。
+        /// </summary>
+        public bool CanReassign { get; set; }
+
+        /// <summary>
         /// 当前节点支持的驳回选项列表
         /// CanReject=true 时有值
         /// </summary>
