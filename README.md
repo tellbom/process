@@ -1,7 +1,33 @@
 # 流程中心 API 测试规范
 
 > **版本**：Patch Plan V1.3（Slot 三键分离）
-> **栈**：FlowableWrapper .NET 8 + Flowable 7.2 + Elasticsearch + Redis
+> **栈**：FlowableWrapper .NET 6 + Flowable 7.2 + Elasticsearch + Redis + DM8
+
+## 压测用 A/B 完成回调
+
+`TestController` 提供末节点业务回调模拟：
+
+- `POST /api/test/process-callback/A`：立即返回；
+- `POST /api/test/process-callback/B?delayMs=15000`：延迟返回；
+- `POST /api/test/process-callback/mixed?delayMs=15000&slowPercent=50`：
+  按 `businessId` 稳定混合分组；
+- `GET /api/test/callback-metrics`：返回 A/B 数量、当前并发和峰值并发。
+
+前端可直接使用的指标响应示例：
+
+```json
+{
+  "ok": true,
+  "retainedRecords": 20,
+  "totalProcessCallbacks": 20,
+  "fastProcessCallbacks": 10,
+  "slowProcessCallbacks": 10,
+  "activeProcessCallbacks": 0,
+  "maxActiveProcessCallbacks": 5
+}
+```
+
+完整 k6 参数和阶梯执行方法见 `performance/README.md`。
 > **用途**：交付测试 Agent 执行完整端到端测试
 > **原则**：Flowable 是唯一真相层；流程中心是映射层、包装层、审计层；`NextSlotSelections` 是唯一最终生效人员来源；`slotKey` / `roleKey` / `variableName` 三者职责分离，禁止互相推导
 
