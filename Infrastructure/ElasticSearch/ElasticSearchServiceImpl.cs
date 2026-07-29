@@ -154,8 +154,7 @@ namespace FlowableWrapper.Infrastructure.ElasticSearch
 
             var response = await _client.IndexAsync(document, idx => idx
                 .Index(_options.IndexName)
-                .Id(document.ProcessInstanceId)
-                .Refresh(Elasticsearch.Net.Refresh.WaitFor));
+                .Id(document.ProcessInstanceId));
 
             if (!response.IsValid)
             {
@@ -174,7 +173,10 @@ namespace FlowableWrapper.Infrastructure.ElasticSearch
             var response = await _client.GetAsync<ProcessMetadataDocument>(
                 processInstanceId, g => g.Index(_options.IndexName));
 
-            if (!response.IsValid || !response.Found) return null;
+            if (!response.IsValid)
+                throw new InvalidOperationException(
+                    $"ES metadata query failed: {response.DebugInformation}");
+            if (!response.Found) return null;
             return response.Source;
         }
 
@@ -189,7 +191,9 @@ namespace FlowableWrapper.Infrastructure.ElasticSearch
                 .GetMany<ProcessMetadataDocument>(processInstanceIds));
 
             var result = new Dictionary<string, ProcessMetadataDocument>();
-            if (!response.IsValid) return result;
+            if (!response.IsValid)
+                throw new InvalidOperationException(
+                    $"ES metadata batch query failed: {response.DebugInformation}");
 
             foreach (var hit in response.Hits)
             {
@@ -224,7 +228,10 @@ namespace FlowableWrapper.Infrastructure.ElasticSearch
                 )
                 .Size(1));
 
-            if (!response.IsValid || !response.Documents.Any())
+            if (!response.IsValid)
+                throw new InvalidOperationException(
+                    $"ES metadata business query failed: {response.DebugInformation}");
+            if (!response.Documents.Any())
             {
                 _logger.LogWarning(
                     "未找到运行中的流程: BusinessId={BusinessId}", businessId);
@@ -294,8 +301,7 @@ namespace FlowableWrapper.Infrastructure.ElasticSearch
 
             var response = await _client.IndexAsync(doc, idx => idx
                 .Index(_options.SemanticIndexName)
-                .Id(processDefinitionKey)
-                .Refresh(Elasticsearch.Net.Refresh.WaitFor));
+                .Id(processDefinitionKey));
 
             if (!response.IsValid)
             {
@@ -317,7 +323,10 @@ namespace FlowableWrapper.Infrastructure.ElasticSearch
                 processDefinitionKey,
                 g => g.Index(_options.SemanticIndexName));
 
-            if (!response.IsValid || !response.Found)
+            if (!response.IsValid)
+                throw new InvalidOperationException(
+                    $"ES semantic query failed: {response.DebugInformation}");
+            if (!response.Found)
             {
                 _logger.LogWarning("未找到节点语义配置: {Key}", processDefinitionKey);
                 return new Dictionary<string, NodeSemanticInfo>();
@@ -335,8 +344,7 @@ namespace FlowableWrapper.Infrastructure.ElasticSearch
         {
             var response = await _client.IndexAsync(record, idx => idx
                 .Index(_options.AuditIndexName)
-                .Id(record.Id)
-                .Refresh(Elasticsearch.Net.Refresh.WaitFor));
+                .Id(record.Id));
 
             if (!response.IsValid)
             {
@@ -357,7 +365,9 @@ namespace FlowableWrapper.Infrastructure.ElasticSearch
                 .Sort(so => so.Ascending(f => f.OperatedAt))
                 .Size(200));
 
-            if (!response.IsValid) return new List<ProcessAuditRecord>();
+            if (!response.IsValid)
+                throw new InvalidOperationException(
+                    $"ES audit query failed: {response.DebugInformation}");
             return response.Documents.ToList();
         }
 
@@ -414,7 +424,8 @@ namespace FlowableWrapper.Infrastructure.ElasticSearch
             if (!response.IsValid)
             {
                 _logger.LogError("查询流程列表失败: {Error}", response.DebugInformation);
-                return (new List<ProcessMetadataDocument>(), 0);
+                throw new InvalidOperationException(
+                    $"ES process list query failed: {response.DebugInformation}");
             }
 
             return (response.Documents.ToList(), (int)response.Total);

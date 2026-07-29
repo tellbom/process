@@ -2,23 +2,28 @@
 {
     using process.Domain.DistributedLock;
     using StackExchange.Redis;
+    using Microsoft.Extensions.Options;
 
     public class RedisDistributedLockService : IDistributedLockService
     {
         private readonly IConnectionMultiplexer _redis;
         private readonly ILogger<RedisDistributedLockService> _logger;
+        private readonly string _keyPrefix;
 
         public RedisDistributedLockService(
             IConnectionMultiplexer redis,
+            IOptions<RedisOptions> options,
             ILogger<RedisDistributedLockService> logger)
         {
             _redis = redis;
+            _keyPrefix = options.Value.KeyPrefix ?? "process-center:";
             _logger = logger;
         }
 
         public async Task<bool> TryAcquireAsync(string key, string value, TimeSpan expiry)
         {
             var db = _redis.GetDatabase();
+            key = _keyPrefix + key;
 
             var acquired = await db.StringSetAsync(
                 key,
@@ -45,6 +50,7 @@
         public async Task<bool> ReleaseAsync(string key, string value)
         {
             var db = _redis.GetDatabase();
+            key = _keyPrefix + key;
 
             const string script = @"
 if redis.call('get', KEYS[1]) == ARGV[1] then

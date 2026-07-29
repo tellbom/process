@@ -150,6 +150,12 @@ namespace FlowableWrapper.Application.Dtos
     {
         public List<PendingTaskDto> Items { get; set; } = new();
         public int Total     { get; set; }
+        /// <summary>
+        /// 无业务类型过滤时，Total 直接来自 Flowable involvedUser 查询并且精确。
+        /// 有业务类型过滤时当前接口采用有界扫描，Total 仅表示已扫描到的匹配数。
+        /// </summary>
+        public bool TotalIsExact { get; set; } = true;
+        public bool HasMore { get; set; }
         public int PageIndex { get; set; }
         public int PageSize  { get; set; }
     }

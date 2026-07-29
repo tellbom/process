@@ -7,10 +7,13 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using FlowableWrapper.Application.Dtos;
 using FlowableWrapper.Application.Slots;
+using FlowableWrapper.Configuration;
 using FlowableWrapper.Domain.Abstractions;
 using FlowableWrapper.Domain.ElasticSearch;
+using FlowableWrapper.Domain.Reliability;
 using FlowableWrapper.Domain.Services;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace FlowableWrapper.Application.Services
 {
@@ -23,22 +26,29 @@ namespace FlowableWrapper.Application.Services
         private readonly IElasticSearchService _esService;
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly IProcessSlotConfigProvider _slotConfigProvider;
+        private readonly IWorkflowReliabilityStore _reliabilityStore;
+        private readonly Dm8Options _dm8Options;
         private readonly ILogger<ProcessCallbackAppService> _logger;
 
         private static readonly JsonSerializerOptions JsonOptions = new()
         {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+            PropertyNameCaseInsensitive = true
         };
 
         public ProcessCallbackAppService(
             IElasticSearchService esService,
             IHttpClientFactory httpClientFactory,
             IProcessSlotConfigProvider slotConfigProvider,
+            IWorkflowReliabilityStore reliabilityStore,
+            IOptions<Dm8Options> dm8Options,
             ILogger<ProcessCallbackAppService> logger)
         {
             _esService = esService;
             _httpClientFactory = httpClientFactory;
             _slotConfigProvider = slotConfigProvider;
+            _reliabilityStore = reliabilityStore;
+            _dm8Options = dm8Options.Value;
             _logger = logger;
         }
 
@@ -316,6 +326,9 @@ namespace FlowableWrapper.Application.Services
         private async Task<FlowableCallbackResponse> HandleProcessEndCallbackAsync(
             FlowableCallbackRequest request)
         {
+            if (_dm8Options.Enabled)
+                return await EnqueueProcessEndCallbackAsync(request);
+
             var metadata = await _esService.GetProcessMetadataAsync(
                 request.ProcessInstanceId);
 
@@ -360,6 +373,95 @@ namespace FlowableWrapper.Application.Services
                 request.ProcessInstanceId);
 
             return OkResponse("回调处理成功");
+        }
+
+        private async Task<FlowableCallbackResponse> EnqueueProcessEndCallbackAsync(
+            FlowableCallbackRequest request)
+        {
+            var binding = await _reliabilityStore.GetBusinessByProcessInstanceAsync(
+                request.ProcessInstanceId);
+            if (binding == null)
+            {
+                throw new BusinessException(
+                    $"DM8 binding not found: {request.ProcessInstanceId}",
+                    "DM8_BINDING_NOT_FOUND");
+            }
+
+            if (!string.Equals(
+                    binding.BusinessId,
+                    request.BusinessId,
+                    StringComparison.Ordinal))
+            {
+                throw new BusinessException(
+                    "Callback businessId does not match the durable process binding.",
+                    "CALLBACK_BINDING_MISMATCH");
+            }
+
+            var callbackConfig = string.IsNullOrWhiteSpace(
+                binding.CallbackConfigSnapshot)
+                ? null
+                : JsonSerializer.Deserialize<CallbackConfigDto>(
+                    binding.CallbackConfigSnapshot,
+                    JsonOptions);
+            if (callbackConfig == null
+                || string.IsNullOrWhiteSpace(callbackConfig.Url))
+            {
+                await _reliabilityStore.MarkBusinessCallbackStateAsync(
+                    binding.BusinessId,
+                    "not_requested",
+                    flowCompleted: true);
+                _logger.LogInformation(
+                    "No final callback configured. BusinessId={BusinessId}",
+                    binding.BusinessId);
+                return OkResponse("No final callback configured.");
+            }
+
+            var callbackType = string.IsNullOrWhiteSpace(request.CallbackType)
+                ? "PROCESS_COMPLETED"
+                : request.CallbackType;
+            var activityId = string.IsNullOrWhiteSpace(request.CallbackActivityId)
+                ? "process_end"
+                : request.CallbackActivityId;
+            var body = JsonSerializer.Serialize(
+                new BusinessCallbackPayload
+                {
+                    BusinessId = binding.BusinessId,
+                    ProcessInstanceId = request.ProcessInstanceId,
+                    ProcessDefinitionKey = binding.ProcessDefinitionKey,
+                    BusinessType = binding.BusinessType,
+                    Status = "completed",
+                    CompletedTime = DateTime.UtcNow
+                },
+                JsonOptions);
+            var envelope = new CallbackDispatchEnvelope
+            {
+                Url = callbackConfig.Url,
+                Headers = callbackConfig.Headers
+                          ?? new Dictionary<string, string>(),
+                Body = body
+            };
+            var idempotencyKey = CallbackIdempotencyKey.ForProcessEnd(
+                request.ProcessInstanceId,
+                activityId,
+                callbackType);
+            var callbackEvent = await _reliabilityStore.EnqueueCallbackAsync(
+                new EnqueueCallbackCommand
+                {
+                    EventId = Guid.NewGuid().ToString("N"),
+                    IdempotencyKey = idempotencyKey,
+                    BusinessId = binding.BusinessId,
+                    ProcessInstanceId = request.ProcessInstanceId,
+                    CallbackActivityId = activityId,
+                    CallbackType = callbackType.ToLowerInvariant(),
+                    Payload = JsonSerializer.Serialize(envelope, JsonOptions),
+                    CompleteBusinessFlow = true
+                });
+
+            _logger.LogInformation(
+                "Process-end callback persisted. EventId={EventId}, ProcessInstanceId={ProcessInstanceId}",
+                callbackEvent.EventId,
+                request.ProcessInstanceId);
+            return OkResponse($"Callback accepted: {callbackEvent.EventId}");
         }
 
         private async Task<NodeCallbackContext> BuildNodeCallbackContextAsync(

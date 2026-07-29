@@ -1,6 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 using FlowableWrapper.Application.Dtos;
 using FlowableWrapper.Application.Slots;
@@ -8,6 +11,7 @@ using FlowableWrapper.Configuration;
 using FlowableWrapper.Domain.Abstractions;
 using FlowableWrapper.Domain.ElasticSearch;
 using FlowableWrapper.Domain.Flowable;
+using FlowableWrapper.Domain.Reliability;
 using FlowableWrapper.Domain.Services;
 using FlowableWrapper.Infrastructure.Flowable;
 using Microsoft.Extensions.Logging;
@@ -37,6 +41,7 @@ namespace FlowableWrapper.Application.Services
     {
         private readonly IFlowableRuntimeService _runtimeService;
         private readonly IFlowableTaskService _taskService;
+        private readonly IFlowableRepositoryService _repositoryService;
         private readonly IElasticSearchService _esService;
         private readonly IProcessSlotConfigProvider _slotConfigProvider;
         private readonly SlotVariableConverter _slotConverter;
@@ -46,10 +51,13 @@ namespace FlowableWrapper.Application.Services
         private readonly FlowableOptions _flowableOptions;
         private readonly ILogger<ProcessLifecycleAppService> _logger;
         private readonly IDistributedLockService _distributedLockService;
+        private readonly IWorkflowReliabilityStore _reliabilityStore;
+        private readonly Dm8Options _dm8Options;
 
         public ProcessLifecycleAppService(
             IFlowableRuntimeService runtimeService,
             IFlowableTaskService taskService,
+            IFlowableRepositoryService repositoryService,
             IElasticSearchService esService,
             IProcessSlotConfigProvider slotConfigProvider,
             SlotVariableConverter slotConverter,
@@ -58,10 +66,13 @@ namespace FlowableWrapper.Application.Services
             IOptions<BusinessTypeProcessMapping> businessTypeMapping,
             IOptions<FlowableOptions> flowableOptions,
             ILogger<ProcessLifecycleAppService> logger,
-            IDistributedLockService distributedLockService)
+            IDistributedLockService distributedLockService,
+            IWorkflowReliabilityStore reliabilityStore,
+            IOptions<Dm8Options> dm8Options)
         {
             _runtimeService       = runtimeService;
             _taskService          = taskService;
+            _repositoryService    = repositoryService;
             _esService            = esService;
             _slotConfigProvider   = slotConfigProvider;
             _slotConverter        = slotConverter;
@@ -71,6 +82,8 @@ namespace FlowableWrapper.Application.Services
             _flowableOptions      = flowableOptions.Value;
             _logger               = logger;
             _distributedLockService = distributedLockService;
+            _reliabilityStore = reliabilityStore;
+            _dm8Options = dm8Options.Value;
         }
 
         // ═══════════════════════════════════════════════════════════
@@ -108,10 +121,24 @@ namespace FlowableWrapper.Application.Services
 
             var lockKey = $"flow:start:{request.BusinessId}";
             var lockValue = Guid.NewGuid().ToString("N");
-            var lockAcquired = await _distributedLockService.TryAcquireAsync(
-                lockKey,
-                lockValue,
-                TimeSpan.FromSeconds(30));
+            var lockAcquired = false;
+            try
+            {
+                lockAcquired = await _distributedLockService.TryAcquireAsync(
+                    lockKey,
+                    lockValue,
+                    TimeSpan.FromSeconds(30));
+            }
+            catch (Exception ex) when (_dm8Options.Enabled)
+            {
+                _logger.LogWarning(
+                    ex,
+                    "Redis advisory lock is unavailable; continuing with DM8 uniqueness. BusinessId={BusinessId}",
+                    request.BusinessId);
+                // Redis is a performance guard only. DM8's unique BUSINESS_ID
+                // constraint remains the final duplicate-start arbiter.
+                lockAcquired = true;
+            }
 
             if (!lockAcquired)
             {
@@ -127,8 +154,10 @@ namespace FlowableWrapper.Application.Services
             try
             {
                 // 1. 校验是否已存在运行中的流程实例
-                var existingRunning = await _esService.GetProcessMetadataByBusinessIdAsync(
-                    request.BusinessId);
+                var existingRunning = _dm8Options.Enabled
+                    ? null
+                    : await _esService.GetProcessMetadataByBusinessIdAsync(
+                        request.BusinessId);
 
                 if (existingRunning != null)
                 {
@@ -150,6 +179,62 @@ namespace FlowableWrapper.Application.Services
                     throw new BusinessException(
                         $"businessType [{request.BusinessType}] 未配置对应的流程定义");
 
+                if (_dm8Options.Enabled)
+                {
+                    var reservation = await _reliabilityStore.ReserveBusinessAsync(
+                        new ReserveBusinessCommand
+                        {
+                            BusinessId = request.BusinessId,
+                            BusinessType = request.BusinessType,
+                            ProcessDefinitionKey = processDefinitionKey,
+                            CallbackConfigSnapshot = request.Callback == null
+                                ? null
+                                : JsonSerializer.Serialize(request.Callback)
+                        });
+                    if (!reservation.Created)
+                    {
+                        if (!string.IsNullOrWhiteSpace(
+                                reservation.Instance.ProcessInstanceId))
+                        {
+                            return await BuildExistingStartResponseAsync(
+                                request.BusinessId,
+                                reservation.Instance.ProcessInstanceId);
+                        }
+
+                        if (reservation.Instance.FlowState
+                            is "starting" or "reconcile_required")
+                        {
+                            var candidates = await _runtimeService
+                                .QueryProcessInstancesByBusinessKeyAsync(
+                                    request.BusinessId);
+                            if (candidates.Count == 1)
+                            {
+                                var existing = candidates[0];
+                                await _reliabilityStore.BindStartedProcessAsync(
+                                    request.BusinessId,
+                                    existing.Id,
+                                    ParseProcessDefinitionVersion(
+                                        existing.ProcessDefinitionId));
+                                return await BuildExistingStartResponseAsync(
+                                    request.BusinessId,
+                                    existing.Id);
+                            }
+                            if (candidates.Count > 1)
+                            {
+                                await _reliabilityStore.MarkBusinessFlowStateAsync(
+                                    request.BusinessId,
+                                    "reconcile_required");
+                                throw new BusinessException(
+                                    $"业务 [{request.BusinessId}] 在 Flowable 中存在多个运行实例，需要人工对账",
+                                    "PROCESS_RECONCILE_MULTIPLE_MATCHES");
+                            }
+                        }
+                        throw new BusinessException(
+                            $"Business [{request.BusinessId}] already has flow state [{reservation.Instance.FlowState}].",
+                            "PROCESS_ALREADY_RESERVED");
+                    }
+                }
+
                 _logger.LogInformation(
                     "开始启动流程: BusinessType={BusinessType}, ProcessDefinitionKey={ProcessDefinitionKey}, BusinessId={BusinessId}, CreatedBy={CreatedBy}",
                     request.BusinessType,
@@ -157,10 +242,20 @@ namespace FlowableWrapper.Application.Services
                     request.BusinessId,
                     createdBy);
 
+                int? startDefinitionVersion = null;
+                if (_dm8Options.Enabled)
+                {
+                    var latestDefinition = await _repositoryService
+                        .GetLatestProcessDefinitionByKeyAsync(
+                            processDefinitionKey);
+                    startDefinitionVersion = latestDefinition.Version;
+                }
+
                 // 3. InitialSlotSelections is the only start-time source for Flowable assignee variables.
                 var initConversionResult = await ConvertInitialSlotsAsync(
                     request.InitialSlotSelections,
-                    processDefinitionKey);
+                    processDefinitionKey,
+                    startDefinitionVersion);
 
                 // 3b. AssigneeContract is only expanded into the recommended-assignee snapshot.
                 var contractSnapshot = new Dictionary<string, List<string>>(
@@ -170,7 +265,9 @@ namespace FlowableWrapper.Application.Services
                     try
                     {
                         var semanticMap = await _slotConfigProvider
-                            .GetNodeSemanticMapAsync(processDefinitionKey);
+                            .GetNodeSemanticMapAsync(
+                                processDefinitionKey,
+                                startDefinitionVersion);
 
                         contractSnapshot = _assigneeContractConverter
                             .ToRecommendedSnapshot(request.AssigneeContract, semanticMap);
@@ -186,6 +283,13 @@ namespace FlowableWrapper.Application.Services
                             "AssigneeContract recommended snapshot expansion failed and will be skipped. BusinessId={BusinessId}",
                             request.BusinessId);
                     }
+                }
+
+                if (_dm8Options.Enabled)
+                {
+                    await _reliabilityStore.UpdateRecommendedAssigneesSnapshotAsync(
+                        request.BusinessId,
+                        JsonSerializer.Serialize(contractSnapshot));
                 }
 
                 // 4. 构建启动变量
@@ -205,6 +309,13 @@ namespace FlowableWrapper.Application.Services
                 }
                 catch (Exception ex)
                 {
+                    if (_dm8Options.Enabled)
+                    {
+                        await _reliabilityStore.MarkBusinessFlowStateAsync(
+                            request.BusinessId,
+                            "reconcile_required");
+                    }
+
                     _logger.LogError(
                         ex,
                         "Flowable 启动流程失败: ProcessDefinitionKey={ProcessDefinitionKey}, BusinessId={BusinessId}",
@@ -218,6 +329,12 @@ namespace FlowableWrapper.Application.Services
 
                 if (processInstance == null || string.IsNullOrWhiteSpace(processInstance.Id))
                 {
+                    if (_dm8Options.Enabled)
+                    {
+                        await _reliabilityStore.MarkBusinessFlowStateAsync(
+                            request.BusinessId,
+                            "reconcile_required");
+                    }
                     _logger.LogError(
                         "Flowable 启动流程返回空实例: ProcessDefinitionKey={ProcessDefinitionKey}, BusinessId={BusinessId}",
                         processDefinitionKey,
@@ -231,13 +348,43 @@ namespace FlowableWrapper.Application.Services
                     processInstance.Id,
                     request.BusinessId);
 
+                if (_dm8Options.Enabled)
+                {
+                    try
+                    {
+                        var resolvedDefinitionVersion =
+                            ParseProcessDefinitionVersion(
+                                processInstance.ProcessDefinitionId)
+                            ?? startDefinitionVersion;
+                        _logger.LogInformation(
+                            "Binding started process to DM8. BusinessId={BusinessId}, ProcessDefinitionId={ProcessDefinitionId}, ResolvedVersion={ResolvedVersion}",
+                            request.BusinessId,
+                            processInstance.ProcessDefinitionId,
+                            resolvedDefinitionVersion);
+                        await _reliabilityStore.BindStartedProcessAsync(
+                            request.BusinessId,
+                            processInstance.Id,
+                            resolvedDefinitionVersion);
+                    }
+                    catch
+                    {
+                        await _reliabilityStore.MarkBusinessFlowStateAsync(
+                            request.BusinessId,
+                            "reconcile_required");
+                        throw;
+                    }
+                }
+
                 // 6. Write ES metadata
                 var esDocument = BuildProcessMetadataDocument(
                     processInstance,
                     request,
                     processDefinitionKey,
                     createdBy,
-                    contractSnapshot);
+                    contractSnapshot,
+                    ParseProcessDefinitionVersion(
+                        processInstance.ProcessDefinitionId)
+                    ?? startDefinitionVersion);
 
                 try
                 {
@@ -269,9 +416,12 @@ namespace FlowableWrapper.Application.Services
                             processInstance.Id,
                             request.BusinessId);
 
-                        throw new BusinessException(
-                            $"Process started (ProcessInstanceId={processInstance.Id}), but metadata write failed. Please repair ES metadata.",
-                            "PROCESS_METADATA_INDEX_ORPHAN");
+                        if (!_dm8Options.Enabled)
+                        {
+                            throw new BusinessException(
+                                $"Process started (ProcessInstanceId={processInstance.Id}), but metadata write failed. Please repair ES metadata.",
+                                "PROCESS_METADATA_INDEX_ORPHAN");
+                        }
                     }
                 }
                 _logger.LogInformation(
@@ -345,17 +495,20 @@ namespace FlowableWrapper.Application.Services
             }
             finally
             {
-                try
+                if (lockAcquired)
                 {
-                    await _distributedLockService.ReleaseAsync(lockKey, lockValue);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(
-                        ex,
-                        "释放流程启动锁失败: LockKey={LockKey}, BusinessId={BusinessId}",
-                        lockKey,
-                        request.BusinessId);
+                    try
+                    {
+                        await _distributedLockService.ReleaseAsync(lockKey, lockValue);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(
+                            ex,
+                            "释放流程启动锁失败: LockKey={LockKey}, BusinessId={BusinessId}",
+                            lockKey,
+                            request.BusinessId);
+                    }
                 }
             }
         }
@@ -385,25 +538,92 @@ namespace FlowableWrapper.Application.Services
                 "终止流程: BusinessId={BusinessId}, Reason={Reason}",
                 request.BusinessId, request.Reason);
 
-            var metadata = await _esService.GetProcessMetadataByBusinessIdAsync(
-                request.BusinessId);
-            if (metadata == null)
-                throw new BusinessException(
-                    $"未找到业务 ID 对应的运行中流程: {request.BusinessId}");
+            WorkflowBusinessInstance? binding = null;
+            ProcessMetadataDocument? metadata = null;
+            if (_dm8Options.Enabled)
+            {
+                binding = await _reliabilityStore.GetBusinessByBusinessIdAsync(
+                    request.BusinessId);
+                if (binding == null
+                    || string.IsNullOrWhiteSpace(binding.ProcessInstanceId))
+                    throw new BusinessException(
+                        $"DM8 中未找到业务 ID 对应的流程绑定: {request.BusinessId}",
+                        "PROCESS_BINDING_NOT_FOUND");
+            }
+            else
+            {
+                metadata = await _esService.GetProcessMetadataByBusinessIdAsync(
+                    request.BusinessId);
+                if (metadata == null)
+                    throw new BusinessException(
+                        $"未找到业务 ID 对应的运行中流程: {request.BusinessId}");
+            }
+
+            var processInstanceId =
+                binding?.ProcessInstanceId ?? metadata!.ProcessInstanceId;
+            WorkflowTaskAction? action = null;
+            if (_dm8Options.Enabled)
+            {
+                var key = $"process:terminate:{processInstanceId}";
+                action = await _reliabilityStore.PrepareTaskActionAsync(
+                    new PrepareTaskActionCommand
+                    {
+                        ActionId = StableId(key),
+                        IdempotencyKey = key,
+                        BusinessId = request.BusinessId,
+                        ProcessInstanceId = processInstanceId,
+                        ActionType = "terminate",
+                        OperatorId = _currentUser.UserId ?? "system",
+                        RequestJson = JsonSerializer.Serialize(request)
+                    });
+                if (action.ResultState == "applied")
+                    return;
+            }
 
             // 调 Flowable 删除流程实例
-            await _runtimeService.DeleteProcessInstanceAsync(
-                metadata.ProcessInstanceId, request.Reason);
+            try
+            {
+                await _runtimeService.DeleteProcessInstanceAsync(
+                    processInstanceId, request.Reason);
+                if (action != null)
+                {
+                    await _reliabilityStore.MarkTaskActionResultAsync(
+                        action.ActionId, "applied", "deleted", null);
+                    await _reliabilityStore.MarkBusinessFlowStateAsync(
+                        request.BusinessId, "terminated");
+                }
+            }
+            catch (Exception ex)
+            {
+                if (action != null)
+                {
+                    await _reliabilityStore.MarkTaskActionResultAsync(
+                        action.ActionId,
+                        "reconcile_required",
+                        "unknown",
+                        ex.Message);
+                }
+                throw;
+            }
 
             // 更新 ES 状态
-            await _esService.UpdateProcessStatusAsync(
-                metadata.ProcessInstanceId,
-                "terminated",
-                DateTime.UtcNow);
+            try
+            {
+                await _esService.UpdateProcessStatusAsync(
+                    processInstanceId,
+                    "terminated",
+                    DateTime.UtcNow);
+            }
+            catch when (_dm8Options.Enabled)
+            {
+                _logger.LogWarning(
+                    "ES termination projection failed; DM8 action is authoritative. ProcessInstanceId={ProcessInstanceId}",
+                    processInstanceId);
+            }
 
             _logger.LogInformation(
                 "流程已终止: ProcessInstanceId={ProcessInstanceId}",
-                metadata.ProcessInstanceId);
+                processInstanceId);
         }
 
         // ═══════════════════════════════════════════════════════════
@@ -448,14 +668,17 @@ namespace FlowableWrapper.Application.Services
 
         private async Task<SlotConversionResult> ConvertInitialSlotsAsync(
             List<SlotSelection> selections,
-            string processDefinitionKey)
+            string processDefinitionKey,
+            int? processDefinitionVersion = null)
         {
             if (selections == null || !selections.Any())
                 return new SlotConversionResult();
 
             // 从全局 Slot 中找 slotKey → variableName 的映射
             var semanticMap = await _slotConfigProvider
-                .GetNodeSemanticMapAsync(processDefinitionKey);
+                .GetNodeSemanticMapAsync(
+                    processDefinitionKey,
+                    processDefinitionVersion);
 
             // 构建全局 slotKey → SlotDefinition 查找表
             var slotLookup = semanticMap.Values
@@ -560,7 +783,8 @@ namespace FlowableWrapper.Application.Services
             StartProcessRequest request,
             string processDefinitionKey,
             string createdBy,
-            Dictionary<string, List<string>> contractSnapshot)
+            Dictionary<string, List<string>> contractSnapshot,
+            int? processDefinitionVersion)
         {
             CallbackMetadata callbackMetadata = null;
             if (request.Callback != null
@@ -581,6 +805,7 @@ namespace FlowableWrapper.Application.Services
                 Id                   = processInstance.Id,
                 ProcessInstanceId    = processInstance.Id,
                 ProcessDefinitionKey = processDefinitionKey,
+                ProcessDefinitionVersion = processDefinitionVersion,
                 BusinessId           = request.BusinessId,
                 BusinessType         = request.BusinessType,
                 Status               = "running",
@@ -595,5 +820,51 @@ namespace FlowableWrapper.Application.Services
                     ?? new Dictionary<string, List<string>>()
             };
         }
+
+        private static int? ParseProcessDefinitionVersion(
+            string processDefinitionId)
+        {
+            if (string.IsNullOrWhiteSpace(processDefinitionId))
+                return null;
+            var parts = processDefinitionId.Split(':');
+            return parts.Length >= 3
+                   && int.TryParse(parts[^2], out var version)
+                ? version
+                : null;
+        }
+
+        private async Task<StartProcessResponse> BuildExistingStartResponseAsync(
+            string businessId,
+            string processInstanceId)
+        {
+            FlowableTask? firstTask = null;
+            try
+            {
+                firstTask = (await _taskService.QueryTasksAsync(
+                    new FlowableTaskQuery
+                    {
+                        ProcessInstanceId = processInstanceId,
+                        Size = 1
+                    })).FirstOrDefault();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(
+                    ex,
+                    "Idempotent start response could not load current task. ProcessInstanceId={ProcessInstanceId}",
+                    processInstanceId);
+            }
+            return new StartProcessResponse
+            {
+                BusinessId = businessId,
+                ProcessInstanceId = processInstanceId,
+                FirstTaskId = firstTask?.Id
+            };
+        }
+
+        private static string StableId(string value)
+            => Convert.ToHexString(
+                    SHA256.HashData(Encoding.UTF8.GetBytes(value)))
+                .ToLowerInvariant();
     }
 }

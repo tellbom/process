@@ -9,9 +9,13 @@
   <ItemGroup>
     <Compile Remove="temp\**\*.cs" />
     <Compile Remove="Test\**\*.cs" />
+    <Content Remove="Test\**\*" />
+    <None Remove="Test\bin\**\*" />
+    <None Remove="Test\obj\**\*" />
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="DM.DmProvider" Version="8.3.1.47463" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="6.0.36" />
     <PackageReference Include="NEST" Version="7.17.5" />
     <PackageReference Include="StackExchange.Redis" Version="2.12.14" />

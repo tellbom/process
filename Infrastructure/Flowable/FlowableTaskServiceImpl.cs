@@ -31,12 +31,27 @@ namespace FlowableWrapper.Infrastructure.Flowable
 
         public async Task<List<FlowableTask>> QueryTasksAsync(FlowableTaskQuery query)
         {
+            return (await QueryTaskPageAsync(query)).Items;
+        }
+
+        public async Task<FlowableTaskPage> QueryTaskPageAsync(FlowableTaskQuery query)
+        {
+            if (query == null) throw new ArgumentNullException(nameof(query));
+            query.Start = Math.Max(0, query.Start);
+            query.Size = Math.Clamp(query.Size, 1, 100);
+
             var qs = BuildQueryString(query);
             var result = await _http.GetAsync<FlowableTaskListResponse>(
-                $"runtime/tasks?{qs}&size=100");
+                $"runtime/tasks?{qs}");
 
-            return result?.Data?.Select(MapTask).ToList()
-                   ?? new List<FlowableTask>();
+            return new FlowableTaskPage
+            {
+                Items = result?.Data?.Select(MapTask).ToList()
+                        ?? new List<FlowableTask>(),
+                Total = result?.Total ?? 0,
+                Start = result?.Start ?? query.Start,
+                Size = result?.Size ?? 0
+            };
         }
 
         public async Task CompleteAsync(string taskId, Dictionary<string, object> variables)
@@ -130,8 +145,24 @@ namespace FlowableWrapper.Infrastructure.Flowable
                 parts.Add($"assignee={Uri.EscapeDataString(query.Assignee)}");
             if (!string.IsNullOrWhiteSpace(query.CandidateUser))
                 parts.Add($"candidateUser={Uri.EscapeDataString(query.CandidateUser)}");
+            if (!string.IsNullOrWhiteSpace(query.InvolvedUser))
+                parts.Add($"involvedUser={Uri.EscapeDataString(query.InvolvedUser)}");
+            parts.Add($"start={Math.Max(0, query.Start)}");
+            parts.Add($"size={Math.Clamp(query.Size, 1, 100)}");
+            parts.Add($"sort={Uri.EscapeDataString(NormalizeSort(query.Sort))}");
+            parts.Add($"order={NormalizeOrder(query.Order)}");
             return string.Join("&", parts);
         }
+
+        private static string NormalizeSort(string sort) =>
+            sort is "createTime" or "dueDate" or "priority" or "name"
+                ? sort
+                : "createTime";
+
+        private static string NormalizeOrder(string order) =>
+            string.Equals(order, "asc", StringComparison.OrdinalIgnoreCase)
+                ? "asc"
+                : "desc";
 
         private static FlowableTask MapTask(FlowableTaskResponse r)
         {
@@ -188,6 +219,12 @@ namespace FlowableWrapper.Infrastructure.Flowable
         {
             [JsonPropertyName("data")]
             public List<FlowableTaskResponse> Data { get; set; }
+            [JsonPropertyName("total")]
+            public int Total { get; set; }
+            [JsonPropertyName("start")]
+            public int Start { get; set; }
+            [JsonPropertyName("size")]
+            public int Size { get; set; }
         }
 
         private class FlowableTaskResponse

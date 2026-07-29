@@ -7,8 +7,11 @@ using FlowableWrapper.Application.Slots;
 using FlowableWrapper.Domain.Abstractions;
 using FlowableWrapper.Domain.ElasticSearch;
 using FlowableWrapper.Domain.Flowable;
+using FlowableWrapper.Domain.Reliability;
 using FlowableWrapper.Domain.Services;
+using FlowableWrapper.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace FlowableWrapper.Application.Services
 {
@@ -37,16 +40,22 @@ namespace FlowableWrapper.Application.Services
         private readonly IElasticSearchService _esService;
         private readonly IProcessSlotConfigProvider _slotConfigProvider;
         private readonly ILogger<ProcessQueryAppService> _logger;
+        private readonly IWorkflowReliabilityStore _reliabilityStore;
+        private readonly Dm8Options _dm8Options;
 
         public ProcessQueryAppService(
             IFlowableTaskService taskService,
             IElasticSearchService esService,
             IProcessSlotConfigProvider slotConfigProvider,
+            IWorkflowReliabilityStore reliabilityStore,
+            IOptions<Dm8Options> dm8Options,
             ILogger<ProcessQueryAppService> logger)
         {
             _taskService = taskService;
             _esService = esService;
             _slotConfigProvider = slotConfigProvider;
+            _reliabilityStore = reliabilityStore;
+            _dm8Options = dm8Options.Value;
             _logger = logger;
         }
 
@@ -183,6 +192,23 @@ namespace FlowableWrapper.Application.Services
             if (string.IsNullOrWhiteSpace(businessId))
                 throw new BusinessException("businessId 不能为空");
 
+            if (_dm8Options.Enabled)
+            {
+                var authoritative = await GetMetadataByBusinessIdAsync(businessId);
+                return new ProcessListItemDto
+                {
+                    ProcessInstanceId = authoritative.ProcessInstanceId,
+                    BusinessId = authoritative.BusinessId,
+                    BusinessType = authoritative.BusinessType,
+                    ProcessDefinitionKey =
+                        authoritative.ProcessDefinitionKey,
+                    Status = authoritative.Status,
+                    CreatedBy = authoritative.CreatedBy,
+                    CreatedTime = authoritative.CreatedTime,
+                    CompletedTime = authoritative.CompletedTime
+                };
+            }
+
             // 优先查 running 状态（GetProcessMetadataByBusinessIdAsync 已过滤 running）
             var metadata = await _esService.GetProcessMetadataByBusinessIdAsync(businessId);
 
@@ -293,6 +319,51 @@ namespace FlowableWrapper.Application.Services
         private async Task<ProcessMetadataDocument> GetMetadataByBusinessIdAsync(
             string businessId)
         {
+            if (_dm8Options.Enabled)
+            {
+                var binding = await _reliabilityStore.GetBusinessByBusinessIdAsync(
+                    businessId);
+                if (binding == null
+                    || string.IsNullOrWhiteSpace(binding.ProcessInstanceId))
+                    throw new BusinessException(
+                        $"DM8 中未找到 businessId 对应的流程绑定: {businessId}",
+                        "PROCESS_BINDING_NOT_FOUND");
+
+                ProcessMetadataDocument? projection = null;
+                try
+                {
+                    projection = await _esService
+                        .GetProcessMetadataByBusinessIdAsync(businessId);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(
+                        ex,
+                        "ES projection unavailable; query uses DM8 binding. BusinessId={BusinessId}",
+                        businessId);
+                }
+                projection ??= new ProcessMetadataDocument
+                {
+                    Id = binding.ProcessInstanceId,
+                    ProcessInstanceId = binding.ProcessInstanceId,
+                    BusinessId = binding.BusinessId,
+                    BusinessType = binding.BusinessType,
+                    CreatedTime = binding.CreatedAt,
+                    CompletedTime = binding.CompletedAt,
+                    NodeSemanticMap =
+                        new Dictionary<string, NodeSemanticInfo>(),
+                    RecommendedAssigneesSnapshot =
+                        new Dictionary<string, List<string>>()
+                };
+                projection.ProcessInstanceId = binding.ProcessInstanceId;
+                projection.ProcessDefinitionKey =
+                    binding.ProcessDefinitionKey;
+                projection.ProcessDefinitionVersion =
+                    binding.ProcessDefinitionVersion;
+                projection.Status = binding.FlowState;
+                return projection;
+            }
+
             // 先查 running（最常见场景）
             var metadata = await _esService.GetProcessMetadataByBusinessIdAsync(businessId);
             if (metadata != null) return metadata;
@@ -331,7 +402,9 @@ namespace FlowableWrapper.Application.Services
             try
             {
                 semanticMap = await _slotConfigProvider
-                    .GetNodeSemanticMapAsync(processDefinitionKey);
+                    .GetNodeSemanticMapAsync(
+                        processDefinitionKey,
+                        metadata.ProcessDefinitionVersion);
             }
             catch (Exception ex)
             {

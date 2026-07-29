@@ -18,6 +18,7 @@ namespace FlowableWrapper.Domain.Flowable
         /// 按条件查询任务列表
         /// </summary>
         Task<List<FlowableTask>> QueryTasksAsync(FlowableTaskQuery query);
+        Task<FlowableTaskPage> QueryTaskPageAsync(FlowableTaskQuery query);
 
         /// <summary>
         /// 完成任务，传入流程变量（变量驱动下一节点 assignee）

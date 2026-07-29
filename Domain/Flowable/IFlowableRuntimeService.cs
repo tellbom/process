@@ -16,6 +16,9 @@ namespace FlowableWrapper.Domain.Flowable
 
         Task<FlowableProcessInstance> GetProcessInstanceAsync(string processInstanceId);
 
+        Task<List<FlowableProcessInstance>> QueryProcessInstancesByBusinessKeyAsync(
+            string businessKey);
+
         Task DeleteProcessInstanceAsync(string processInstanceId, string deleteReason);
 
         /// <summary>

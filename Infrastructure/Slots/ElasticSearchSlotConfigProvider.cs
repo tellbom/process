@@ -27,7 +27,8 @@ namespace FlowableWrapper.Infrastructure.Slots
 
         public async Task<List<SlotDefinition>> GetSlotsForNodeAsync(
             string processDefinitionKey,
-            string taskDefinitionKey)
+            string taskDefinitionKey,
+            int? processDefinitionVersion = null)
         {
             var map = await _esService.GetNodeSemanticMapAsync(processDefinitionKey);
 
@@ -44,7 +45,8 @@ namespace FlowableWrapper.Infrastructure.Slots
         }
 
         public async Task<Dictionary<string, NodeSemanticInfo>> GetNodeSemanticMapAsync(
-            string processDefinitionKey)
+            string processDefinitionKey,
+            int? processDefinitionVersion = null)
         {
             return await _esService.GetNodeSemanticMapAsync(processDefinitionKey);
         }

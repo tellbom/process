@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using System.Xml.Linq;
@@ -9,9 +11,12 @@ using FlowableWrapper.Application.Dtos;
 using FlowableWrapper.Domain.Abstractions;
 using FlowableWrapper.Domain.ElasticSearch;
 using FlowableWrapper.Domain.Flowable;
+using FlowableWrapper.Domain.Reliability;
 using FlowableWrapper.Domain.Services;
+using FlowableWrapper.Configuration;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace FlowableWrapper.Application.Services
 {
@@ -29,14 +34,20 @@ namespace FlowableWrapper.Application.Services
         private readonly IFlowableRepositoryService _repositoryService;
         private readonly IElasticSearchService _esService;
         private readonly ILogger<BpmnDeploymentAppService> _logger;
+        private readonly IWorkflowReliabilityStore _reliabilityStore;
+        private readonly Dm8Options _dm8Options;
 
         public BpmnDeploymentAppService(
             IFlowableRepositoryService repositoryService,
             IElasticSearchService esService,
+            IWorkflowReliabilityStore reliabilityStore,
+            IOptions<Dm8Options> dm8Options,
             ILogger<BpmnDeploymentAppService> logger)
         {
             _repositoryService = repositoryService;
             _esService = esService;
+            _reliabilityStore = reliabilityStore;
+            _dm8Options = dm8Options.Value;
             _logger = logger;
         }
 
@@ -112,7 +123,30 @@ namespace FlowableWrapper.Application.Services
             var processDefinition = await _repositoryService
                 .GetLatestProcessDefinitionByKeyAsync(processDefinitionKey);
 
-            // Step 6: 写入 ES
+            if (processDefinition == null)
+                throw new BusinessException(
+                    "Flowable 部署成功，但无法读取已部署的流程定义版本",
+                    "FLOWABLE_DEFINITION_VERSION_MISSING");
+
+            // Step 6: 先将会影响执行正确性的版本化配置写入 DM8。
+            // ES 只保留为后续可重建的查询投影。
+            if (_dm8Options.Enabled)
+            {
+                var configJson = JsonSerializer.Serialize(nodeSemanticMap, JsonOpts);
+                var contentHash = Convert.ToHexString(
+                    SHA256.HashData(Encoding.UTF8.GetBytes(configJson)));
+                await _reliabilityStore.SaveDefinitionConfigAsync(
+                    new WorkflowDefinitionConfig
+                    {
+                        ProcessDefinitionKey = processDefinitionKey,
+                        ProcessDefinitionVersion = processDefinition.Version,
+                        ProcessDefinitionId = processDefinition.Id,
+                        ContentHash = contentHash,
+                        ConfigJson = configJson
+                    });
+            }
+
+            // Step 7: 写入 ES 查询投影
             await _esService.SaveNodeSemanticMapAsync(processDefinitionKey, nodeSemanticMap);
 
             _logger.LogInformation(

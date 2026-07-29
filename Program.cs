@@ -5,9 +5,11 @@ using FlowableWrapper.Configuration;
 using FlowableWrapper.Domain.Abstractions;
 using FlowableWrapper.Domain.ElasticSearch;
 using FlowableWrapper.Domain.Flowable;
+using FlowableWrapper.Domain.Reliability;
 using FlowableWrapper.Domain.Services;
 using FlowableWrapper.Infrastructure.CurrentUser;
 using FlowableWrapper.Infrastructure.ElasticSearch;
+using FlowableWrapper.Infrastructure.Dm8;
 using FlowableWrapper.Infrastructure.Flowable;
 using FlowableWrapper.Infrastructure.Security;
 using FlowableWrapper.Infrastructure.Slots;
@@ -42,6 +44,10 @@ builder.Services.Configure<JwtOptions>(
 
 builder.Services.Configure<ProcessNotificationOptions>(
     builder.Configuration.GetSection(ProcessNotificationOptions.SectionName));
+builder.Services.Configure<Dm8Options>(
+    builder.Configuration.GetSection(Dm8Options.SectionName));
+builder.Services.Configure<CallbackWorkerOptions>(
+    builder.Configuration.GetSection(CallbackWorkerOptions.SectionName));
 
 var jwtSection = builder.Configuration.GetSection(JwtOptions.SectionName);
 var jwtMode = jwtSection["Mode"] ?? "Oidc";
@@ -79,7 +85,12 @@ builder.Services.AddAuthorization(options =>
 builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
 {
     var options = sp.GetRequiredService<IOptions<RedisOptions>>().Value;
-    return ConnectionMultiplexer.Connect(options.ConnectionString);
+    var configuration = ConfigurationOptions.Parse(options.ConnectionString);
+    configuration.AbortOnConnectFail = false;
+    configuration.ConnectRetry = 1;
+    configuration.ConnectTimeout = Math.Min(configuration.ConnectTimeout, 1000);
+    configuration.SyncTimeout = Math.Min(configuration.SyncTimeout, 1000);
+    return ConnectionMultiplexer.Connect(configuration);
 });
 
 // ═══════════════════════════════════════════════════════════════
@@ -104,6 +115,7 @@ builder.Services.AddScoped<IFlowableRepositoryService, FlowableRepositoryService
 // 基础设施：Elasticsearch
 // ═══════════════════════════════════════════════════════════════
 builder.Services.AddSingleton<IElasticSearchService, ElasticSearchServiceImpl>();
+builder.Services.AddScoped<IWorkflowReliabilityStore, Dm8WorkflowReliabilityStore>();
 
 // ═══════════════════════════════════════════════════════════════
 // 应用服务（Phase 3-9 逐步注册，此处预留占位注释）
@@ -111,7 +123,7 @@ builder.Services.AddSingleton<IElasticSearchService, ElasticSearchServiceImpl>()
 
 // Phase 3 — Slot 模型
 builder.Services.AddScoped<SlotVariableConverter>();
-builder.Services.AddScoped<IProcessSlotConfigProvider, ElasticSearchSlotConfigProvider>();
+builder.Services.AddScoped<IProcessSlotConfigProvider, Dm8ProcessSlotConfigProvider>();
 
 // Phase 3 (Patch Plan V1.2) - assignee contract services
 // AssigneeContractConverter: role contract -> RecommendedAssigneesSnapshot
@@ -130,6 +142,7 @@ builder.Services.AddScoped<BpmnDeploymentAppService>();
 // Phase 8 — 回调
 // 1. 注册 ProcessCallbackAppService
 builder.Services.AddScoped<ProcessCallbackAppService>();
+builder.Services.AddScoped<WorkflowMigrationAppService>();
 
 // 2. 注册具名 HttpClient（用于回调业务系统）
 builder.Services.AddHttpClient("BusinessCallback");
@@ -146,6 +159,11 @@ builder.Services.AddHttpClient("BusinessCallback", client =>
 {
     client.Timeout = TimeSpan.FromSeconds(30);
 });
+builder.Services.AddHttpClient("BusinessCallbackWorker", client =>
+{
+    client.Timeout = Timeout.InfiniteTimeSpan;
+});
+builder.Services.AddHostedService<CallbackInboxWorker>();
 
 builder.Services.AddHttpClient("ProcessMessageCenter", (sp, client) =>
 {

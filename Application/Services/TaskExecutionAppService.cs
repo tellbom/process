@@ -1,14 +1,20 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 using FlowableWrapper.Application.Dtos;
 using FlowableWrapper.Application.Slots;
 using FlowableWrapper.Domain.Abstractions;
 using FlowableWrapper.Domain.ElasticSearch;
 using FlowableWrapper.Domain.Flowable;
+using FlowableWrapper.Domain.Reliability;
 using FlowableWrapper.Domain.Services;
+using FlowableWrapper.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace FlowableWrapper.Application.Services
 {
@@ -37,6 +43,8 @@ namespace FlowableWrapper.Application.Services
         private readonly ILogger<TaskExecutionAppService> _logger;
         private readonly ProcessCallbackAppService _callbackService;
         private readonly ProcessNotificationService _notificationService;
+        private readonly IWorkflowReliabilityStore _reliabilityStore;
+        private readonly Dm8Options _dm8Options;
 
         public TaskExecutionAppService(
             IFlowableRuntimeService runtimeService,
@@ -47,7 +55,9 @@ namespace FlowableWrapper.Application.Services
             ICurrentUser currentUser,
             ILogger<TaskExecutionAppService> logger,
             ProcessCallbackAppService callbackService,
-            ProcessNotificationService notificationService)
+            ProcessNotificationService notificationService,
+            IWorkflowReliabilityStore reliabilityStore,
+            IOptions<Dm8Options> dm8Options)
         {
             _runtimeService  = runtimeService;
             _taskService     = taskService;
@@ -58,6 +68,8 @@ namespace FlowableWrapper.Application.Services
             _logger          = logger;
             _callbackService = callbackService;
             _notificationService = notificationService;
+            _reliabilityStore = reliabilityStore;
+            _dm8Options = dm8Options.Value;
         }
 
         // ═══════════════════════════════════════════════════════════
@@ -85,11 +97,7 @@ namespace FlowableWrapper.Application.Services
                 request.BusinessId, operatorId, request.Action);
 
             // ── Step 1: 查流程元数据 ───────────────────────────────
-            var metadata = await _esService.GetProcessMetadataByBusinessIdAsync(
-                request.BusinessId);
-            if (metadata == null)
-                throw new BusinessException(
-                    $"未找到业务 ID 对应的运行中流程: {request.BusinessId}");
+            var metadata = await GetExecutionMetadataAsync(request.BusinessId);
 
             // ── Step 2: 定位任务 ───────────────────────────────────
             FlowableTask myTask = !string.IsNullOrWhiteSpace(request.TaskId)
@@ -115,6 +123,15 @@ namespace FlowableWrapper.Application.Services
             if (request.Action == ApprovalAction.Reject)
                 return await HandleRejectAsync(request, myTask, metadata, operatorId);
 
+            var action = await PrepareActionAsync(
+                metadata, myTask, "complete", operatorId, request);
+            if (action?.ResultState == "applied")
+                return new CompleteTaskResponse
+                {
+                    Success = true,
+                    Message = "该任务已完成"
+                };
+
             // ── Step 5: 组装变量 ──────────────────────────────────
             var (variables, slotSnapshots) = await BuildCompletionVariablesAsync(
                 request, myTask, metadata, operatorId);
@@ -135,7 +152,18 @@ namespace FlowableWrapper.Application.Services
             var activeTaskIdsBeforeComplete = await GetActiveTaskIdsSafeAsync(
                 metadata.ProcessInstanceId);
 
-            await _taskService.CompleteAsync(myTask.Id, variables);
+            try
+            {
+                await _taskService.CompleteAsync(myTask.Id, variables);
+                await MarkActionResultAsync(
+                    action, "applied", "completed", null);
+            }
+            catch (Exception ex)
+            {
+                await MarkActionResultAsync(
+                    action, "reconcile_required", "unknown", ex.Message);
+                throw;
+            }
 
             _logger.LogInformation(
                 "任务完成: TaskId={TaskId}, Action={Action}, 注入变量数={VarCount}",
@@ -181,6 +209,8 @@ namespace FlowableWrapper.Application.Services
             GetPendingTasksRequest request)
         {
             if (request == null) throw new ArgumentNullException(nameof(request));
+            request.PageIndex = Math.Max(1, request.PageIndex);
+            request.PageSize = Math.Clamp(request.PageSize, 1, 100);
 
             var employeeId = !string.IsNullOrWhiteSpace(request.EmployeeId)
                 ? request.EmployeeId
@@ -189,34 +219,51 @@ namespace FlowableWrapper.Application.Services
             if (string.IsNullOrWhiteSpace(employeeId))
                 throw new BusinessException("无法确定当前登录用户，请先完成认证");
 
-            var assigneeTasks = await _taskService.QueryTasksAsync(new FlowableTaskQuery
+            var start = checked((request.PageIndex - 1) * request.PageSize);
+            var taskPage = await _taskService.QueryTaskPageAsync(new FlowableTaskQuery
             {
-                Assignee = employeeId
-            });
-            var candidateTasks = await _taskService.QueryTasksAsync(new FlowableTaskQuery
-            {
-                CandidateUser = employeeId
+                InvolvedUser = employeeId,
+                Start = start,
+                Size = request.PageSize,
+                Sort = "createTime",
+                Order = "desc"
             });
 
-            var allTasks = assigneeTasks
-                .Concat(candidateTasks)
-                .GroupBy(t => t.Id)
-                .Select(g => g.First())
-                .OrderByDescending(t => t.CreateTime)
-                .ToList();
-
-            if (!allTasks.Any())
+            if (!taskPage.Items.Any())
                 return new PendingTaskPageResult
                 {
+                    Total = taskPage.Total,
+                    HasMore = false,
                     PageIndex = request.PageIndex,
                     PageSize = request.PageSize
                 };
 
-            var processInstanceIds = allTasks
+            // 先在 Flowable 完成分页，再只为当前页补充投影数据。
+            var processInstanceIds = taskPage.Items
                 .Select(t => t.ProcessInstanceId)
                 .Distinct()
                 .ToList();
-            var metadataDict = await _esService.GetProcessMetadataBatchAsync(processInstanceIds);
+            IReadOnlyDictionary<string, WorkflowBusinessInstance> bindings =
+                new Dictionary<string, WorkflowBusinessInstance>();
+            if (_dm8Options.Enabled)
+            {
+                bindings = await _reliabilityStore
+                    .GetBusinessesByProcessInstancesAsync(processInstanceIds);
+            }
+
+            Dictionary<string, ProcessMetadataDocument> metadataDict;
+            try
+            {
+                metadataDict = await _esService
+                    .GetProcessMetadataBatchAsync(processInstanceIds);
+            }
+            catch (Exception ex) when (_dm8Options.Enabled)
+            {
+                _logger.LogWarning(
+                    ex,
+                    "ES pending projection unavailable; current page will use DM8 bindings.");
+                metadataDict = new Dictionary<string, ProcessMetadataDocument>();
+            }
 
             var semanticMapCache = new Dictionary<string, Dictionary<string, NodeSemanticInfo>>(
                 StringComparer.OrdinalIgnoreCase);
@@ -228,20 +275,53 @@ namespace FlowableWrapper.Application.Services
 
             var result = new List<PendingTaskDto>();
 
-            foreach (var task in allTasks)
+            foreach (var task in taskPage.Items)
             {
-                if (!metadataDict.TryGetValue(task.ProcessInstanceId, out var meta))
-                    continue;
+                metadataDict.TryGetValue(task.ProcessInstanceId, out var meta);
+                if (_dm8Options.Enabled)
+                {
+                    if (!bindings.TryGetValue(task.ProcessInstanceId, out var binding))
+                        throw new BusinessException(
+                            $"待办任务 [{task.Id}] 缺少 DM8 业务绑定，需要执行三方对账",
+                            "TASK_BINDING_INCONSISTENT");
+                    meta ??= new ProcessMetadataDocument
+                    {
+                        Id = binding.ProcessInstanceId,
+                        ProcessInstanceId = binding.ProcessInstanceId,
+                        BusinessId = binding.BusinessId,
+                        BusinessType = binding.BusinessType,
+                        Status = binding.FlowState,
+                        NodeSemanticMap =
+                            new Dictionary<string, NodeSemanticInfo>()
+                    };
+                    meta.ProcessDefinitionKey =
+                        binding.ProcessDefinitionKey;
+                    meta.ProcessDefinitionVersion =
+                        binding.ProcessDefinitionVersion;
+                    meta.RecommendedAssigneesSnapshot =
+                        DeserializeRecommendedSnapshot(
+                            binding.RecommendedAssigneesSnapshot);
+                }
+                else if (meta == null)
+                {
+                    throw new BusinessException(
+                        $"待办任务 [{task.Id}] 缺少流程投影，请稍后重试或执行投影对账",
+                        "TASK_PROJECTION_INCONSISTENT");
+                }
 
                 if (businessTypes.Count > 0
                     && !businessTypes.Contains(meta.BusinessType))
                     continue;
 
-                if (!semanticMapCache.TryGetValue(meta.ProcessDefinitionKey, out var semanticMap))
+                var configCacheKey =
+                    $"{meta.ProcessDefinitionKey}:{meta.ProcessDefinitionVersion?.ToString() ?? "legacy"}";
+                if (!semanticMapCache.TryGetValue(configCacheKey, out var semanticMap))
                 {
                     semanticMap = await _slotConfigProvider
-                        .GetNodeSemanticMapAsync(meta.ProcessDefinitionKey);
-                    semanticMapCache[meta.ProcessDefinitionKey] = semanticMap;
+                        .GetNodeSemanticMapAsync(
+                            meta.ProcessDefinitionKey,
+                            meta.ProcessDefinitionVersion);
+                    semanticMapCache[configCacheKey] = semanticMap;
                 }
 
                 semanticMap.TryGetValue(task.TaskDefinitionKey, out var nodeInfo);
@@ -298,16 +378,14 @@ namespace FlowableWrapper.Application.Services
                 });
             }
 
-            var total = result.Count;
-            var paged = result
-                .Skip((request.PageIndex - 1) * request.PageSize)
-                .Take(request.PageSize)
-                .ToList();
+            var hasBusinessFilter = businessTypes.Count > 0;
 
             return new PendingTaskPageResult
             {
-                Items = paged,
-                Total = total,
+                Items = result,
+                Total = hasBusinessFilter ? result.Count : taskPage.Total,
+                TotalIsExact = !hasBusinessFilter,
+                HasMore = taskPage.Start + taskPage.Size < taskPage.Total,
                 PageIndex = request.PageIndex,
                 PageSize = request.PageSize
             };
@@ -366,11 +444,7 @@ namespace FlowableWrapper.Application.Services
             if (request.NewAssignees == null || !request.NewAssignees.Any())
                 throw new BusinessException("newAssignees 不能为空");
 
-            var metadata = await _esService.GetProcessMetadataByBusinessIdAsync(
-                request.BusinessId);
-            if (metadata == null)
-                throw new BusinessException(
-                    $"未找到业务 ID 对应的运行中流程: {request.BusinessId}");
+            var metadata = await GetExecutionMetadataAsync(request.BusinessId);
 
             List<FlowableTask> tasksToReassign;
 
@@ -394,7 +468,9 @@ namespace FlowableWrapper.Application.Services
             }
 
             var semanticMap = await _slotConfigProvider
-                .GetNodeSemanticMapAsync(metadata.ProcessDefinitionKey);
+                .GetNodeSemanticMapAsync(
+                    metadata.ProcessDefinitionKey,
+                    metadata.ProcessDefinitionVersion);
             var unsupportedTasks = tasksToReassign
                 .Where(task => !semanticMap.TryGetValue(
                         task.TaskDefinitionKey, out var nodeInfo)
@@ -413,22 +489,41 @@ namespace FlowableWrapper.Application.Services
 
             foreach (var task in tasksToReassign)
             {
-                await _taskService.ClearCandidateUsersAsync(task.Id);
+                var action = await PrepareActionAsync(
+                    metadata,
+                    task,
+                    "reassign",
+                    ResolveOperatorId(request.OperatorId),
+                    request);
+                if (action?.ResultState == "applied")
+                    continue;
+                try
+                {
+                    await _taskService.ClearCandidateUsersAsync(task.Id);
 
-                if (request.NewAssignees.Count == 1)
-                {
-                    await _taskService.SetAssigneeAsync(task.Id, request.NewAssignees[0]);
-                    _logger.LogInformation(
-                        "任务转派（单人）: TaskId={TaskId}, NewAssignee={Assignee}",
-                        task.Id, request.NewAssignees[0]);
+                    if (request.NewAssignees.Count == 1)
+                    {
+                        await _taskService.SetAssigneeAsync(task.Id, request.NewAssignees[0]);
+                        _logger.LogInformation(
+                            "任务转派（单人）: TaskId={TaskId}, NewAssignee={Assignee}",
+                            task.Id, request.NewAssignees[0]);
+                    }
+                    else
+                    {
+                        await _taskService.SetAssigneeAsync(task.Id, null);
+                        await _taskService.AddCandidateUsersAsync(task.Id, request.NewAssignees);
+                        _logger.LogInformation(
+                            "任务转派（多人候选）: TaskId={TaskId}, Count={Count}",
+                            task.Id, request.NewAssignees.Count);
+                    }
+                    await MarkActionResultAsync(
+                        action, "applied", "reassigned", null);
                 }
-                else
+                catch (Exception ex)
                 {
-                    await _taskService.SetAssigneeAsync(task.Id, null);
-                    await _taskService.AddCandidateUsersAsync(task.Id, request.NewAssignees);
-                    _logger.LogInformation(
-                        "任务转派（多人候选）: TaskId={TaskId}, Count={Count}",
-                        task.Id, request.NewAssignees.Count);
+                    await MarkActionResultAsync(
+                        action, "reconcile_required", "unknown", ex.Message);
+                    throw;
                 }
 
                 // 写转派审计记录（失败不影响主流程）
@@ -451,7 +546,9 @@ namespace FlowableWrapper.Application.Services
             string operatorId)
         {
             var semanticMap = await _slotConfigProvider
-                .GetNodeSemanticMapAsync(metadata.ProcessDefinitionKey);
+                .GetNodeSemanticMapAsync(
+                    metadata.ProcessDefinitionKey,
+                    metadata.ProcessDefinitionVersion);
 
             // 补强1：校验当前节点具备驳回能力
             if (!semanticMap.TryGetValue(currentTask.TaskDefinitionKey, out var currentNodeInfo))
@@ -530,10 +627,26 @@ namespace FlowableWrapper.Application.Services
                 currentTask.TaskDefinitionKey, targetNode.TaskDefinitionKey,
                 request.RejectCode, operatorId);
 
-            await _runtimeService.ChangeActivityStateAsync(
-                metadata.ProcessInstanceId,
-                cancelActivityIds,
-                targetNode.TaskDefinitionKey);
+            var action = await PrepareActionAsync(
+                metadata, currentTask, "reject", operatorId, request);
+            if (action?.ResultState != "applied")
+            {
+                try
+                {
+                    await _runtimeService.ChangeActivityStateAsync(
+                        metadata.ProcessInstanceId,
+                        cancelActivityIds,
+                        targetNode.TaskDefinitionKey);
+                    await MarkActionResultAsync(
+                        action, "applied", "activity_changed", null);
+                }
+                catch (Exception ex)
+                {
+                    await MarkActionResultAsync(
+                        action, "reconcile_required", "unknown", ex.Message);
+                    throw;
+                }
+            }
 
             _logger.LogInformation(
                 "驳回跳转成功: {CurrentNode} → {TargetNode}",
@@ -612,7 +725,8 @@ namespace FlowableWrapper.Application.Services
             {
                 var slotDefs = await _slotConfigProvider.GetSlotsForNodeAsync(
                     metadata.ProcessDefinitionKey,
-                    currentTask.TaskDefinitionKey);
+                    currentTask.TaskDefinitionKey,
+                    metadata.ProcessDefinitionVersion);
 
                 var conversionResult = _slotConverter.Convert(
                     request.NextSlotSelections,
@@ -755,7 +869,9 @@ namespace FlowableWrapper.Application.Services
                 try
                 {
                     var semanticMap = await _slotConfigProvider
-                        .GetNodeSemanticMapAsync(metadata.ProcessDefinitionKey);
+                        .GetNodeSemanticMapAsync(
+                            metadata.ProcessDefinitionKey,
+                            metadata.ProcessDefinitionVersion);
                     semanticMap.TryGetValue(task.TaskDefinitionKey, out var nodeInfo);
                     nodeSemantic = nodeInfo?.NodeSemantic;
                     pageCode     = nodeInfo?.PageCode;
@@ -814,7 +930,9 @@ namespace FlowableWrapper.Application.Services
                 try
                 {
                     var semanticMap = await _slotConfigProvider
-                        .GetNodeSemanticMapAsync(metadata.ProcessDefinitionKey);
+                        .GetNodeSemanticMapAsync(
+                            metadata.ProcessDefinitionKey,
+                            metadata.ProcessDefinitionVersion);
                     semanticMap.TryGetValue(task.TaskDefinitionKey, out var nodeInfo);
                     nodeSemantic = nodeInfo?.NodeSemantic;
                     pageCode     = nodeInfo?.PageCode;
@@ -962,6 +1080,115 @@ namespace FlowableWrapper.Application.Services
             return (hasOutOfRange, slotRecommendedSnapshot, restrictSnapshot);
         }
 
+        private async Task<ProcessMetadataDocument> GetExecutionMetadataAsync(
+            string businessId)
+        {
+            if (!_dm8Options.Enabled)
+            {
+                return await _esService.GetProcessMetadataByBusinessIdAsync(businessId)
+                       ?? throw new BusinessException(
+                           $"未找到业务 ID 对应的运行中流程: {businessId}");
+            }
+
+            var binding = await _reliabilityStore.GetBusinessByBusinessIdAsync(
+                businessId);
+            if (binding == null
+                || string.IsNullOrWhiteSpace(binding.ProcessInstanceId)
+                || binding.FlowState is not ("running" or "reconcile_required"))
+                throw new BusinessException(
+                    $"DM8 中未找到可执行的流程绑定: {businessId}",
+                    "PROCESS_BINDING_NOT_EXECUTABLE");
+
+            ProcessMetadataDocument? projection = null;
+            try
+            {
+                projection = await _esService.GetProcessMetadataByBusinessIdAsync(
+                    businessId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(
+                    ex,
+                    "ES projection unavailable; action continues from DM8 binding. BusinessId={BusinessId}",
+                    businessId);
+            }
+
+            projection ??= new ProcessMetadataDocument
+            {
+                Id = binding.ProcessInstanceId,
+                BusinessId = binding.BusinessId,
+                BusinessType = binding.BusinessType,
+                RecommendedAssigneesSnapshot =
+                    DeserializeRecommendedSnapshot(
+                        binding.RecommendedAssigneesSnapshot),
+                NodeSemanticMap =
+                    new Dictionary<string, NodeSemanticInfo>()
+            };
+            projection.ProcessInstanceId = binding.ProcessInstanceId;
+            projection.ProcessDefinitionKey = binding.ProcessDefinitionKey;
+            projection.ProcessDefinitionVersion =
+                binding.ProcessDefinitionVersion;
+            projection.Status = binding.FlowState;
+            return projection;
+        }
+
+        private static Dictionary<string, List<string>>
+            DeserializeRecommendedSnapshot(string? snapshot)
+        {
+            if (string.IsNullOrWhiteSpace(snapshot))
+                return new Dictionary<string, List<string>>(
+                    StringComparer.OrdinalIgnoreCase);
+            return JsonSerializer.Deserialize<Dictionary<string, List<string>>>(
+                       snapshot)
+                   ?? new Dictionary<string, List<string>>(
+                       StringComparer.OrdinalIgnoreCase);
+        }
+
+        private async Task<WorkflowTaskAction?> PrepareActionAsync(
+            ProcessMetadataDocument metadata,
+            FlowableTask task,
+            string actionType,
+            string operatorId,
+            object request)
+        {
+            if (!_dm8Options.Enabled)
+                return null;
+
+            var idempotencyKey = $"task:{actionType}:{task.Id}";
+            return await _reliabilityStore.PrepareTaskActionAsync(
+                new PrepareTaskActionCommand
+                {
+                    ActionId = StableId(idempotencyKey),
+                    IdempotencyKey = idempotencyKey,
+                    BusinessId = metadata.BusinessId,
+                    ProcessInstanceId = metadata.ProcessInstanceId,
+                    TaskId = task.Id,
+                    TaskDefinitionKey = task.TaskDefinitionKey,
+                    ActionType = actionType,
+                    OperatorId = operatorId,
+                    RequestJson = JsonSerializer.Serialize(request)
+                });
+        }
+
+        private async Task MarkActionResultAsync(
+            WorkflowTaskAction? action,
+            string resultState,
+            string flowableResult,
+            string? error)
+        {
+            if (action == null)
+                return;
+            await _reliabilityStore.MarkTaskActionResultAsync(
+                action.ActionId,
+                resultState,
+                flowableResult,
+                error);
+        }
+
+        private static string StableId(string value)
+            => Convert.ToHexString(
+                    SHA256.HashData(Encoding.UTF8.GetBytes(value)))
+                .ToLowerInvariant();
 
         private string ResolveOperatorId(string requestEmployeeId)
         {

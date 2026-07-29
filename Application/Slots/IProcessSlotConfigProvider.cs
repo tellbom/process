@@ -18,7 +18,8 @@ namespace FlowableWrapper.Application.Slots
         /// <param name="taskDefinitionKey">节点 Key，如 ut01_group_leader_confirm</param>
         Task<List<SlotDefinition>> GetSlotsForNodeAsync(
             string processDefinitionKey,
-            string taskDefinitionKey);
+            string taskDefinitionKey,
+            int? processDefinitionVersion = null);
 
         /// <summary>
         /// 获取指定流程定义所有节点的语义信息
@@ -26,6 +27,7 @@ namespace FlowableWrapper.Application.Slots
         /// </summary>
         /// <param name="processDefinitionKey">流程定义 Key</param>
         Task<Dictionary<string, NodeSemanticInfo>> GetNodeSemanticMapAsync(
-            string processDefinitionKey);
+            string processDefinitionKey,
+            int? processDefinitionVersion = null);
     }
 }

@@ -96,6 +96,38 @@ namespace FlowableWrapper.Infrastructure.Flowable
             };
         }
 
+        public async Task<List<FlowableProcessInstance>>
+            QueryProcessInstancesByBusinessKeyAsync(string businessKey)
+        {
+            var url =
+                $"{_baseUrl}/runtime/process-instances?businessKey={Uri.EscapeDataString(businessKey)}&start=0&size=10";
+            var response = await _httpClient.GetAsync(url);
+            await EnsureSuccessAsync(response, "runtime/process-instances?businessKey");
+            var envelope = await response.Content.ReadFromJsonAsync<JsonElement>();
+            if (!envelope.TryGetProperty("data", out var data)
+                || data.ValueKind != JsonValueKind.Array)
+                return new List<FlowableProcessInstance>();
+
+            return data.EnumerateArray().Select(item =>
+            {
+                var definitionId = item.TryGetProperty(
+                    "processDefinitionId", out var definition)
+                    ? definition.GetString()
+                    : null;
+                return new FlowableProcessInstance
+                {
+                    Id = item.GetProperty("id").GetString(),
+                    ProcessDefinitionId = definitionId,
+                    ProcessDefinitionKey = ParseKeyFromDefinitionId(definitionId),
+                    BusinessKey = item.TryGetProperty("businessKey", out var key)
+                        ? key.GetString()
+                        : null,
+                    IsEnded = item.TryGetProperty("ended", out var ended)
+                              && ended.GetBoolean()
+                };
+            }).ToList();
+        }
+
         public async Task DeleteProcessInstanceAsync(
             string processInstanceId,
             string deleteReason)

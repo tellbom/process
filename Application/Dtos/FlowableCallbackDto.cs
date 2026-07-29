@@ -18,6 +18,10 @@ namespace FlowableWrapper.Application.Dtos
 
         public string ProcessDefinitionKey { get; set; } = string.Empty;
 
+        public string CallbackActivityId { get; set; } = "process_end";
+
+        public string CallbackType { get; set; } = "PROCESS_COMPLETED";
+
         /// <summary>
         /// Flowable variables passed through by the HTTP ServiceTask.
         /// callbackType decides the processing path:

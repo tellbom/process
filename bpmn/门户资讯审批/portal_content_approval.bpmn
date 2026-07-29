@@ -106,7 +106,7 @@
           <flowable:string>Content-Type: application/json</flowable:string>
         </flowable:field>
         <flowable:field name="requestBody">
-          <flowable:expression>{"processInstanceId":"${execution.processInstanceId}","businessId":"${businessId}","processDefinitionKey":"${processDefinitionKey}"}</flowable:expression>
+          <flowable:expression>{"processInstanceId":"${execution.processInstanceId}","businessId":"${businessId}","processDefinitionKey":"${processDefinitionKey}","callbackActivityId":"st03_framework_callback","callbackType":"PROCESS_COMPLETED"}</flowable:expression>
         </flowable:field>
         <flowable:field name="saveResponseParameters">
           <flowable:string>false</flowable:string>
