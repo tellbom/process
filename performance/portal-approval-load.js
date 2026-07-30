@@ -216,8 +216,15 @@ export function queryPending() {
   const ok = check(response, {
     'pending query returned 200': (r) => r.status === 200,
   });
-  if (!ok)
+  if (!ok) {
     queryFailures.add(1);
+    console.error(JSON.stringify({
+      kind: 'portal_pending_query_failure',
+      status: response.status,
+      error: response.error,
+      errorCode: response.error_code,
+    }));
+  }
 }
 
 export function queryFlowRender() {

@@ -243,12 +243,36 @@ namespace FlowableWrapper.Application.Services
                 .Select(t => t.ProcessInstanceId)
                 .Distinct()
                 .ToList();
-            IReadOnlyDictionary<string, WorkflowBusinessInstance> bindings =
-                new Dictionary<string, WorkflowBusinessInstance>();
+            var bindings =
+                new Dictionary<string, WorkflowBusinessInstance>(
+                    StringComparer.OrdinalIgnoreCase);
             if (_dm8Options.Enabled)
             {
-                bindings = await _reliabilityStore
+                var initialBindings = await _reliabilityStore
                     .GetBusinessesByProcessInstancesAsync(processInstanceIds);
+                foreach (var binding in initialBindings)
+                    bindings[binding.Key] = binding.Value;
+
+                // Flowable creates the first user task immediately before the
+                // start request persists its processInstanceId binding in DM8.
+                // A concurrent pending query can therefore observe a short,
+                // expected visibility window. Retry that bounded window rather
+                // than failing the user's entire page.
+                foreach (var delayMilliseconds in new[] { 20, 60, 120 })
+                {
+                    var missingProcessInstanceIds = processInstanceIds
+                        .Where(id => !bindings.ContainsKey(id))
+                        .ToList();
+                    if (missingProcessInstanceIds.Count == 0)
+                        break;
+
+                    await Task.Delay(delayMilliseconds);
+                    var retryBindings = await _reliabilityStore
+                        .GetBusinessesByProcessInstancesAsync(
+                            missingProcessInstanceIds);
+                    foreach (var binding in retryBindings)
+                        bindings[binding.Key] = binding.Value;
+                }
             }
 
             Dictionary<string, ProcessMetadataDocument> metadataDict;
@@ -281,9 +305,13 @@ namespace FlowableWrapper.Application.Services
                 if (_dm8Options.Enabled)
                 {
                     if (!bindings.TryGetValue(task.ProcessInstanceId, out var binding))
-                        throw new BusinessException(
-                            $"待办任务 [{task.Id}] 缺少 DM8 业务绑定，需要执行三方对账",
-                            "TASK_BINDING_INCONSISTENT");
+                    {
+                        _logger.LogWarning(
+                            "Pending task omitted because its DM8 binding is still missing after bounded retry. TaskId={TaskId}, ProcessInstanceId={ProcessInstanceId}",
+                            task.Id,
+                            task.ProcessInstanceId);
+                        continue;
+                    }
                     meta ??= new ProcessMetadataDocument
                     {
                         Id = binding.ProcessInstanceId,

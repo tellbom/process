@@ -90,12 +90,14 @@
     <!-- ST-03 通知业务系统流程已完成 -->
     <serviceTask id="st03_framework_callback"
                  name="通知业务系统流程已完成"
+                 flowable:async="true"
                  flowable:type="http">
       <documentation>
         框架标准完成回调节点，引擎 POST frameworkCallbackUrl。
         流程中心接收后更新流程状态，并按启动 callback.url 通知业务系统。
       </documentation>
       <extensionElements>
+        <flowable:failedJobRetryTimeCycle>R5/PT10S</flowable:failedJobRetryTimeCycle>
         <flowable:field name="requestMethod">
           <flowable:string>POST</flowable:string>
         </flowable:field>
