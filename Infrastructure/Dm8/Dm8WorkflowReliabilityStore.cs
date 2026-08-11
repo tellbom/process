@@ -31,10 +31,10 @@ public sealed class Dm8WorkflowReliabilityStore : IWorkflowReliabilityStore
         ReserveBusinessCommand command,
         CancellationToken cancellationToken = default)
     {
-        await using var connection = CreateConnection();
-        await connection.OpenAsync(cancellationToken);
         try
         {
+            await using var connection = CreateConnection();
+            await connection.OpenAsync(cancellationToken);
             await using var insert = connection.CreateCommand();
             Configure(insert);
             insert.CommandText = $@"
@@ -66,11 +66,10 @@ VALUES
             throw;
         }
 
-        return new BusinessReservation(
-            true,
-            (await GetBusinessByBusinessIdAsync(
-                command.BusinessId,
-                cancellationToken))!);
+        var created = await GetBusinessByBusinessIdAsync(
+            command.BusinessId,
+            cancellationToken);
+        return new BusinessReservation(true, created!);
     }
 
     public async Task BindStartedProcessAsync(
@@ -236,10 +235,10 @@ WHERE PROCESS_INSTANCE_ID IN ({string.Join(",", parameters)})";
             || string.IsNullOrWhiteSpace(config.ConfigJson))
             throw new ArgumentException("Definition config is incomplete.", nameof(config));
 
-        await using var connection = CreateConnection();
-        await connection.OpenAsync(cancellationToken);
         try
         {
+            await using var connection = CreateConnection();
+            await connection.OpenAsync(cancellationToken);
             await using var insert = connection.CreateCommand();
             Configure(insert);
             insert.CommandText = $@"
@@ -321,10 +320,10 @@ WHERE PROCESS_DEFINITION_KEY = :definition_key
             || string.IsNullOrWhiteSpace(command.OperatorId))
             throw new ArgumentException("Task action is incomplete.", nameof(command));
 
-        await using var connection = CreateConnection();
-        await connection.OpenAsync(cancellationToken);
         try
         {
+            await using var connection = CreateConnection();
+            await connection.OpenAsync(cancellationToken);
             await using var insert = connection.CreateCommand();
             Configure(insert);
             insert.CommandText = $@"
@@ -364,6 +363,15 @@ VALUES
             "ACTION_ID", "action_id", command.ActionId, cancellationToken))!;
     }
 
+    public Task<WorkflowTaskAction?> GetTaskActionByIdempotencyKeyAsync(
+        string idempotencyKey,
+        CancellationToken cancellationToken = default)
+        => GetTaskActionAsync(
+            "IDEMPOTENCY_KEY",
+            "idempotency_key",
+            idempotencyKey,
+            cancellationToken);
+
     public async Task MarkTaskActionResultAsync(
         string actionId,
         string resultState,
@@ -385,7 +393,7 @@ SET RESULT_STATE = :result_state,
     DATA_VERSION = DATA_VERSION + 1,
     UPDATED_AT = CURRENT_TIMESTAMP
 WHERE ACTION_ID = :action_id
-  AND RESULT_STATE IN ('prepared', 'reconcile_required')";
+  AND RESULT_STATE IN ('prepared', 'failed', 'reconcile_required')";
         AddParameter(command, "result_state", resultState);
         AddParameter(command, "flowable_result", flowableResult);
         AddParameter(command, "last_error", Truncate(error ?? string.Empty, 4000));
@@ -398,17 +406,18 @@ WHERE ACTION_ID = :action_id
         CancellationToken cancellationToken = default)
     {
         Validate(command);
-        await using var connection = CreateConnection();
-        await connection.OpenAsync(cancellationToken);
-        await using var transaction =
-            await connection.BeginTransactionAsync(cancellationToken);
-
         try
         {
-            await using var insert = connection.CreateCommand();
-            insert.Transaction = transaction;
-            Configure(insert);
-            insert.CommandText = $@"
+            await using var connection = CreateConnection();
+            await connection.OpenAsync(cancellationToken);
+            await using var transaction =
+                await connection.BeginTransactionAsync(cancellationToken);
+            try
+            {
+                await using var insert = connection.CreateCommand();
+                insert.Transaction = transaction;
+                Configure(insert);
+                insert.CommandText = $@"
 INSERT INTO {_callbackTable}
 (
     EVENT_ID, IDEMPOTENCY_KEY, BUSINESS_ID, PROCESS_INSTANCE_ID,
@@ -421,22 +430,22 @@ VALUES
     :callback_activity_id, :callback_type, :payload, :status,
     0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0
 )";
-            AddParameter(insert, "event_id", command.EventId);
-            AddParameter(insert, "idempotency_key", command.IdempotencyKey);
-            AddParameter(insert, "business_id", command.BusinessId);
-            AddParameter(insert, "process_instance_id", command.ProcessInstanceId);
-            AddParameter(insert, "callback_activity_id", command.CallbackActivityId);
-            AddParameter(insert, "callback_type", command.CallbackType);
-            AddParameter(insert, "payload", command.Payload, DbType.String);
-            AddParameter(insert, "status", CallbackEventStatus.Pending);
-            await insert.ExecuteNonQueryAsync(cancellationToken);
+                AddParameter(insert, "event_id", command.EventId);
+                AddParameter(insert, "idempotency_key", command.IdempotencyKey);
+                AddParameter(insert, "business_id", command.BusinessId);
+                AddParameter(insert, "process_instance_id", command.ProcessInstanceId);
+                AddParameter(insert, "callback_activity_id", command.CallbackActivityId);
+                AddParameter(insert, "callback_type", command.CallbackType);
+                AddParameter(insert, "payload", command.Payload, DbType.String);
+                AddParameter(insert, "status", CallbackEventStatus.Pending);
+                await insert.ExecuteNonQueryAsync(cancellationToken);
 
-            if (command.CompleteBusinessFlow)
-            {
-                await using var updateBusiness = connection.CreateCommand();
-                updateBusiness.Transaction = transaction;
-                Configure(updateBusiness);
-                updateBusiness.CommandText = $@"
+                if (command.CompleteBusinessFlow)
+                {
+                    await using var updateBusiness = connection.CreateCommand();
+                    updateBusiness.Transaction = transaction;
+                    Configure(updateBusiness);
+                    updateBusiness.CommandText = $@"
 UPDATE {_businessTable}
 SET CALLBACK_STATE = 'pending',
     FLOW_STATE = 'completed',
@@ -446,26 +455,31 @@ SET CALLBACK_STATE = 'pending',
     DATA_VERSION = DATA_VERSION + 1
 WHERE BUSINESS_ID = :business_id
   AND PROCESS_INSTANCE_ID = :process_instance_id";
-                AddParameter(
-                    updateBusiness,
-                    "business_id",
-                    command.BusinessId);
-                AddParameter(
-                    updateBusiness,
-                    "process_instance_id",
-                    command.ProcessInstanceId);
-                if (await updateBusiness.ExecuteNonQueryAsync(
-                        cancellationToken) != 1)
-                {
-                    throw new DBConcurrencyException(
-                        $"Callback business binding not found: {command.BusinessId}.");
+                    AddParameter(
+                        updateBusiness,
+                        "business_id",
+                        command.BusinessId);
+                    AddParameter(
+                        updateBusiness,
+                        "process_instance_id",
+                        command.ProcessInstanceId);
+                    if (await updateBusiness.ExecuteNonQueryAsync(
+                            cancellationToken) != 1)
+                    {
+                        throw new DBConcurrencyException(
+                            $"Callback business binding not found: {command.BusinessId}.");
+                    }
                 }
+                await transaction.CommitAsync(cancellationToken);
             }
-            await transaction.CommitAsync(cancellationToken);
+            catch
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                throw;
+            }
         }
         catch
         {
-            await transaction.RollbackAsync(cancellationToken);
             var existing = await GetCallbackByIdempotencyKeyAsync(
                 command.IdempotencyKey,
                 cancellationToken);
@@ -561,12 +575,12 @@ OFFSET {start} ROWS FETCH NEXT {size} ROWS ONLY";
 
         batchSize = Math.Clamp(batchSize, 1, 100);
         var candidates = new List<(string EventId, long RowVersion)>();
-        await using var connection = CreateConnection();
-        await connection.OpenAsync(cancellationToken);
-
-        await using var select = connection.CreateCommand();
-        Configure(select);
-        select.CommandText = $@"
+        await using (var connection = CreateConnection())
+        {
+            await connection.OpenAsync(cancellationToken);
+            await using var select = connection.CreateCommand();
+            Configure(select);
+            select.CommandText = $@"
 SELECT EVENT_ID, ROW_VERSION
 FROM {_callbackTable}
 WHERE
@@ -584,9 +598,8 @@ WHERE
 )
 ORDER BY CREATED_AT
 FETCH FIRST {batchSize} ROWS ONLY";
-        await using (var reader =
-                     await select.ExecuteReaderAsync(cancellationToken))
-        {
+            await using var reader =
+                await select.ExecuteReaderAsync(cancellationToken);
             while (await reader.ReadAsync(cancellationToken))
                 candidates.Add((reader.GetString(0), reader.GetInt64(1)));
         }
@@ -614,6 +627,106 @@ FETCH FIRST {batchSize} ROWS ONLY";
                 leased.Add(item);
         }
         return leased;
+    }
+
+    public async Task<bool> RenewCallbackLeaseAsync(
+        string eventId,
+        string workerId,
+        TimeSpan leaseDuration,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(eventId)
+            || string.IsNullOrWhiteSpace(workerId))
+            throw new ArgumentException("Callback lease identity is required.");
+
+        var leaseUntil = DateTime.Now.Add(leaseDuration);
+        await using var connection = CreateConnection();
+        await connection.OpenAsync(cancellationToken);
+        await using var transaction =
+            await connection.BeginTransactionAsync(cancellationToken);
+        try
+        {
+            await using var updateEvent = connection.CreateCommand();
+            updateEvent.Transaction = transaction;
+            Configure(updateEvent);
+            updateEvent.CommandText = $@"
+UPDATE {_callbackTable}
+SET LEASE_UNTIL = :lease_until,
+    UPDATED_AT = CURRENT_TIMESTAMP,
+    ROW_VERSION = ROW_VERSION + 1
+WHERE EVENT_ID = :event_id
+  AND STATUS = '{CallbackEventStatus.Processing}'
+  AND LEASE_OWNER = :lease_owner";
+            AddParameter(updateEvent, "lease_until", leaseUntil, DbType.DateTime);
+            AddParameter(updateEvent, "event_id", eventId);
+            AddParameter(updateEvent, "lease_owner", workerId);
+            if (await updateEvent.ExecuteNonQueryAsync(cancellationToken) != 1)
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                return false;
+            }
+
+            await using var updateLease = connection.CreateCommand();
+            updateLease.Transaction = transaction;
+            Configure(updateLease);
+            updateLease.CommandText = $@"
+UPDATE {_leaseTable}
+SET LEASE_UNTIL = :lease_until
+WHERE EVENT_ID = :event_id
+  AND LEASE_OWNER = :lease_owner";
+            AddParameter(updateLease, "lease_until", leaseUntil, DbType.DateTime);
+            AddParameter(updateLease, "event_id", eventId);
+            AddParameter(updateLease, "lease_owner", workerId);
+            if (await updateLease.ExecuteNonQueryAsync(cancellationToken) != 1)
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                return false;
+            }
+
+            await transaction.CommitAsync(cancellationToken);
+            return true;
+        }
+        catch
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            throw;
+        }
+    }
+
+    public async Task<CallbackQueueSnapshot> GetCallbackQueueSnapshotAsync(
+        CancellationToken cancellationToken = default)
+    {
+        await using var connection = CreateConnection();
+        await connection.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        Configure(command);
+        command.CommandText = $@"
+SELECT
+    SUM(CASE WHEN STATUS = 'pending' THEN 1 ELSE 0 END),
+    SUM(CASE WHEN STATUS = 'processing' THEN 1 ELSE 0 END),
+    SUM(CASE WHEN STATUS = 'retry_waiting' THEN 1 ELSE 0 END),
+    SUM(CASE WHEN STATUS = 'succeeded' THEN 1 ELSE 0 END),
+    SUM(CASE WHEN STATUS = 'dead_letter' THEN 1 ELSE 0 END),
+    MIN(CASE
+        WHEN STATUS IN ('pending', 'retry_waiting') THEN CREATED_AT
+        ELSE NULL
+    END)
+FROM {_callbackTable}";
+        await using var reader =
+            await command.ExecuteReaderAsync(cancellationToken);
+        if (!await reader.ReadAsync(cancellationToken))
+            return new CallbackQueueSnapshot();
+
+        return new CallbackQueueSnapshot
+        {
+            Pending = reader.IsDBNull(0) ? 0 : Convert.ToInt64(reader.GetValue(0)),
+            Processing = reader.IsDBNull(1) ? 0 : Convert.ToInt64(reader.GetValue(1)),
+            RetryWaiting = reader.IsDBNull(2) ? 0 : Convert.ToInt64(reader.GetValue(2)),
+            Succeeded = reader.IsDBNull(3) ? 0 : Convert.ToInt64(reader.GetValue(3)),
+            DeadLetter = reader.IsDBNull(4) ? 0 : Convert.ToInt64(reader.GetValue(4)),
+            OldestPendingCreatedAt =
+                reader.IsDBNull(5) ? null : reader.GetDateTime(5)
+        };
     }
 
     private async Task<bool> TryClaimCallbackAsync(
@@ -759,11 +872,13 @@ WHERE EVENT_ID = :event_id
         string eventId,
         CancellationToken cancellationToken = default)
     {
-        await using var connection = CreateConnection();
-        await connection.OpenAsync(cancellationToken);
-        await using var command = connection.CreateCommand();
-        Configure(command);
-        command.CommandText = $@"
+        bool retried;
+        await using (var connection = CreateConnection())
+        {
+            await connection.OpenAsync(cancellationToken);
+            await using var command = connection.CreateCommand();
+            Configure(command);
+            command.CommandText = $@"
 UPDATE {_callbackTable}
 SET STATUS = '{CallbackEventStatus.Pending}',
     ATTEMPT_COUNT = 0,
@@ -775,8 +890,9 @@ SET STATUS = '{CallbackEventStatus.Pending}',
     ROW_VERSION = ROW_VERSION + 1
 WHERE EVENT_ID = :event_id
   AND STATUS = '{CallbackEventStatus.DeadLetter}'";
-        AddParameter(command, "event_id", eventId);
-        var retried = await command.ExecuteNonQueryAsync(cancellationToken) == 1;
+            AddParameter(command, "event_id", eventId);
+            retried = await command.ExecuteNonQueryAsync(cancellationToken) == 1;
+        }
         if (retried)
             await DeleteLeaseAsync(eventId, null, cancellationToken);
         return retried;
@@ -910,7 +1026,16 @@ WHERE EVENT_ID = :event_id
     {
         if (string.IsNullOrWhiteSpace(_options.ConnectionString))
             throw new InvalidOperationException("Dm8 connection string is required.");
-        return new DmConnection(_options.ConnectionString);
+        var connectionString = string.Concat(
+            _options.ConnectionString.Trim().TrimEnd(';'),
+            ";connPooling=true;connPoolSize=",
+            Math.Clamp(_options.ConnectionPoolSize, 10, 2000),
+            ";connPoolTimeout=",
+            Math.Clamp(
+                _options.ConnectionPoolTimeoutMilliseconds,
+                1000,
+                300000));
+        return new DmConnection(connectionString);
     }
 
     private async Task DeleteLeaseAsync(

@@ -8,4 +8,6 @@ public sealed class Dm8Options
     public string ConnectionString { get; set; } = string.Empty;
     public string Schema { get; set; } = "FLOW_RELIABILITY";
     public int CommandTimeoutSeconds { get; set; } = 30;
+    public int ConnectionPoolSize { get; set; } = 128;
+    public int ConnectionPoolTimeoutMilliseconds { get; set; } = 60000;
 }

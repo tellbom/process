@@ -42,6 +42,21 @@ public sealed class WorkflowCallbackEvent
     public long RowVersion { get; init; }
 }
 
+public sealed class CallbackQueueSnapshot
+{
+    public long Pending { get; init; }
+    public long Processing { get; init; }
+    public long RetryWaiting { get; init; }
+    public long Succeeded { get; init; }
+    public long DeadLetter { get; init; }
+    public DateTime? OldestPendingCreatedAt { get; init; }
+
+    public double OldestPendingAgeSeconds(DateTime now)
+        => OldestPendingCreatedAt.HasValue
+            ? Math.Max(0, (now - OldestPendingCreatedAt.Value).TotalSeconds)
+            : 0;
+}
+
 public sealed class EnqueueCallbackCommand
 {
     public string EventId { get; init; } = string.Empty;
@@ -167,6 +182,10 @@ public interface IWorkflowReliabilityStore
         PrepareTaskActionCommand command,
         CancellationToken cancellationToken = default);
 
+    Task<WorkflowTaskAction?> GetTaskActionByIdempotencyKeyAsync(
+        string idempotencyKey,
+        CancellationToken cancellationToken = default);
+
     Task MarkTaskActionResultAsync(
         string actionId,
         string resultState,
@@ -199,6 +218,15 @@ public interface IWorkflowReliabilityStore
         string workerId,
         int batchSize,
         TimeSpan leaseDuration,
+        CancellationToken cancellationToken = default);
+
+    Task<bool> RenewCallbackLeaseAsync(
+        string eventId,
+        string workerId,
+        TimeSpan leaseDuration,
+        CancellationToken cancellationToken = default);
+
+    Task<CallbackQueueSnapshot> GetCallbackQueueSnapshotAsync(
         CancellationToken cancellationToken = default);
 
     Task MarkCallbackSucceededAsync(

@@ -7,11 +7,14 @@
 - 并发查询发起人“我的待办”。
 
 A 组回调立即返回；B 组默认延迟 15 秒。`TestController` 的
-`GET /api/test/callback-metrics` 可查看当前/峰值慢回调并发。
+`GET /api/test/callback-metrics` 可查看测试控制器当前/峰值慢回调并发，
+`GET /api/admin/callback-events/metrics` 可查看 DM8 回调积压、最老事件
+年龄、每分钟成功/失败、租约丢失次数及各下游 p95。
 
-当前门户 BPMN 的末尾 HTTP ServiceTask 是同步调用。测试环境 Flowable
-约 5 秒即发生 HTTP 超时，所以 B 组设置为 15 秒时，预期会暴露末节点
-完成失败及其对其他接口的连带影响。
+当前门户 BPMN 的末尾 HTTP ServiceTask 只负责把流程结束事实投递到流程
+中心；流程中心先把业务回调事件持久化到 DM8，然后由固定并发 Worker 调用
+下游。B 组设置为 15 秒用于验证慢业务后端只形成可观测积压，不延长用户的
+最后节点完成请求。
 
 推荐先逐级执行，再扩大到目标总量：
 
@@ -30,17 +33,20 @@ docker run --rm --network host \
   grafana/k6 run /scripts/portal-approval-load.js
 ```
 
-目标总量配置为 5 万启动、1 万待办查询、1 万末节点完成：
+本轮极限档配置为 1 万启动、2000 次待办查询、2000 条完整流程：
 
 ```bash
--e START_ONLY_ITERATIONS=40000
--e LIFECYCLE_ITERATIONS=10000
--e QUERY_ITERATIONS=10000
+-e START_ONLY_ITERATIONS=8000
+-e LIFECYCLE_ITERATIONS=2000
+-e QUERY_ITERATIONS=2000
 ```
 
-这里的“5 万启动”表示最终创建 5 万个流程实例；并发度由各 `*_VUS`
-参数独立控制。直接设置 5 万 VU 会首先测试压测机的文件描述符和内存，
+这里的“1 万启动”表示最终创建 1 万个流程实例；并发度由各 `*_VUS`
+参数独立控制。直接设置 1 万 VU 会首先测试压测机的文件描述符和内存，
 不能代表流程中心容量。
+
+脚本为每次启动显式传入稳定且唯一的 `requestId=businessId`，阈值要求
+`checks=100%` 且 `http_req_failed=0%`。
 
 脚本会单独输出启动、发起节点完成、末节点 A/B 完成和待办查询耗时。
 使用同一个真实 JWT；`employeeId=196045` 的待办查询是“单个大待办用户”

@@ -13,6 +13,8 @@ using FlowableWrapper.Infrastructure.Dm8;
 using FlowableWrapper.Infrastructure.Flowable;
 using FlowableWrapper.Infrastructure.Security;
 using FlowableWrapper.Infrastructure.Slots;
+using FlowableWrapper.Infrastructure.Readiness;
+using FlowableWrapper.Infrastructure.Reliability;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
@@ -23,6 +25,20 @@ using process.Infrastructure.DistributedLock;
 using StackExchange.Redis;
 
 var builder = WebApplication.CreateBuilder(args);
+
+var runtimeTuning = builder.Configuration
+    .GetSection(RuntimeTuningOptions.SectionName)
+    .Get<RuntimeTuningOptions>() ?? new RuntimeTuningOptions();
+ThreadPool.GetMinThreads(
+    out var currentMinWorkerThreads,
+    out var currentMinIoCompletionThreads);
+if (!ThreadPool.SetMinThreads(
+        Math.Max(currentMinWorkerThreads, runtimeTuning.MinWorkerThreads),
+        Math.Max(currentMinIoCompletionThreads, runtimeTuning.MinIoCompletionThreads)))
+{
+    throw new InvalidOperationException(
+        "Failed to configure the CLR thread-pool minimum threads.");
+}
 
 // ═══════════════════════════════════════════════════════════════
 // 配置绑定（IOptions<T> 模式）
@@ -48,6 +64,12 @@ builder.Services.Configure<Dm8Options>(
     builder.Configuration.GetSection(Dm8Options.SectionName));
 builder.Services.Configure<CallbackWorkerOptions>(
     builder.Configuration.GetSection(CallbackWorkerOptions.SectionName));
+builder.Services.Configure<ReadinessOptions>(
+    builder.Configuration.GetSection(ReadinessOptions.SectionName));
+builder.Services.Configure<RuntimeTuningOptions>(
+    builder.Configuration.GetSection(RuntimeTuningOptions.SectionName));
+builder.Services.Configure<OperationConcurrencyOptions>(
+    builder.Configuration.GetSection(OperationConcurrencyOptions.SectionName));
 
 var jwtSection = builder.Configuration.GetSection(JwtOptions.SectionName);
 var jwtMode = jwtSection["Mode"] ?? "Oidc";
@@ -88,8 +110,18 @@ builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
     var configuration = ConfigurationOptions.Parse(options.ConnectionString);
     configuration.AbortOnConnectFail = false;
     configuration.ConnectRetry = 1;
-    configuration.ConnectTimeout = Math.Min(configuration.ConnectTimeout, 1000);
-    configuration.SyncTimeout = Math.Min(configuration.SyncTimeout, 1000);
+    configuration.ConnectTimeout = Math.Clamp(
+        options.ConnectTimeoutMilliseconds,
+        1000,
+        30000);
+    configuration.SyncTimeout = Math.Clamp(
+        options.SyncTimeoutMilliseconds,
+        1000,
+        30000);
+    configuration.AsyncTimeout = Math.Clamp(
+        options.AsyncTimeoutMilliseconds,
+        1000,
+        30000);
     return ConnectionMultiplexer.Connect(configuration);
 });
 
@@ -103,10 +135,44 @@ builder.Services.AddScoped<ICurrentUser, HttpContextCurrentUser>();
 // 基础设施：Flowable HTTP 客户端
 // ═══════════════════════════════════════════════════════════════
 // 使用 IHttpClientFactory 管理 HttpClient 生命周期
-builder.Services.AddHttpClient<FlowableHttpClient>();
+builder.Services.AddHttpClient<FlowableHttpClient>((sp, client) =>
+{
+    var options = sp.GetRequiredService<IOptions<FlowableOptions>>().Value;
+    client.Timeout = TimeSpan.FromSeconds(
+        Math.Clamp(options.TimeoutSeconds, 1, 300));
+}).ConfigurePrimaryHttpMessageHandler(sp =>
+{
+    var options = sp.GetRequiredService<IOptions<FlowableOptions>>().Value;
+    return new SocketsHttpHandler
+    {
+        MaxConnectionsPerServer = Math.Clamp(
+            options.MaxConnectionsPerServer,
+            1,
+            1000),
+        PooledConnectionLifetime = TimeSpan.FromMinutes(10)
+    };
+});
+
+builder.Services.AddHttpClient<IFlowableRuntimeService, FlowableRuntimeServiceImpl>(
+    (sp, client) =>
+    {
+        var options = sp.GetRequiredService<IOptions<FlowableOptions>>().Value;
+        client.Timeout = TimeSpan.FromSeconds(
+            Math.Clamp(options.TimeoutSeconds, 1, 300));
+    }).ConfigurePrimaryHttpMessageHandler(sp =>
+    {
+        var options = sp.GetRequiredService<IOptions<FlowableOptions>>().Value;
+        return new SocketsHttpHandler
+        {
+            MaxConnectionsPerServer = Math.Clamp(
+                options.MaxConnectionsPerServer,
+                1,
+                1000),
+            PooledConnectionLifetime = TimeSpan.FromMinutes(10)
+        };
+    });
 
 // Flowable 各 Service 实现（Scoped，跟随请求生命周期）
-builder.Services.AddScoped<IFlowableRuntimeService, FlowableRuntimeServiceImpl>();
 builder.Services.AddScoped<IFlowableTaskService, FlowableTaskServiceImpl>();
 builder.Services.AddScoped<IFlowableHistoryService, FlowableHistoryServiceImpl>();
 builder.Services.AddScoped<IFlowableRepositoryService, FlowableRepositoryServiceImpl>();
@@ -116,6 +182,7 @@ builder.Services.AddScoped<IFlowableRepositoryService, FlowableRepositoryService
 // ═══════════════════════════════════════════════════════════════
 builder.Services.AddSingleton<IElasticSearchService, ElasticSearchServiceImpl>();
 builder.Services.AddScoped<IWorkflowReliabilityStore, Dm8WorkflowReliabilityStore>();
+builder.Services.AddSingleton<OperationConcurrencyGate>();
 
 // ═══════════════════════════════════════════════════════════════
 // 应用服务（Phase 3-9 逐步注册，此处预留占位注释）
@@ -163,7 +230,10 @@ builder.Services.AddHttpClient("BusinessCallbackWorker", client =>
 {
     client.Timeout = Timeout.InfiniteTimeSpan;
 });
+builder.Services.AddSingleton<CallbackWorkerTelemetry>();
 builder.Services.AddHostedService<CallbackInboxWorker>();
+builder.Services.AddSingleton<ApplicationReadinessState>();
+builder.Services.AddHostedService<ReadinessWarmupService>();
 
 builder.Services.AddHttpClient("ProcessMessageCenter", (sp, client) =>
 {
@@ -227,12 +297,60 @@ if (app.Environment.IsDevelopment())
 app.UseCors();
 app.UseRouting();
 
+app.Use(async (context, next) =>
+{
+    if (context.Request.Path.StartsWithSegments("/health"))
+    {
+        await next();
+        return;
+    }
+
+    var readiness = context.RequestServices
+        .GetRequiredService<ApplicationReadinessState>()
+        .Snapshot();
+    if (!readiness.Ready)
+    {
+        context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+        await context.Response.WriteAsJsonAsync(new
+        {
+            code = "APPLICATION_NOT_READY",
+            message = "流程中心依赖尚未完成初始化",
+            readiness.Dependencies
+        });
+        return;
+    }
+
+    await next();
+});
+
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
 
-await app.Services.GetRequiredService<IElasticSearchService>()
-    .InitializeIndexesAsync();
+app.MapGet("/health/live", () => Results.Ok(new
+{
+    status = "healthy"
+})).AllowAnonymous();
+
+app.MapGet("/health/ready", (
+    ApplicationReadinessState readiness) =>
+{
+    var snapshot = readiness.Snapshot();
+    return snapshot.Ready
+        ? Results.Ok(new
+        {
+            status = "ready",
+            snapshot.ReadySince,
+            snapshot.Dependencies
+        })
+        : Results.Json(
+            new
+            {
+                status = "not_ready",
+                snapshot.Dependencies
+            },
+            statusCode: StatusCodes.Status503ServiceUnavailable);
+}).AllowAnonymous();
 
 app.Run();

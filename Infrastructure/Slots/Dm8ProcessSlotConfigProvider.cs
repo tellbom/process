@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Text.Json;
 using FlowableWrapper.Application.Slots;
 using FlowableWrapper.Configuration;
@@ -14,6 +15,9 @@ namespace FlowableWrapper.Infrastructure.Slots;
 /// </summary>
 public sealed class Dm8ProcessSlotConfigProvider : IProcessSlotConfigProvider
 {
+    private static readonly ConcurrentDictionary<string, Lazy<Task<Dictionary<string, NodeSemanticInfo>>>>
+        VersionedConfigCache = new(StringComparer.OrdinalIgnoreCase);
+
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNameCaseInsensitive = true
@@ -54,15 +58,26 @@ public sealed class Dm8ProcessSlotConfigProvider : IProcessSlotConfigProvider
     {
         if (_options.Enabled && processDefinitionVersion.HasValue)
         {
-            var config = await _store.GetDefinitionConfigAsync(
-                processDefinitionKey, processDefinitionVersion.Value);
-            if (config == null)
-                throw new InvalidOperationException(
-                    $"Versioned workflow config not found: {processDefinitionKey} v{processDefinitionVersion}.");
-            return JsonSerializer.Deserialize<Dictionary<string, NodeSemanticInfo>>(
-                       config.ConfigJson, JsonOptions)
-                   ?? new Dictionary<string, NodeSemanticInfo>(
-                       StringComparer.OrdinalIgnoreCase);
+            var cacheKey = $"{processDefinitionKey}:{processDefinitionVersion.Value}";
+            var lazyConfig = VersionedConfigCache.GetOrAdd(
+                cacheKey,
+                _ => new Lazy<Task<Dictionary<string, NodeSemanticInfo>>>(
+                    () => LoadVersionedConfigAsync(
+                        processDefinitionKey,
+                        processDefinitionVersion.Value),
+                    LazyThreadSafetyMode.ExecutionAndPublication));
+            try
+            {
+                return await lazyConfig.Value;
+            }
+            catch
+            {
+                VersionedConfigCache.TryRemove(
+                    new KeyValuePair<string, Lazy<Task<Dictionary<string, NodeSemanticInfo>>>>(
+                        cacheKey,
+                        lazyConfig));
+                throw;
+            }
         }
 
         if (_options.Enabled)
@@ -72,5 +87,23 @@ public sealed class Dm8ProcessSlotConfigProvider : IProcessSlotConfigProvider
                 processDefinitionKey);
         }
         return await _esService.GetNodeSemanticMapAsync(processDefinitionKey);
+    }
+
+    private async Task<Dictionary<string, NodeSemanticInfo>> LoadVersionedConfigAsync(
+        string processDefinitionKey,
+        int processDefinitionVersion)
+    {
+        var config = await _store.GetDefinitionConfigAsync(
+            processDefinitionKey,
+            processDefinitionVersion);
+        if (config == null)
+            throw new InvalidOperationException(
+                $"Versioned workflow config not found: {processDefinitionKey} v{processDefinitionVersion}.");
+
+        return JsonSerializer.Deserialize<Dictionary<string, NodeSemanticInfo>>(
+                   config.ConfigJson,
+                   JsonOptions)
+               ?? new Dictionary<string, NodeSemanticInfo>(
+                   StringComparer.OrdinalIgnoreCase);
     }
 }

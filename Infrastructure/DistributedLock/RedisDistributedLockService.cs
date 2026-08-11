@@ -33,14 +33,14 @@
 
             if (acquired)
             {
-                _logger.LogInformation(
+                _logger.LogDebug(
                     "获取分布式锁成功: Key={Key}, Value={Value}",
                     key, value);
             }
             else
             {
-                _logger.LogWarning(
-                    "获取分布式锁失败: Key={Key}, Value={Value}",
+                _logger.LogDebug(
+                    "分布式锁当前被占用: Key={Key}, Value={Value}",
                     key, value);
             }
 
@@ -68,13 +68,13 @@ end";
 
             if (released)
             {
-                _logger.LogInformation(
+                _logger.LogDebug(
                     "释放分布式锁成功: Key={Key}, Value={Value}",
                     key, value);
             }
             else
             {
-                _logger.LogWarning(
+                _logger.LogDebug(
                     "释放分布式锁失败或锁已失效: Key={Key}, Value={Value}",
                     key, value);
             }

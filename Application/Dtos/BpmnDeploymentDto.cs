@@ -19,6 +19,18 @@ namespace FlowableWrapper.Application.Dtos
         /// 格式见 NodeSlotConfig
         /// </summary>
         public string SlotConfigJson { get; set; }
+
+        /// <summary>
+        /// Stable caller request identifier. Retries must reuse the same value.
+        /// When omitted, the service derives one from process key and content.
+        /// </summary>
+        public string DeploymentRequestId { get; set; }
+
+        /// <summary>
+        /// Caller-owned immutable business version. The same version cannot be
+        /// reused with different BPMN or slot configuration content.
+        /// </summary>
+        public string BusinessVersion { get; set; }
     }
 
     /// <summary>
@@ -94,6 +106,11 @@ namespace FlowableWrapper.Application.Dtos
     /// </summary>
     public class BpmnDeploymentResponse
     {
+        public string DeploymentRequestId { get; set; }
+        public string BusinessVersion { get; set; }
+        public string BpmnSha256 { get; set; }
+        public string DeploymentStatus { get; set; }
+        public bool Reused { get; set; }
         public string DeploymentId { get; set; }
         public string ProcessDefinitionKey { get; set; }
         public string ProcessDefinitionName { get; set; }
@@ -101,6 +118,20 @@ namespace FlowableWrapper.Application.Dtos
         public DateTime DeploymentTime { get; set; }
         public int NodeSemanticCount { get; set; }
         public List<NodeSemanticSummary> Nodes { get; set; } = new();
+    }
+
+    public class BpmnDeploymentStatusResponse
+    {
+        public string ProcessDefinitionKey { get; set; }
+        public string BusinessVersion { get; set; }
+        public string DeploymentRequestId { get; set; }
+        public string BpmnSha256 { get; set; }
+        public string Status { get; set; }
+        public string CompletedStep { get; set; }
+        public string LastError { get; set; }
+        public string ProcessDefinitionId { get; set; }
+        public int? FlowableVersion { get; set; }
+        public bool CanStart { get; set; }
     }
     /// <summary>
     /// 部署响应中的节点语义摘要（便于调用方确认部署结果）

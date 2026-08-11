@@ -192,7 +192,8 @@ namespace FlowableWrapper.Application.Services
             await _callbackService.SendNodeCompletedCallbackSafeAsync(
                 metadata,
                 myTask.TaskDefinitionKey,
-                processVariables);
+                processVariables,
+                myTask.Id);
 
             await _notificationService.SendNextStepNotificationSafeAsync(
                 metadata,
@@ -703,7 +704,8 @@ namespace FlowableWrapper.Application.Services
                 metadata,
                 currentTask.TaskDefinitionKey,
                 targetNode.TaskDefinitionKey,
-                rejectAuditSnapshot);
+                rejectAuditSnapshot,
+                currentTask.Id);
 
             await _notificationService.SendRejectNotificationSafeAsync(
                 metadata,

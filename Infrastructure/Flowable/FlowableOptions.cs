@@ -26,6 +26,7 @@ namespace FlowableWrapper.Infrastructure.Flowable
         /// HTTP 请求超时秒数，默认 30
         /// </summary>
         public int TimeoutSeconds { get; set; } = 30;
+        public int MaxConnectionsPerServer { get; set; } = 64;
 
         /// <summary>
         /// 框架回调 URL（注入到流程变量 frameworkCallbackUrl）

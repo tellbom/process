@@ -2,6 +2,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using FlowableWrapper.Domain.Reliability;
+using FlowableWrapper.Infrastructure.Dm8;
 using Microsoft.AspNetCore.Mvc;
 
 namespace FlowableWrapper.Api.Controllers;
@@ -11,9 +12,39 @@ namespace FlowableWrapper.Api.Controllers;
 public sealed class CallbackAdminController : ControllerBase
 {
     private readonly IWorkflowReliabilityStore _store;
+    private readonly CallbackWorkerTelemetry _telemetry;
 
-    public CallbackAdminController(IWorkflowReliabilityStore store)
-        => _store = store;
+    public CallbackAdminController(
+        IWorkflowReliabilityStore store,
+        CallbackWorkerTelemetry telemetry)
+    {
+        _store = store;
+        _telemetry = telemetry;
+    }
+
+    [HttpGet("metrics")]
+    public async Task<IActionResult> Metrics(
+        CancellationToken cancellationToken)
+    {
+        var queue = await _store.GetCallbackQueueSnapshotAsync(
+            cancellationToken);
+        var worker = _telemetry.Snapshot();
+        return Ok(new
+        {
+            queue.Pending,
+            queue.Processing,
+            queue.RetryWaiting,
+            queue.Succeeded,
+            queue.DeadLetter,
+            queue.OldestPendingCreatedAt,
+            oldestPendingAgeSeconds =
+                queue.OldestPendingAgeSeconds(DateTime.Now),
+            worker.SuccessPerMinute,
+            worker.FailurePerMinute,
+            worker.LeaseLosses,
+            worker.Downstreams
+        });
+    }
 
     [HttpGet("{eventId}")]
     public async Task<ActionResult<CallbackEventAdminDto>> Get(

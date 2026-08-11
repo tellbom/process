@@ -29,9 +29,15 @@ namespace FlowableWrapper.HttpApi.Controllers
         [Consumes("multipart/form-data")]
         public async Task<BpmnDeploymentResponse> Deploy(
             [FromForm] IFormFile file,
-            [FromForm] string slotConfigJson)
+            [FromForm] string slotConfigJson,
+            [FromForm] string deploymentRequestId = null,
+            [FromForm] string businessVersion = null)
         {
-            return await _bpmnService.DeployAsync(file, slotConfigJson);
+            return await _bpmnService.DeployAsync(
+                file,
+                slotConfigJson,
+                deploymentRequestId,
+                businessVersion);
         }
 
         /// <summary>
@@ -57,5 +63,13 @@ namespace FlowableWrapper.HttpApi.Controllers
             await _bpmnService.DeleteDeploymentAsync(deploymentId, cascade);
             return Ok(new { message = "部署删除成功" });
         }
+
+        [HttpGet("deployments/status")]
+        public Task<BpmnDeploymentStatusResponse> GetDeploymentStatus(
+            [FromQuery] string processDefinitionKey,
+            [FromQuery] string businessVersion)
+            => _bpmnService.GetDeploymentStatusAsync(
+                processDefinitionKey,
+                businessVersion);
     }
 }

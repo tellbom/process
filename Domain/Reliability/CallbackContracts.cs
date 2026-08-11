@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+
 namespace FlowableWrapper.Domain.Reliability;
 
 public static class CallbackEventStatus
@@ -12,6 +14,23 @@ public static class CallbackEventStatus
 
 public static class CallbackIdempotencyKey
 {
+    public static string ForNode(
+        string processInstanceId,
+        string callbackActivityId,
+        string callbackType)
+    {
+        EnsureNotBlank(processInstanceId, nameof(processInstanceId));
+        EnsureNotBlank(callbackActivityId, nameof(callbackActivityId));
+        EnsureNotBlank(callbackType, nameof(callbackType));
+
+        return string.Join(
+            ':',
+            "node",
+            Normalize(processInstanceId),
+            Normalize(callbackActivityId),
+            Normalize(callbackType));
+    }
+
     public static string ForProcessEnd(
         string processInstanceId,
         string callbackActivityId,
@@ -45,12 +64,9 @@ public sealed record CallbackRetryDecision(
 
 public static class CallbackRetryPolicy
 {
-    private static readonly TimeSpan[] Backoff =
+    private static readonly int[] BackoffMultipliers =
     {
-        TimeSpan.FromSeconds(5),
-        TimeSpan.FromSeconds(15),
-        TimeSpan.FromSeconds(30),
-        TimeSpan.FromSeconds(60)
+        1, 3, 6, 12, 24, 60, 120, 180
     };
 
     public static bool IsRetryableStatus(int statusCode)
@@ -62,10 +78,17 @@ public static class CallbackRetryPolicy
         int attemptCount,
         int maxAttempts,
         int? httpStatus,
-        DateTime now)
+        DateTime now,
+        int retryBaseSeconds,
+        int retryMaxSeconds,
+        int jitterPercent)
     {
         if (maxAttempts < 1)
             throw new ArgumentOutOfRangeException(nameof(maxAttempts));
+        if (retryBaseSeconds < 1)
+            throw new ArgumentOutOfRangeException(nameof(retryBaseSeconds));
+        if (retryMaxSeconds < retryBaseSeconds)
+            throw new ArgumentOutOfRangeException(nameof(retryMaxSeconds));
 
         if (attemptCount >= maxAttempts
             || (httpStatus.HasValue
@@ -76,9 +99,25 @@ public static class CallbackRetryPolicy
                 null);
         }
 
-        var delayIndex = Math.Clamp(attemptCount - 1, 0, Backoff.Length - 1);
+        var delayIndex = Math.Clamp(
+            attemptCount - 1,
+            0,
+            BackoffMultipliers.Length - 1);
+        var delaySeconds = Math.Min(
+            retryMaxSeconds,
+            retryBaseSeconds * BackoffMultipliers[delayIndex]);
+        var boundedJitter = Math.Clamp(jitterPercent, 0, 50);
+        if (boundedJitter > 0)
+        {
+            var range = delaySeconds * boundedJitter / 100.0;
+            var sample = RandomNumberGenerator.GetInt32(0, 10001) / 10000.0;
+            delaySeconds = Math.Max(
+                1,
+                (int)Math.Round(delaySeconds - range + sample * range * 2));
+        }
+
         return new CallbackRetryDecision(
             CallbackEventStatus.RetryWaiting,
-            now.Add(Backoff[delayIndex]));
+            now.AddSeconds(delaySeconds));
     }
 }

@@ -2,6 +2,7 @@ using System.Threading.Tasks;
 using FlowableWrapper.Api.Filters;
 using FlowableWrapper.Application.Dtos;
 using FlowableWrapper.Application.Services;
+using FlowableWrapper.Infrastructure.Reliability;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 
@@ -16,12 +17,15 @@ namespace FlowableWrapper.Api.Controllers
     {
         private readonly TaskExecutionAppService _taskService;
         private readonly ILogger<TaskController> _logger;
+        private readonly OperationConcurrencyGate _concurrencyGate;
 
         public TaskController(
             TaskExecutionAppService taskService,
+            OperationConcurrencyGate concurrencyGate,
             ILogger<TaskController> logger)
         {
             _taskService = taskService;
+            _concurrencyGate = concurrencyGate;
             _logger = logger;
         }
 
@@ -37,6 +41,8 @@ namespace FlowableWrapper.Api.Controllers
         public async Task<ActionResult<ApiResult<CompleteTaskResponse>>> CompleteTask(
             [FromBody] CompleteTaskRequest request)
         {
+            using var lease = await _concurrencyGate.EnterTaskCompleteAsync(
+                HttpContext.RequestAborted);
             var result = await _taskService.CompleteTaskAsync(request);
             return Ok(ApiResult<CompleteTaskResponse>.Ok(result));
         }
@@ -51,6 +57,8 @@ namespace FlowableWrapper.Api.Controllers
         public async Task<ActionResult<ApiResult<PendingTaskPageResult>>> GetPendingTasks(
             [FromQuery] GetPendingTasksRequest request)
         {
+            using var lease = await _concurrencyGate.EnterPendingQueryAsync(
+                HttpContext.RequestAborted);
             var result = await _taskService.GetPendingTasksAsync(request);
             return Ok(ApiResult<PendingTaskPageResult>.Ok(result));
         }

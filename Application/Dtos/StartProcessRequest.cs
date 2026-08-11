@@ -17,6 +17,12 @@ namespace FlowableWrapper.Application.Dtos
         public string BusinessId { get; set; }
 
         /// <summary>
+        /// Stable caller request identifier. Network retries must reuse it.
+        /// When omitted, businessId is used as the request identity.
+        /// </summary>
+        public string RequestId { get; set; }
+
+        /// <summary>
         /// 首节点选人（基于 Slot 契约）
         /// 传空数组时通过 businessVariables 直接传 assignee 变量名也可
         /// 推荐人通过 AssigneeContract 传入（roleKey 维度），不通过此字段。

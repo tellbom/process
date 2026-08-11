@@ -23,6 +23,27 @@ public class CallbackContractTests
             first);
     }
 
+    [Fact]
+    public void Node_idempotency_key_is_stable_and_separate_from_process_end()
+    {
+        var node = CallbackIdempotencyKey.ForNode(
+            "process-42",
+            "task-17",
+            "NODE_COMPLETED");
+        var duplicate = CallbackIdempotencyKey.ForNode(
+            "PROCESS-42",
+            "TASK-17",
+            "node_completed");
+        var processEnd = CallbackIdempotencyKey.ForProcessEnd(
+            "process-42",
+            "task-17",
+            "node_completed");
+
+        Assert.Equal("node:process-42:task-17:node_completed", node);
+        Assert.Equal(node, duplicate);
+        Assert.NotEqual(processEnd, node);
+    }
+
     [Theory]
     [InlineData(429, true)]
     [InlineData(500, true)]
@@ -45,9 +66,39 @@ public class CallbackContractTests
             attemptCount: 5,
             maxAttempts: 5,
             httpStatus: 503,
-            now: new DateTime(2026, 7, 29, 8, 0, 0, DateTimeKind.Utc));
+            now: new DateTime(2026, 7, 29, 8, 0, 0, DateTimeKind.Utc),
+            retryBaseSeconds: 5,
+            retryMaxSeconds: 900,
+            jitterPercent: 0);
 
         Assert.Equal(CallbackEventStatus.DeadLetter, decision.Status);
         Assert.Null(decision.NextAttemptAt);
+    }
+
+    [Theory]
+    [InlineData(1, 5)]
+    [InlineData(2, 15)]
+    [InlineData(3, 30)]
+    [InlineData(4, 60)]
+    [InlineData(5, 120)]
+    [InlineData(6, 300)]
+    [InlineData(7, 600)]
+    [InlineData(8, 900)]
+    public void Retry_policy_uses_the_production_backoff_sequence(
+        int attemptCount,
+        int expectedSeconds)
+    {
+        var now = new DateTime(2026, 7, 29, 8, 0, 0, DateTimeKind.Utc);
+        var decision = CallbackRetryPolicy.Decide(
+            attemptCount,
+            maxAttempts: 9,
+            httpStatus: 503,
+            now,
+            retryBaseSeconds: 5,
+            retryMaxSeconds: 900,
+            jitterPercent: 0);
+
+        Assert.Equal(CallbackEventStatus.RetryWaiting, decision.Status);
+        Assert.Equal(now.AddSeconds(expectedSeconds), decision.NextAttemptAt);
     }
 }

@@ -64,7 +64,8 @@ export const options = {
       : {}),
   },
   thresholds: {
-    checks: ['rate>0.95'],
+    checks: ['rate==1'],
+    http_req_failed: ['rate==0'],
   },
 };
 
@@ -94,6 +95,7 @@ function startProcess(id, group) {
   const payload = {
     businessType: 'portal_content_approval',
     businessId: id.businessId,
+    requestId: id.businessId,
     initialSlotSelections: [
       { slotKey: 'portal_leader', users: [id.leaderId] },
     ],

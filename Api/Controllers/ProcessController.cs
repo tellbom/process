@@ -2,6 +2,7 @@ using System.Threading.Tasks;
 using FlowableWrapper.Api.Filters;
 using FlowableWrapper.Application.Dtos;
 using FlowableWrapper.Application.Services;
+using FlowableWrapper.Infrastructure.Reliability;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 
@@ -16,12 +17,15 @@ namespace FlowableWrapper.Api.Controllers
     {
         private readonly ProcessLifecycleAppService _lifecycleService;
         private readonly ILogger<ProcessController> _logger;
+        private readonly OperationConcurrencyGate _concurrencyGate;
 
         public ProcessController(
             ProcessLifecycleAppService lifecycleService,
+            OperationConcurrencyGate concurrencyGate,
             ILogger<ProcessController> logger)
         {
             _lifecycleService = lifecycleService;
+            _concurrencyGate   = concurrencyGate;
             _logger           = logger;
         }
 
@@ -44,6 +48,8 @@ namespace FlowableWrapper.Api.Controllers
         public async Task<ActionResult<ApiResult<StartProcessResponse>>> StartProcess(
             [FromBody] StartProcessRequest request)
         {
+            using var lease = await _concurrencyGate.EnterProcessStartAsync(
+                HttpContext.RequestAborted);
             var result = await _lifecycleService.StartProcessAsync(request);
             return Ok(ApiResult<StartProcessResponse>.Ok(result));
         }

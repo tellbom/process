@@ -231,6 +231,60 @@ public class Dm8WorkflowReliabilityStoreTests
     }
 
     [Dm8Fact]
+    public async Task Renewed_lease_prevents_takeover_and_old_owner_cannot_renew_new_lease()
+    {
+        await DeleteLeasableTestCallbacksAsync();
+        var store = CreateStore();
+        var suffix = Guid.NewGuid().ToString("N");
+        var inserted = await store.EnqueueCallbackAsync(new EnqueueCallbackCommand
+        {
+            EventId = Guid.NewGuid().ToString("N"),
+            IdempotencyKey = $"renew:{suffix}",
+            BusinessId = $"business:{suffix}",
+            ProcessInstanceId = $"process:{suffix}",
+            CallbackActivityId = "slow-callback",
+            CallbackType = "process_completed",
+            Payload = "{}"
+        });
+        var oldOwner = $"old-worker:{suffix}";
+        var newOwner = $"new-worker:{suffix}";
+        var leased = await store.LeaseCallbacksAsync(
+            oldOwner,
+            100,
+            TimeSpan.FromMilliseconds(300));
+        Assert.Contains(leased, x => x.EventId == inserted.EventId);
+
+        await Task.Delay(150);
+        Assert.True(await store.RenewCallbackLeaseAsync(
+            inserted.EventId,
+            oldOwner,
+            TimeSpan.FromMilliseconds(500)));
+        await Task.Delay(250);
+        var prematureTakeover = await store.LeaseCallbacksAsync(
+            newOwner,
+            100,
+            TimeSpan.FromMinutes(1));
+        Assert.DoesNotContain(
+            prematureTakeover,
+            x => x.EventId == inserted.EventId);
+
+        await Task.Delay(350);
+        var takeover = await store.LeaseCallbacksAsync(
+            newOwner,
+            100,
+            TimeSpan.FromMinutes(1));
+        Assert.Contains(takeover, x => x.EventId == inserted.EventId);
+        Assert.False(await store.RenewCallbackLeaseAsync(
+            inserted.EventId,
+            oldOwner,
+            TimeSpan.FromMinutes(1)));
+        Assert.True(await store.RenewCallbackLeaseAsync(
+            inserted.EventId,
+            newOwner,
+            TimeSpan.FromMinutes(1)));
+    }
+
+    [Dm8Fact]
     public async Task Failed_lease_can_be_dead_lettered_and_manually_retried()
     {
         await DeleteLeasableTestCallbacksAsync();

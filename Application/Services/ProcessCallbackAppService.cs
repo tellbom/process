@@ -128,9 +128,16 @@ namespace FlowableWrapper.Application.Services
                 TriggeredAt = DateTime.UtcNow
             };
 
-            await PostNodeCallbackSafeAsync(callbackUrl, payload, callbackType, metadata);
+            await PostNodeCallbackSafeAsync(
+                callbackUrl,
+                payload,
+                callbackType,
+                metadata,
+                string.IsNullOrWhiteSpace(request.CallbackActivityId)
+                    ? taskDefinitionKey
+                    : request.CallbackActivityId);
 
-            return OkResponse($"{callbackType}: 节点 [{taskDefinitionKey}] 回调已发送");
+            return OkResponse($"{callbackType}: 节点 [{taskDefinitionKey}] 回调已受理");
         }
 
         /// <summary>
@@ -189,7 +196,8 @@ namespace FlowableWrapper.Application.Services
         public async Task SendNodeCompletedCallbackSafeAsync(
             ProcessMetadataDocument metadata,
             string taskDefinitionKey,
-            Dictionary<string, object> processVariables = null)
+            Dictionary<string, object> processVariables = null,
+            string callbackActivityId = null)
         {
             if (metadata == null)
             {
@@ -242,7 +250,10 @@ namespace FlowableWrapper.Application.Services
             await PostNodeCallbackSafeAsync(
                 callbackUrl, payload,
                 FlowableCallbackTypes.NodeCompleted,
-                metadata);
+                metadata,
+                string.IsNullOrWhiteSpace(callbackActivityId)
+                    ? taskDefinitionKey
+                    : callbackActivityId);
         }
 
         /// <summary>
@@ -253,7 +264,8 @@ namespace FlowableWrapper.Application.Services
             ProcessMetadataDocument metadata,
             string rejectNodeKey,
             string rejectTargetNodeKey,
-            AuditRecordSnapshot auditSnapshot)
+            AuditRecordSnapshot auditSnapshot,
+            string callbackActivityId = null)
         {
             if (metadata == null)
             {
@@ -320,7 +332,10 @@ namespace FlowableWrapper.Application.Services
                 callbackUrl,
                 payload,
                 FlowableCallbackTypes.RejectOccurred,
-                metadata);
+                metadata,
+                string.IsNullOrWhiteSpace(callbackActivityId)
+                    ? rejectNodeKey
+                    : callbackActivityId);
         }
 
         private async Task<FlowableCallbackResponse> HandleProcessEndCallbackAsync(
@@ -606,10 +621,47 @@ namespace FlowableWrapper.Application.Services
             string url,
             NodeCompletedCallbackPayload payload,
             string callbackType,
-            ProcessMetadataDocument? metadata = null)
+            ProcessMetadataDocument? metadata = null,
+            string? callbackActivityId = null)
         {
             try
             {
+                if (_dm8Options.Enabled)
+                {
+                    var activityId = string.IsNullOrWhiteSpace(callbackActivityId)
+                        ? payload.TaskDefinitionKey
+                        : callbackActivityId;
+                    var idempotencyKey = CallbackIdempotencyKey.ForNode(
+                        payload.ProcessInstanceId,
+                        activityId,
+                        callbackType);
+                    var envelope = new CallbackDispatchEnvelope
+                    {
+                        Url = url,
+                        Headers = metadata?.Callback?.Headers
+                                  ?? new Dictionary<string, string>(),
+                        Body = JsonSerializer.Serialize(payload, JsonOptions)
+                    };
+                    var callbackEvent = await _reliabilityStore.EnqueueCallbackAsync(
+                        new EnqueueCallbackCommand
+                        {
+                            EventId = Guid.NewGuid().ToString("N"),
+                            IdempotencyKey = idempotencyKey,
+                            BusinessId = payload.BusinessId,
+                            ProcessInstanceId = payload.ProcessInstanceId,
+                            CallbackActivityId = activityId,
+                            CallbackType = callbackType.ToLowerInvariant(),
+                            Payload = JsonSerializer.Serialize(envelope, JsonOptions),
+                            CompleteBusinessFlow = false
+                        });
+                    _logger.LogInformation(
+                        "[{CallbackType}] node callback persisted. EventId={EventId}, NodeKey={NodeKey}",
+                        callbackType,
+                        callbackEvent.EventId,
+                        payload.TaskDefinitionKey);
+                    return;
+                }
+
                 var httpClient = _httpClientFactory.CreateClient("BusinessCallback");
                 var timeoutSeconds = metadata?.Callback?.TimeoutSeconds > 0
                     ? metadata.Callback.TimeoutSeconds
