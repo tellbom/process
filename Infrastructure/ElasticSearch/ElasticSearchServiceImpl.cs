@@ -59,13 +59,17 @@ namespace FlowableWrapper.Infrastructure.ElasticSearch
         {
             var existsResponse = await _client.Indices.ExistsAsync(
                 _options.SemanticIndexName);
-            if (!existsResponse.IsValid)
+            var existenceDecision = ElasticsearchIndexProbe.Decide(
+                existsResponse.IsValid,
+                existsResponse.Exists,
+                existsResponse.ApiCall?.HttpStatusCode);
+            if (existenceDecision == ElasticsearchIndexDecision.Fail)
             {
                 throw new Exception(
                     $"检查 ES 语义索引失败: {existsResponse.DebugInformation}");
             }
 
-            if (!existsResponse.Exists)
+            if (existenceDecision == ElasticsearchIndexDecision.Create)
             {
                 var createResponse = await _client.Indices.CreateAsync(
                     _options.SemanticIndexName,
@@ -111,7 +115,11 @@ namespace FlowableWrapper.Infrastructure.ElasticSearch
             where TDocument : class
         {
             var existsResponse = await _client.Indices.ExistsAsync(indexName);
-            if (!existsResponse.IsValid)
+            var existenceDecision = ElasticsearchIndexProbe.Decide(
+                existsResponse.IsValid,
+                existsResponse.Exists,
+                existsResponse.ApiCall?.HttpStatusCode);
+            if (existenceDecision == ElasticsearchIndexDecision.Fail)
             {
                 _logger.LogError(
                     "检查 ES 索引失败: Index={Index}, Error={Error}",
@@ -120,7 +128,7 @@ namespace FlowableWrapper.Infrastructure.ElasticSearch
                 throw new Exception($"检查 ES 索引失败: {existsResponse.DebugInformation}");
             }
 
-            if (existsResponse.Exists)
+            if (existenceDecision == ElasticsearchIndexDecision.Exists)
             {
                 _logger.LogInformation("ES 索引已存在: {Index}", indexName);
                 return;

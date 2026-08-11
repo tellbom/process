@@ -76,3 +76,21 @@ docker run --rm --network host \
   -e VUS=20 \
   grafana/k6 run /scripts/problem-zero-recommendation-load.js
 ```
+
+## 问题归零全分支 A/B 一万流程
+
+`problem-zero-branch-ab-load.js` 将实例轮转分配到已解决、未解决专项、
+未解决非专项三条路径，并在每条路径内继续按 A/B 分配快速和慢速末尾回调。
+一万表示一万个完整流程实例，不表示一万个同时连接：
+
+```bash
+docker run --rm --network host \
+  -v "$PWD/performance:/scripts:ro" \
+  -e BASE_URL=http://127.0.0.1:5012 \
+  -e ACCESS_TOKEN="$ACCESS_TOKEN" \
+  -e RUN_ID=problem-zero-branches-ab-10k \
+  -e ITERATIONS=10000 \
+  -e VUS=100 \
+  -e SLOW_DELAY_MS=15000 \
+  grafana/k6 run /scripts/problem-zero-branch-ab-load.js
+```
