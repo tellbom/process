@@ -83,5 +83,47 @@ namespace FlowableWrapper.Application.Slots
 
             return result;
         }
+
+        public List<NodeDescriptionSnapshot> ToNodeDescriptionsSnapshot(
+            AssigneeContract contract,
+            Dictionary<string, NodeSemanticInfo> semanticMap)
+        {
+            var result = new List<NodeDescriptionSnapshot>();
+            if (contract?.NodeDescriptions == null
+                || contract.NodeDescriptions.Count == 0)
+                return result;
+
+            var knownRoleKeys = semanticMap?.Values
+                .Where(node => node != null && !string.IsNullOrWhiteSpace(node.RoleKey))
+                .Select(node => node.RoleKey.Trim())
+                .ToHashSet(StringComparer.OrdinalIgnoreCase)
+                ?? new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            var seenRoleKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var entry in contract.NodeDescriptions)
+            {
+                var description = entry?.Description?.Trim();
+                if (string.IsNullOrWhiteSpace(description))
+                    continue;
+
+                var roleKey = entry?.RoleKey?.Trim();
+                if (string.IsNullOrWhiteSpace(roleKey))
+                    throw new ArgumentException("Node description roleKey cannot be empty.");
+                if (knownRoleKeys.Count > 0 && !knownRoleKeys.Contains(roleKey))
+                    throw new ArgumentException(
+                        $"Node description roleKey [{roleKey}] was not found in the deployed process definition.");
+                if (!seenRoleKeys.Add(roleKey))
+                    throw new ArgumentException(
+                        $"Node description roleKey [{roleKey}] cannot be repeated.");
+
+                result.Add(new NodeDescriptionSnapshot
+                {
+                    RoleKey = roleKey,
+                    Description = description
+                });
+            }
+
+            return result;
+        }
     }
 }

@@ -319,6 +319,9 @@ namespace FlowableWrapper.Application.Services
                         ProcessInstanceId = binding.ProcessInstanceId,
                         BusinessId = binding.BusinessId,
                         BusinessType = binding.BusinessType,
+                        BusinessTitle = binding.BusinessTitle,
+                        CreatedBy = binding.CreatedBy,
+                        CreatedTime = binding.CreatedAt,
                         Status = binding.FlowState,
                         NodeSemanticMap =
                             new Dictionary<string, NodeSemanticInfo>()
@@ -327,9 +330,15 @@ namespace FlowableWrapper.Application.Services
                         binding.ProcessDefinitionKey;
                     meta.ProcessDefinitionVersion =
                         binding.ProcessDefinitionVersion;
+                    meta.BusinessTitle = binding.BusinessTitle;
+                    meta.CreatedBy = binding.CreatedBy;
+                    meta.CreatedTime = binding.CreatedAt;
                     meta.RecommendedAssigneesSnapshot =
                         DeserializeRecommendedSnapshot(
                             binding.RecommendedAssigneesSnapshot);
+                    meta.NodeDescriptionsSnapshot =
+                        DeserializeNodeDescriptionsSnapshot(
+                            binding.NodeDescriptionsSnapshot);
                 }
                 else if (meta == null)
                 {
@@ -354,6 +363,22 @@ namespace FlowableWrapper.Application.Services
                 }
 
                 semanticMap.TryGetValue(task.TaskDefinitionKey, out var nodeInfo);
+
+                var nodeDescription = meta.NodeDescriptionsSnapshot?
+                    .FirstOrDefault(item =>
+                        string.Equals(
+                            item.RoleKey,
+                            nodeInfo?.RoleKey,
+                            StringComparison.OrdinalIgnoreCase))?
+                    .Description;
+                var businessDisplayName = !string.IsNullOrWhiteSpace(meta.BusinessTitle)
+                    ? meta.BusinessTitle.Trim()
+                    : meta.BusinessId;
+                var actionDescription = !string.IsNullOrWhiteSpace(nodeDescription)
+                    ? nodeDescription.Trim()
+                    : $"请处理当前节点：{task.Name}";
+                var isOverdue = task.DueDate.HasValue
+                    && task.DueDate.Value.ToUniversalTime() < DateTime.UtcNow;
 
                 var slotRecommendedUsers = new Dictionary<string, List<string>>();
                 var restrictMap = new Dictionary<string, bool>();
@@ -381,10 +406,25 @@ namespace FlowableWrapper.Application.Services
                 {
                     TaskId = task.Id,
                     TaskName = task.Name,
+                    ProcessInstanceId = task.ProcessInstanceId,
+                    ProcessDefinitionKey = meta.ProcessDefinitionKey,
+                    ProcessDefinitionVersion = meta.ProcessDefinitionVersion,
+                    TaskDefinitionKey = task.TaskDefinitionKey,
                     BusinessId = meta.BusinessId,
                     BusinessType = meta.BusinessType,
+                    BusinessTitle = meta.BusinessTitle,
+                    BusinessDisplayName = businessDisplayName,
+                    CreatedBy = meta.CreatedBy,
+                    ProcessCreatedTime = meta.CreatedTime,
+                    ProcessStatus = meta.Status,
                     NodeSemantic = nodeInfo?.NodeSemantic,
                     RoleKey = nodeInfo?.RoleKey,
+                    NodeDescription = nodeDescription,
+                    ActionDescription = actionDescription,
+                    Assignee = task.Assignee,
+                    Owner = task.Owner,
+                    DueDate = task.DueDate,
+                    IsOverdue = isOverdue,
                     PageCode = nodeInfo?.PageCode,
                     PageUrl = BuildPageUrl(
                         nodeInfo?.PageCode,
@@ -1148,9 +1188,15 @@ namespace FlowableWrapper.Application.Services
                 Id = binding.ProcessInstanceId,
                 BusinessId = binding.BusinessId,
                 BusinessType = binding.BusinessType,
+                BusinessTitle = binding.BusinessTitle,
+                CreatedBy = binding.CreatedBy,
+                CreatedTime = binding.CreatedAt,
                 RecommendedAssigneesSnapshot =
                     DeserializeRecommendedSnapshot(
                         binding.RecommendedAssigneesSnapshot),
+                NodeDescriptionsSnapshot =
+                    DeserializeNodeDescriptionsSnapshot(
+                        binding.NodeDescriptionsSnapshot),
                 NodeSemanticMap =
                     new Dictionary<string, NodeSemanticInfo>()
             };
@@ -1168,10 +1214,23 @@ namespace FlowableWrapper.Application.Services
             if (string.IsNullOrWhiteSpace(snapshot))
                 return new Dictionary<string, List<string>>(
                     StringComparer.OrdinalIgnoreCase);
-            return JsonSerializer.Deserialize<Dictionary<string, List<string>>>(
-                       snapshot)
-                   ?? new Dictionary<string, List<string>>(
-                       StringComparer.OrdinalIgnoreCase);
+            var parsed = JsonSerializer.Deserialize<Dictionary<string, List<string>>>(
+                snapshot);
+            return parsed == null
+                ? new Dictionary<string, List<string>>(
+                    StringComparer.OrdinalIgnoreCase)
+                : new Dictionary<string, List<string>>(
+                    parsed,
+                    StringComparer.OrdinalIgnoreCase);
+        }
+
+        private static List<NodeDescriptionSnapshot>
+            DeserializeNodeDescriptionsSnapshot(string? snapshot)
+        {
+            if (string.IsNullOrWhiteSpace(snapshot))
+                return new List<NodeDescriptionSnapshot>();
+            return JsonSerializer.Deserialize<List<NodeDescriptionSnapshot>>(snapshot)
+                   ?? new List<NodeDescriptionSnapshot>();
         }
 
         private async Task<WorkflowTaskAction?> PrepareActionAsync(

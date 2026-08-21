@@ -22,6 +22,12 @@ public sealed class StartProcessRequest
     [JsonPropertyName("businessId")]
     public string BusinessId { get; set; } = string.Empty;
 
+    [JsonPropertyName("businessTitle")]
+    public string? BusinessTitle { get; set; }
+
+    [JsonPropertyName("businessDisplayName")]
+    public string BusinessDisplayName { get; set; } = string.Empty;
+
     [JsonPropertyName("initialSlotSelections")]
     public List<SlotSelection> InitialSlotSelections { get; set; } = new();
 
@@ -111,6 +117,18 @@ public sealed class AssigneeContract
 {
     [JsonPropertyName("roles")]
     public List<RoleAssignment> Roles { get; set; } = new();
+
+    [JsonPropertyName("nodeDescriptions")]
+    public List<NodeDescriptionInput> NodeDescriptions { get; set; } = new();
+}
+
+public sealed class NodeDescriptionInput
+{
+    [JsonPropertyName("roleKey")]
+    public string RoleKey { get; set; } = string.Empty;
+
+    [JsonPropertyName("description")]
+    public string Description { get; set; } = string.Empty;
 }
 
 public sealed class RoleAssignment
@@ -163,17 +181,59 @@ public sealed class PendingTaskDto
     [JsonPropertyName("taskName")]
     public string TaskName { get; set; } = string.Empty;
 
+    [JsonPropertyName("processInstanceId")]
+    public string ProcessInstanceId { get; set; } = string.Empty;
+
+    [JsonPropertyName("processDefinitionKey")]
+    public string ProcessDefinitionKey { get; set; } = string.Empty;
+
+    [JsonPropertyName("processDefinitionVersion")]
+    public int? ProcessDefinitionVersion { get; set; }
+
+    [JsonPropertyName("taskDefinitionKey")]
+    public string TaskDefinitionKey { get; set; } = string.Empty;
+
     [JsonPropertyName("businessId")]
     public string BusinessId { get; set; } = string.Empty;
 
     [JsonPropertyName("businessType")]
     public string BusinessType { get; set; } = string.Empty;
 
+    [JsonPropertyName("businessTitle")]
+    public string? BusinessTitle { get; set; }
+
+    [JsonPropertyName("createdBy")]
+    public string CreatedBy { get; set; } = string.Empty;
+
+    [JsonPropertyName("processCreatedTime")]
+    public DateTime ProcessCreatedTime { get; set; }
+
+    [JsonPropertyName("processStatus")]
+    public string ProcessStatus { get; set; } = string.Empty;
+
     [JsonPropertyName("nodeSemantic")]
     public string NodeSemantic { get; set; } = string.Empty;
 
     [JsonPropertyName("roleKey")]
     public string RoleKey { get; set; } = string.Empty;
+
+    [JsonPropertyName("nodeDescription")]
+    public string? NodeDescription { get; set; }
+
+    [JsonPropertyName("actionDescription")]
+    public string ActionDescription { get; set; } = string.Empty;
+
+    [JsonPropertyName("assignee")]
+    public string? Assignee { get; set; }
+
+    [JsonPropertyName("owner")]
+    public string? Owner { get; set; }
+
+    [JsonPropertyName("dueDate")]
+    public DateTime? DueDate { get; set; }
+
+    [JsonPropertyName("isOverdue")]
+    public bool IsOverdue { get; set; }
 
     [JsonPropertyName("pageCode")]
     public string PageCode { get; set; } = string.Empty;

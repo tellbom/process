@@ -40,20 +40,27 @@ public sealed class Dm8WorkflowReliabilityStore : IWorkflowReliabilityStore
             insert.CommandText = $@"
 INSERT INTO {_businessTable}
 (
-    BUSINESS_ID, BUSINESS_TYPE, PROCESS_DEFINITION_KEY, FLOW_STATE,
-    CALLBACK_STATE, CALLBACK_CONFIG_SNAPSHOT, ROW_VERSION, DATA_VERSION,
+    BUSINESS_ID, BUSINESS_TYPE, BUSINESS_TITLE, CREATED_BY,
+    PROCESS_DEFINITION_KEY, FLOW_STATE, CALLBACK_STATE,
+    CALLBACK_CONFIG_SNAPSHOT, RECOMMENDED_ASSIGNEES_SNAPSHOT,
+    NODE_DESCRIPTIONS_SNAPSHOT, ROW_VERSION, DATA_VERSION,
     CREATED_AT, UPDATED_AT
 )
 VALUES
 (
-    :business_id, :business_type, :definition_key, 'starting',
-    'not_requested', :callback_snapshot, 0, 0,
+    :business_id, :business_type, :business_title, :created_by,
+    :definition_key, 'starting', 'not_requested', :callback_snapshot,
+    :recommended_snapshot, :exception_snapshot, 0, 0,
     CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
 )";
             AddParameter(insert, "business_id", command.BusinessId);
             AddParameter(insert, "business_type", command.BusinessType);
+            AddParameter(insert, "business_title", command.BusinessTitle);
+            AddParameter(insert, "created_by", command.CreatedBy);
             AddParameter(insert, "definition_key", command.ProcessDefinitionKey);
             AddParameter(insert, "callback_snapshot", command.CallbackConfigSnapshot, DbType.String);
+            AddParameter(insert, "recommended_snapshot", command.RecommendedAssigneesSnapshot, DbType.String);
+            AddParameter(insert, "exception_snapshot", command.NodeDescriptionsSnapshot, DbType.String);
             await insert.ExecuteNonQueryAsync(cancellationToken);
         }
         catch
@@ -201,10 +208,11 @@ WHERE BUSINESS_ID = :business_id";
         var parameters = ids.Select((_, index) => $":process_id_{index}")
             .ToList();
         command.CommandText = $@"
-SELECT ID, BUSINESS_ID, BUSINESS_TYPE, PROCESS_INSTANCE_ID,
+SELECT ID, BUSINESS_ID, BUSINESS_TYPE, BUSINESS_TITLE, CREATED_BY, PROCESS_INSTANCE_ID,
        PROCESS_DEFINITION_KEY, PROCESS_DEFINITION_VERSION, FLOW_STATE,
        CALLBACK_STATE, CALLBACK_CONFIG_SNAPSHOT,
-       RECOMMENDED_ASSIGNEES_SNAPSHOT, ROW_VERSION, DATA_VERSION,
+       RECOMMENDED_ASSIGNEES_SNAPSHOT, NODE_DESCRIPTIONS_SNAPSHOT,
+       ROW_VERSION, DATA_VERSION,
        CREATED_AT, UPDATED_AT, COMPLETED_AT
 FROM {_businessTable}
 WHERE PROCESS_INSTANCE_ID IN ({string.Join(",", parameters)})";
@@ -956,10 +964,11 @@ WHERE {column} = :{parameterName}";
         await using var command = connection.CreateCommand();
         Configure(command);
         command.CommandText = $@"
-SELECT ID, BUSINESS_ID, BUSINESS_TYPE, PROCESS_INSTANCE_ID,
+SELECT ID, BUSINESS_ID, BUSINESS_TYPE, BUSINESS_TITLE, CREATED_BY, PROCESS_INSTANCE_ID,
        PROCESS_DEFINITION_KEY, PROCESS_DEFINITION_VERSION, FLOW_STATE,
        CALLBACK_STATE, CALLBACK_CONFIG_SNAPSHOT,
-       RECOMMENDED_ASSIGNEES_SNAPSHOT, ROW_VERSION, DATA_VERSION,
+       RECOMMENDED_ASSIGNEES_SNAPSHOT, NODE_DESCRIPTIONS_SNAPSHOT,
+       ROW_VERSION, DATA_VERSION,
        CREATED_AT, UPDATED_AT, COMPLETED_AT
 FROM {_businessTable}
 WHERE {column} = :{parameterName}";
@@ -1117,19 +1126,22 @@ WHERE EVENT_ID = :event_id
             Id = reader.GetInt64(0),
             BusinessId = reader.GetString(1),
             BusinessType = reader.GetString(2),
-            ProcessInstanceId = GetNullableString(reader, 3),
-            ProcessDefinitionKey = reader.GetString(4),
+            BusinessTitle = GetNullableString(reader, 3),
+            CreatedBy = GetNullableString(reader, 4),
+            ProcessInstanceId = GetNullableString(reader, 5),
+            ProcessDefinitionKey = reader.GetString(6),
             ProcessDefinitionVersion =
-                reader.IsDBNull(5) ? null : reader.GetInt32(5),
-            FlowState = reader.GetString(6),
-            CallbackState = reader.GetString(7),
-            CallbackConfigSnapshot = GetNullableString(reader, 8),
-            RecommendedAssigneesSnapshot = GetNullableString(reader, 9),
-            RowVersion = reader.GetInt64(10),
-            DataVersion = reader.GetInt64(11),
-            CreatedAt = reader.GetDateTime(12),
-            UpdatedAt = reader.GetDateTime(13),
-            CompletedAt = GetNullableDateTime(reader, 14)
+                reader.IsDBNull(7) ? null : reader.GetInt32(7),
+            FlowState = reader.GetString(8),
+            CallbackState = reader.GetString(9),
+            CallbackConfigSnapshot = GetNullableString(reader, 10),
+            RecommendedAssigneesSnapshot = GetNullableString(reader, 11),
+            NodeDescriptionsSnapshot = GetNullableString(reader, 12),
+            RowVersion = reader.GetInt64(13),
+            DataVersion = reader.GetInt64(14),
+            CreatedAt = reader.GetDateTime(15),
+            UpdatedAt = reader.GetDateTime(16),
+            CompletedAt = GetNullableDateTime(reader, 17)
         };
 
     private static string? GetNullableString(DbDataReader reader, int ordinal)

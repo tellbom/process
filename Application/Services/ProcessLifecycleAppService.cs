@@ -221,6 +221,7 @@ namespace FlowableWrapper.Application.Services
                         request.RequestId,
                         request.BusinessId,
                         request.BusinessType,
+                        request.BusinessTitle,
                         request.InitialSlotSelections,
                         request.BusinessVariables,
                         request.Callback,
@@ -287,7 +288,9 @@ namespace FlowableWrapper.Application.Services
                 // 3b. AssigneeContract is only expanded into the recommended-assignee snapshot.
                 var contractSnapshot = new Dictionary<string, List<string>>(
                     StringComparer.OrdinalIgnoreCase);
-                if (request.AssigneeContract?.Roles?.Any() == true)
+                var nodeDescriptionsSnapshot = new List<NodeDescriptionSnapshot>();
+                if (request.AssigneeContract?.Roles?.Any() == true
+                    || request.AssigneeContract?.NodeDescriptions?.Any() == true)
                 {
                     try
                     {
@@ -298,6 +301,10 @@ namespace FlowableWrapper.Application.Services
 
                         contractSnapshot = _assigneeContractConverter
                             .ToRecommendedSnapshot(request.AssigneeContract, semanticMap);
+                        nodeDescriptionsSnapshot = _assigneeContractConverter
+                            .ToNodeDescriptionsSnapshot(
+                                request.AssigneeContract,
+                                semanticMap);
 
                         _logger.LogInformation(
                             "AssigneeContract expanded into recommended snapshot. BusinessId={BusinessId}, SlotKeys={Count}",
@@ -321,6 +328,12 @@ namespace FlowableWrapper.Application.Services
                         BusinessId = request.BusinessId,
                         BusinessType = request.BusinessType,
                         ProcessDefinitionKey = processDefinitionKey,
+                        BusinessTitle = request.BusinessTitle?.Trim(),
+                        CreatedBy = createdBy,
+                        RecommendedAssigneesSnapshot =
+                            JsonSerializer.Serialize(contractSnapshot),
+                        NodeDescriptionsSnapshot =
+                            JsonSerializer.Serialize(nodeDescriptionsSnapshot),
                         CallbackConfigSnapshot = request.Callback == null
                             ? null
                             : JsonSerializer.Serialize(request.Callback)
@@ -331,13 +344,6 @@ namespace FlowableWrapper.Application.Services
                         request.BusinessId,
                         startAction,
                         reservation.Instance);
-                }
-
-                if (_dm8Options.Enabled)
-                {
-                    await _reliabilityStore.UpdateRecommendedAssigneesSnapshotAsync(
-                        request.BusinessId,
-                        JsonSerializer.Serialize(contractSnapshot));
                 }
 
                 // 4. 构建启动变量
@@ -450,6 +456,7 @@ namespace FlowableWrapper.Application.Services
                     processDefinitionKey,
                     createdBy,
                     contractSnapshot,
+                    nodeDescriptionsSnapshot,
                     ParseProcessDefinitionVersion(
                         processInstance.ProcessDefinitionId)
                     ?? startDefinitionVersion);
@@ -820,6 +827,7 @@ namespace FlowableWrapper.Application.Services
             string processDefinitionKey,
             string createdBy,
             Dictionary<string, List<string>> contractSnapshot,
+            List<NodeDescriptionSnapshot> nodeDescriptionsSnapshot,
             int? processDefinitionVersion)
         {
             CallbackMetadata callbackMetadata = null;
@@ -844,6 +852,7 @@ namespace FlowableWrapper.Application.Services
                 ProcessDefinitionVersion = processDefinitionVersion,
                 BusinessId           = request.BusinessId,
                 BusinessType         = request.BusinessType,
+                BusinessTitle        = request.BusinessTitle?.Trim(),
                 Status               = "running",
                 CreatedBy            = createdBy,
                 CreatedTime          = DateTime.UtcNow,
@@ -853,7 +862,9 @@ namespace FlowableWrapper.Application.Services
                 // 查询时从 ProcessDefinitionSemanticDocument 读取，不存在于实例文档中
                 NodeSemanticMap      = new Dictionary<string, NodeSemanticInfo>(),
                 RecommendedAssigneesSnapshot = contractSnapshot
-                    ?? new Dictionary<string, List<string>>()
+                    ?? new Dictionary<string, List<string>>(),
+                NodeDescriptionsSnapshot = nodeDescriptionsSnapshot
+                    ?? new List<NodeDescriptionSnapshot>()
             };
         }
 

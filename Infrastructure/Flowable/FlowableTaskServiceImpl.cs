@@ -176,6 +176,7 @@ namespace FlowableWrapper.Infrastructure.Flowable
                 Assignee = r.Assignee,
                 Owner = r.Owner,
                 CreateTime = r.CreateTime,
+                DueDate = r.DueDate,
                 Priority = r.Priority
             };
         }
@@ -237,6 +238,7 @@ namespace FlowableWrapper.Infrastructure.Flowable
             [JsonPropertyName("assignee")] public string Assignee { get; set; }
             [JsonPropertyName("owner")] public string Owner { get; set; }
             [JsonPropertyName("createTime")] public DateTime CreateTime { get; set; }
+            [JsonPropertyName("dueDate")] public DateTime? DueDate { get; set; }
             [JsonPropertyName("priority")] public int Priority { get; set; }
         }
 

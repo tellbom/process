@@ -17,6 +17,12 @@ namespace FlowableWrapper.Application.Dtos
         public string BusinessId { get; set; }
 
         /// <summary>
+        /// 业务单据标题，用于待办列表直接展示。调用方未传时返回空值，
+        /// 流程中心不会从 businessVariables 猜测标题字段。
+        /// </summary>
+        public string? BusinessTitle { get; set; }
+
+        /// <summary>
         /// Stable caller request identifier. Network retries must reuse it.
         /// When omitted, businessId is used as the request identity.
         /// </summary>
@@ -52,6 +58,23 @@ namespace FlowableWrapper.Application.Dtos
     public class AssigneeContract
     {
         public List<RoleAssignment> Roles { get; set; } = new List<RoleAssignment>();
+
+        /// <summary>
+        /// 本次流程实例中各节点的动态详细说明。
+        /// 以数组承载，避免 roleKey 成为 Elasticsearch 动态字段。
+        /// 此数据只作为流程实例业务快照，不参与 Flowable 选人和路由。
+        /// </summary>
+        public List<NodeDescriptionInput> NodeDescriptions { get; set; }
+            = new List<NodeDescriptionInput>();
+    }
+
+    public class NodeDescriptionInput
+    {
+        /// <summary>与 NodeSemanticInfo.RoleKey 对应的节点角色 Key。</summary>
+        public string RoleKey { get; set; }
+
+        /// <summary>发起人针对本次流程填写的节点详细说明。</summary>
+        public string Description { get; set; }
     }
 
     public class RoleAssignment

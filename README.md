@@ -174,6 +174,8 @@
 |---|---|
 | `initialSlotSelections` | 首节点选人 → 生成 Flowable 启动变量（执行路径） |
 | `assigneeContract` | 按 roleKey 传推荐人 → 写入 RecommendedAssigneesSnapshot（展示用，不影响执行） |
+| `assigneeContract.nodeDescriptions` | 本次流程实例的节点详细说明数组，可不传；按 roleKey 关联节点，不进入 slotConfig 或 Flowable 变量 |
+| `businessTitle` | 可选业务单据标题，供待办列表直接展示 |
 | `businessVariables` | 网关条件变量、starterAssignee 等 → 直接注入 Flowable |
 | `callback.url` | 流程级回调地址，仅在节点未声明 callbackUrl 时作为兼容降级使用 |
 
@@ -187,6 +189,7 @@
 {
   "businessType": "personnel_selection_approval",
   "businessId": "SEMI_AUTO_001",
+  "businessTitle": "2026 年第 3 批人员选调审批",
   "initialSlotSelections": [
     { "slotKey": "group_leader", "users": ["EMP_001"] }
   ],
@@ -197,6 +200,12 @@
       { "roleKey": "integrity_head",             "users": ["EMP_015"] },
       { "roleKey": "office_director",            "users": ["EMP_020"] },
       { "roleKey": "secretary",                  "users": ["EMP_025"] }
+    ],
+    "nodeDescriptions": [
+      {
+        "roleKey": "group_leader",
+        "description": "请核对本批人员资格、回避关系及材料完整性"
+      }
     ]
   },
   "businessVariables": {
@@ -304,7 +313,7 @@
 **GET** `/api/tasks/pending`
 `X-User-Id: EMP_001`
 
-Pending task responses include `slotRecommendedUsers` keyed by `slotKey`, `restrictToRecommended` keyed by `slotKey`, and `pageUrl` when `pageCode` is an http/https URL. `requiredSlots[]` includes `slotKey` / `roleKey` / `variableName` so the frontend can render by slot and submit by `slotKey`.
+Pending task responses retain the execution contract and additionally include business-facing fields: `businessDisplayName`, `actionDescription`, `processStatus`, `isOverdue`, the instance-level `nodeDescription`, business title/initiator/timestamps, `slotRecommendedUsers` keyed by `slotKey`, `restrictToRecommended` keyed by `slotKey`, and `pageUrl` when `pageCode` is an http/https URL. `requiredSlots[]` includes `slotKey` / `roleKey` / `variableName` so the frontend can render by slot and submit by `slotKey`.
 
 流程中心不解析 BPMN gateway 来预测后续路径。排他网关、并行网关场景下，如果当前节点需要提前选择多个下游处理人，必须在当前节点 `slots` 中显式声明多个选人槽；`/api/tasks/pending` 只返回这些显式声明的 requiredSlots 及其推荐人。
 
@@ -327,10 +336,25 @@ Pending task responses include `slotRecommendedUsers` keyed by `slotKey`, `restr
       {
         "taskId": "task-uuid-001",
         "taskName": "巡察组组长确认",
+        "processInstanceId": "process-instance-001",
+        "processDefinitionKey": "personnel_selection_approval",
+        "processDefinitionVersion": 12,
+        "taskDefinitionKey": "ut01_group_leader_confirm",
         "businessId": "SEMI_AUTO_001",
         "businessType": "personnel_selection_approval",
+        "businessTitle": "2026 年第 3 批人员选调审批",
+        "businessDisplayName": "2026 年第 3 批人员选调审批",
+        "createdBy": "196045",
+        "processCreatedTime": "2026-08-21T08:20:00Z",
+        "processStatus": "running",
         "nodeSemantic": "GROUP_LEADER_CONFIRM",
         "roleKey": "group_leader",
+        "nodeDescription": "请核对本批人员资格、回避关系及材料完整性",
+        "actionDescription": "请核对本批人员资格、回避关系及材料完整性",
+        "assignee": "196045",
+        "owner": null,
+        "dueDate": null,
+        "isOverdue": false,
         "pageCode": "https://httpbin.org/get?node=group_leader_confirm",
         "pageUrl": "https://httpbin.org/get?node=group_leader_confirm&businessId=SEMI_AUTO_001&taskId=task-uuid-001&businessType=personnel_selection_approval&nodeId=ut01_group_leader_confirm&nodeSemantic=GROUP_LEADER_CONFIRM",
         "canReject": true,

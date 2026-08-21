@@ -15,6 +15,7 @@ namespace FlowableWrapper.Domain.ElasticSearch
         public int? ProcessDefinitionVersion { get; set; }
         public string BusinessId { get; set; }
         public string BusinessType { get; set; }
+        public string BusinessTitle { get; set; }
 
         /// <summary>running / completed / terminated / callback_failed</summary>
         public string Status { get; set; }
@@ -37,6 +38,13 @@ namespace FlowableWrapper.Domain.ElasticSearch
         /// </summary>
         public Dictionary<string, List<string>> RecommendedAssigneesSnapshot { get; set; }
             = new Dictionary<string, List<string>>();
+
+        /// <summary>
+        /// 启动时按节点 roleKey 固化的实例级动态说明，不参与流程执行。
+        /// 使用对象数组而不是动态 Key 字典，避免 roleKey 扩张 ES mapping。
+        /// </summary>
+        public List<NodeDescriptionSnapshot> NodeDescriptionsSnapshot { get; set; }
+            = new List<NodeDescriptionSnapshot>();
 
         public ProcessMetadataDocument() { }
     }
@@ -138,6 +146,12 @@ namespace FlowableWrapper.Domain.ElasticSearch
         /// 未声明时可兼容降级到流程级 callback.url；显式 null/空字符串表示禁用节点级通知。
         /// </summary>
         public bool CallbackUrlSpecified { get; set; }
+    }
+
+    public class NodeDescriptionSnapshot
+    {
+        public string RoleKey { get; set; }
+        public string Description { get; set; }
     }
 
     /// <summary>

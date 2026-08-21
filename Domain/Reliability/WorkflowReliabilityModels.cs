@@ -5,6 +5,8 @@ public sealed class WorkflowBusinessInstance
     public long Id { get; init; }
     public string BusinessId { get; init; } = string.Empty;
     public string BusinessType { get; init; } = string.Empty;
+    public string? BusinessTitle { get; init; }
+    public string? CreatedBy { get; init; }
     public string? ProcessInstanceId { get; init; }
     public string ProcessDefinitionKey { get; init; } = string.Empty;
     public int? ProcessDefinitionVersion { get; init; }
@@ -12,6 +14,7 @@ public sealed class WorkflowBusinessInstance
     public string CallbackState { get; init; } = string.Empty;
     public string? CallbackConfigSnapshot { get; init; }
     public string? RecommendedAssigneesSnapshot { get; init; }
+    public string? NodeDescriptionsSnapshot { get; init; }
     public long RowVersion { get; init; }
     public long DataVersion { get; init; }
     public DateTime CreatedAt { get; init; }
@@ -74,6 +77,10 @@ public sealed class ReserveBusinessCommand
     public string BusinessId { get; init; } = string.Empty;
     public string BusinessType { get; init; } = string.Empty;
     public string ProcessDefinitionKey { get; init; } = string.Empty;
+    public string? BusinessTitle { get; init; }
+    public string? CreatedBy { get; init; }
+    public string? RecommendedAssigneesSnapshot { get; init; }
+    public string? NodeDescriptionsSnapshot { get; init; }
     public string? CallbackConfigSnapshot { get; init; }
 }
 
