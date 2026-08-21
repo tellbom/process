@@ -322,6 +322,12 @@ namespace FlowableWrapper.Application.Services
                     }
                 }
 
+                await ValidateRestrictedInitialSelectionsAsync(
+                    request.InitialSlotSelections,
+                    processDefinitionKey,
+                    startDefinitionVersion,
+                    contractSnapshot);
+
                 var reservation = await _reliabilityStore.ReserveBusinessAsync(
                     new ReserveBusinessCommand
                     {
@@ -775,6 +781,52 @@ namespace FlowableWrapper.Application.Services
             return result;
         }
 
+        private async Task ValidateRestrictedInitialSelectionsAsync(
+            List<SlotSelection> selections,
+            string processDefinitionKey,
+            int? processDefinitionVersion,
+            Dictionary<string, List<string>> recommendedSnapshot)
+        {
+            if (selections == null || selections.Count == 0
+                || recommendedSnapshot == null || recommendedSnapshot.Count == 0)
+                return;
+
+            var semanticMap = await _slotConfigProvider.GetNodeSemanticMapAsync(
+                processDefinitionKey,
+                processDefinitionVersion);
+            var slotByKey = semanticMap.Values
+                .Where(node => node.Slots != null)
+                .SelectMany(node => node.Slots)
+                .GroupBy(slot => slot.SlotKey, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(
+                    group => group.Key,
+                    group => group.First(),
+                    StringComparer.OrdinalIgnoreCase);
+
+            foreach (var selection in selections)
+            {
+                if (!slotByKey.TryGetValue(selection.SlotKey, out var slot)
+                    || !slot.RestrictToRecommended
+                    || string.IsNullOrWhiteSpace(slot.RoleKey)
+                    || !recommendedSnapshot.TryGetValue(slot.RoleKey, out var recommended)
+                    || recommended == null
+                    || recommended.Count == 0)
+                    continue;
+
+                var outOfRange = (selection.Users ?? new List<string>())
+                    .Where(user => !recommended.Contains(user, StringComparer.OrdinalIgnoreCase))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+
+                if (outOfRange.Count > 0)
+                {
+                    throw new BusinessException(
+                        $"slotKey [{selection.SlotKey}] 包含推荐范围外人员: {string.Join(",", outOfRange)}",
+                        "ASSIGNEE_OUT_OF_RECOMMENDED_RANGE");
+                }
+            }
+        }
+
         /// <summary>
         /// 构建 Flowable 启动变量
         ///
@@ -887,14 +939,26 @@ namespace FlowableWrapper.Application.Services
         {
             if (!string.IsNullOrWhiteSpace(binding.ProcessInstanceId))
             {
+                // Only the already-applied action for the same requestId is an
+                // idempotent replay. A newly prepared action represents an attempt
+                // to reuse businessId and must never return the old process as success.
+                if (!string.Equals(
+                        startAction.ResultState,
+                        "applied",
+                        StringComparison.OrdinalIgnoreCase)
+                    || !string.Equals(
+                        startAction.FlowableResult,
+                        "started",
+                        StringComparison.OrdinalIgnoreCase))
+                {
+                    throw new BusinessException(
+                        $"业务 [{businessId}] 已启动过流程，businessId 不允许重复使用",
+                        "BUSINESS_ID_ALREADY_USED");
+                }
+
                 var existingResponse = await BuildExistingStartResponseAsync(
                     businessId,
                     binding.ProcessInstanceId);
-                await _reliabilityStore.MarkTaskActionResultAsync(
-                    startAction.ActionId,
-                    "applied",
-                    "started",
-                    null);
                 return existingResponse;
             }
 

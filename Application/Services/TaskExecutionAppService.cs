@@ -798,6 +798,17 @@ namespace FlowableWrapper.Application.Services
                     currentTask.TaskDefinitionKey,
                     metadata.ProcessDefinitionVersion);
 
+                var (hasOutOfRange, _, _) = EvaluateRecommendedRange(
+                    request.NextSlotSelections,
+                    slotDefs,
+                    metadata.RecommendedAssigneesSnapshot);
+                if (hasOutOfRange == true)
+                {
+                    throw new BusinessException(
+                        "所选办理人超出当前节点允许的推荐人范围",
+                        "ASSIGNEE_OUT_OF_RECOMMENDED_RANGE");
+                }
+
                 var conversionResult = _slotConverter.Convert(
                     request.NextSlotSelections,
                     slotDefs,
