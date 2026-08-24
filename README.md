@@ -188,6 +188,7 @@
 
 ```json
 {
+  "requestId": "req-semi-auto-001-v1",
   "businessType": "personnel_selection_approval",
   "businessId": "SEMI_AUTO_001",
   "businessTitle": "2026 年第 3 批人员选调审批",
@@ -226,6 +227,7 @@
 
 ```json
 {
+  "requestId": "req-semi-no-recommend-001-v1",
   "businessType": "personnel_selection_approval",
   "businessId": "SEMI_NO_RECOMMEND_001",
   "initialSlotSelections": [
@@ -242,6 +244,7 @@
 
 ```json
 {
+  "requestId": "req-full-auto-001-v1",
   "businessType": "personnel_selection_approval",
   "businessId": "FULL_AUTO_001",
   "initialSlotSelections": [
@@ -270,6 +273,7 @@
 
 ```json
 {
+  "requestId": "req-legacy-001-v1",
   "businessType": "personnel_selection_approval",
   "businessId": "LEGACY_001",
   "initialSlotSelections": [
@@ -309,6 +313,15 @@
 | slotConfig 中 slot 缺少 roleKey / variableName | 部署或运行时失败 |
 | Flowable 不可用 | `errorCode: FLOWABLE_START_FAILED` |
 | ES 两次写入均失败 | `errorCode: PROCESS_METADATA_INDEX_ORPHAN` |
+
+### 2.7 businessId 多轮审批与 requestId 规则
+
+- `businessId` 仍是业务系统与流程中心交互的业务唯一凭据，API 路径和既有查询方式不变。
+- `requestId` 只用于 `POST /api/processes/start`，标识“一次发起意图”。同一次发起的超时重试必须复用原值，不能每次重试都生成新值。
+- 同一 `businessId` 有运行中流程时，即使换用新 `requestId` 也禁止发起，返回 `BUSINESS_PROCESS_ALREADY_RUNNING`。
+- 同一 `businessId` 的上一轮已完成或已终止后，必须使用新的 `requestId` 才能开始下一轮审批。
+- 按 `businessId` 查询状态、进度、流程图和审批历史时返回最新审批轮次；历史轮次数据按 `processInstanceId` 隔离，不混入最新轮次。
+- 完成、驳回和转派任务不传 `requestId`。这些接口使用 `businessId` 定位最新审批轮次；并行节点或同一用户存在多个待办时，应同时传 `/api/tasks/pending` 返回的 `taskId` 精确定位任务。
 
 ---
 
@@ -518,6 +531,8 @@ Pending task responses retain the execution contract and additionally include bu
 **POST** `/api/tasks/complete`
 `X-User-Id: {当前处理人}`
 `action = 1`
+
+本接口不接收也不需要 `requestId`。`businessId` 必填；普通单节点可由后端定位当前用户的任务，并行节点或同一用户存在多个待办时，`taskId` 必填，值取自 `/api/tasks/pending`。任务办理始终作用于该 `taskId` 所属的 `processInstanceId`，不会跨审批轮次串用推荐人或完成人信息。
 
 ### 5.1 半自动流程通过（传 NextSlotSelections）
 
@@ -906,6 +921,7 @@ BPMN 中只保留最后一个流程完成契约 HTTP ServiceTask，用于调用 
 
 ```json
 {
+  "requestId": "req-pz-001-v1",
   "businessType": "problem_zero",
   "businessId": "PZ_001",
   "initialSlotSelections": [
