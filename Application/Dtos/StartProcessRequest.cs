@@ -24,9 +24,9 @@ namespace FlowableWrapper.Application.Dtos
 
         /// <summary>
         /// Stable caller request identifier. Network retries must reuse it.
-        /// When omitted, businessId is used as the request identity.
+        /// A new approval round must use a new value.
         /// </summary>
-        public string RequestId { get; set; }
+        public string? RequestId { get; set; }
 
         /// <summary>
         /// 首节点选人（基于 Slot 契约）

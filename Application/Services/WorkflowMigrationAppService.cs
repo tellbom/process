@@ -106,6 +106,9 @@ public sealed class WorkflowMigrationAppService
                     new ReserveBusinessCommand
                     {
                         BusinessId = metadata.BusinessId,
+                        RequestId = string.IsNullOrWhiteSpace(metadata.RequestId)
+                            ? $"migration:{metadata.ProcessInstanceId}"
+                            : metadata.RequestId,
                         BusinessType = metadata.BusinessType
                                        ?? metadata.ProcessDefinitionKey,
                         ProcessDefinitionKey = metadata.ProcessDefinitionKey,
@@ -124,6 +127,7 @@ public sealed class WorkflowMigrationAppService
                 // Null deliberately selects the explicit legacy ES rule path.
                 await _store.BindStartedProcessAsync(
                     metadata.BusinessId,
+                    reservation.Instance.RequestId,
                     metadata.ProcessInstanceId,
                     metadata.ProcessDefinitionVersion,
                     cancellationToken);

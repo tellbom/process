@@ -422,7 +422,7 @@ namespace FlowableWrapper.Application.Services
                 || string.IsNullOrWhiteSpace(callbackConfig.Url))
             {
                 await _reliabilityStore.MarkBusinessCallbackStateAsync(
-                    binding.BusinessId,
+                    request.ProcessInstanceId,
                     "not_requested",
                     flowCompleted: true);
                 _logger.LogInformation(

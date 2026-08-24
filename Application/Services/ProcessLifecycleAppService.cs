@@ -123,11 +123,11 @@ namespace FlowableWrapper.Application.Services
                     "生产化流程启动要求启用 DM8 幂等与状态门禁",
                     "DM8_RELIABILITY_REQUIRED");
 
-            request.RequestId = string.IsNullOrWhiteSpace(request.RequestId)
-                ? request.BusinessId
-                : request.RequestId.Trim();
-            if (request.RequestId.Length > 480)
-                throw new BusinessException("requestId 长度不能超过 480");
+            if (string.IsNullOrWhiteSpace(request.RequestId))
+                throw new BusinessException("requestId 不能为空", "REQUEST_ID_REQUIRED");
+            request.RequestId = request.RequestId.Trim();
+            if (request.RequestId.Length > 200)
+                throw new BusinessException("requestId 长度不能超过 200");
 
             var createdBy = _currentUser.UserId;
             if (string.IsNullOrWhiteSpace(createdBy))
@@ -167,24 +167,6 @@ namespace FlowableWrapper.Application.Services
 
             try
             {
-                // 1. 校验是否已存在运行中的流程实例
-                var existingRunning = _dm8Options.Enabled
-                    ? null
-                    : await _esService.GetProcessMetadataByBusinessIdAsync(
-                        request.BusinessId);
-
-                if (existingRunning != null)
-                {
-                    _logger.LogWarning(
-                        "拒绝重复启动流程: BusinessId={BusinessId}, ExistingProcessInstanceId={ProcessInstanceId}, CreatedBy={CreatedBy}",
-                        request.BusinessId,
-                        existingRunning.ProcessInstanceId,
-                        createdBy);
-
-                    throw new BusinessException(
-                        $"业务 [{request.BusinessId}] 已存在运行中流程，不能重复启动");
-                }
-
                 // 2. businessType -> processDefinitionKey
                 var processDefinitionKey = _businessTypeMapping.GetProcessDefinitionKey(
                     request.BusinessType);
@@ -233,10 +215,10 @@ namespace FlowableWrapper.Application.Services
                         {
                             ActionId = Guid.NewGuid().ToString("N"),
                             IdempotencyKey =
-                                $"process-start:{request.RequestId}",
+                                $"process-start:{StableId(request.BusinessId)[..24]}:{request.RequestId}",
                             BusinessId = request.BusinessId,
                             ProcessInstanceId =
-                                $"pending:{StableId(request.BusinessId)[..32]}",
+                                $"pending:{StableId($"{request.BusinessId}:{request.RequestId}")[..32]}",
                             TaskDefinitionKey = processDefinitionKey,
                             ActionType = "process_start",
                             OperatorId = createdBy,
@@ -256,14 +238,22 @@ namespace FlowableWrapper.Application.Services
                         "PROCESS_START_REQUEST_CONFLICT");
                 }
 
+                var existingRequestBinding = await _reliabilityStore
+                    .GetBusinessByRequestIdAsync(
+                        request.BusinessId,
+                        request.RequestId);
+                if (existingRequestBinding != null)
+                    return await ResolveExistingStartAsync(
+                        request.BusinessId, startAction, existingRequestBinding);
+
                 var existingBinding = await _reliabilityStore
                     .GetBusinessByBusinessIdAsync(request.BusinessId);
                 if (existingBinding != null)
                 {
-                    return await ResolveExistingStartAsync(
-                        request.BusinessId,
-                        startAction,
-                        existingBinding);
+                    if (IsActive(existingBinding.FlowState))
+                        throw new BusinessException(
+                            $"业务 [{request.BusinessId}] 已存在运行中流程，不能再次发起",
+                            "BUSINESS_PROCESS_ALREADY_RUNNING");
                 }
 
                 _logger.LogInformation(
@@ -332,6 +322,7 @@ namespace FlowableWrapper.Application.Services
                     new ReserveBusinessCommand
                     {
                         BusinessId = request.BusinessId,
+                        RequestId = request.RequestId,
                         BusinessType = request.BusinessType,
                         ProcessDefinitionKey = processDefinitionKey,
                         BusinessTitle = request.BusinessTitle?.Trim(),
@@ -346,10 +337,13 @@ namespace FlowableWrapper.Application.Services
                     });
                 if (!reservation.Created)
                 {
-                    return await ResolveExistingStartAsync(
-                        request.BusinessId,
-                        startAction,
-                        reservation.Instance);
+                    if (string.Equals(reservation.Instance.RequestId, request.RequestId,
+                            StringComparison.Ordinal))
+                        return await ResolveExistingStartAsync(
+                            request.BusinessId, startAction, reservation.Instance);
+                    throw new BusinessException(
+                        $"业务 [{request.BusinessId}] 已存在运行中流程，不能再次发起",
+                        "BUSINESS_PROCESS_ALREADY_RUNNING");
                 }
 
                 // 4. 构建启动变量
@@ -433,6 +427,7 @@ namespace FlowableWrapper.Application.Services
                             resolvedDefinitionVersion);
                         await _reliabilityStore.BindStartedProcessAsync(
                             request.BusinessId,
+                            request.RequestId,
                             processInstance.Id,
                             resolvedDefinitionVersion);
                         await _reliabilityStore.MarkTaskActionResultAsync(
@@ -461,6 +456,7 @@ namespace FlowableWrapper.Application.Services
                     request,
                     processDefinitionKey,
                     createdBy,
+                    reservation.Instance.ApprovalRound,
                     contractSnapshot,
                     nodeDescriptionsSnapshot,
                     ParseProcessDefinitionVersion(
@@ -878,6 +874,7 @@ namespace FlowableWrapper.Application.Services
             StartProcessRequest request,
             string processDefinitionKey,
             string createdBy,
+            int approvalRound,
             Dictionary<string, List<string>> contractSnapshot,
             List<NodeDescriptionSnapshot> nodeDescriptionsSnapshot,
             int? processDefinitionVersion)
@@ -903,6 +900,8 @@ namespace FlowableWrapper.Application.Services
                 ProcessDefinitionKey = processDefinitionKey,
                 ProcessDefinitionVersion = processDefinitionVersion,
                 BusinessId           = request.BusinessId,
+                RequestId            = request.RequestId,
+                ApprovalRound         = approvalRound,
                 BusinessType         = request.BusinessType,
                 BusinessTitle        = request.BusinessTitle?.Trim(),
                 Status               = "running",
@@ -971,6 +970,7 @@ namespace FlowableWrapper.Application.Services
                     var existing = candidates[0];
                     await _reliabilityStore.BindStartedProcessAsync(
                         businessId,
+                        binding.RequestId,
                         existing.Id,
                         ParseProcessDefinitionVersion(
                             existing.ProcessDefinitionId));
@@ -1001,6 +1001,9 @@ namespace FlowableWrapper.Application.Services
                 $"Business [{businessId}] already has flow state [{binding.FlowState}].",
                 "PROCESS_ALREADY_RESERVED");
         }
+
+        private static bool IsActive(string flowState)
+            => flowState is "starting" or "running" or "reconcile_required";
 
         private async Task<StartProcessResponse> BuildExistingStartResponseAsync(
             string businessId,

@@ -96,6 +96,7 @@ public class Dm8WorkflowReliabilityStoreTests
             new ReserveBusinessCommand
             {
                 BusinessId = businessId,
+                RequestId = $"request-{suffix}",
                 BusinessType = "portal_content_approval",
                 ProcessDefinitionKey = "portal_content_approval",
                 CallbackConfigSnapshot = snapshot
@@ -104,6 +105,7 @@ public class Dm8WorkflowReliabilityStoreTests
         {
             await store.BindStartedProcessAsync(
                 businessId,
+                reservation.Instance.RequestId,
                 processInstanceId,
                 1);
         }
@@ -122,6 +124,7 @@ public class Dm8WorkflowReliabilityStoreTests
         var command = new ReserveBusinessCommand
         {
             BusinessId = $"business-binding:{suffix}",
+            RequestId = $"request-binding:{suffix}",
             BusinessType = "portal_content_approval",
             ProcessDefinitionKey = "portal_content_approval",
             CallbackConfigSnapshot = "{\"url\":\"http://localhost/callback\"}"
@@ -134,6 +137,7 @@ public class Dm8WorkflowReliabilityStoreTests
         Assert.Single(reservations.Where(x => x.Created));
         await store.BindStartedProcessAsync(
             command.BusinessId,
+            command.RequestId,
             $"process-binding:{suffix}",
             7);
         var binding = await store.GetBusinessByProcessInstanceAsync(
@@ -143,6 +147,56 @@ public class Dm8WorkflowReliabilityStoreTests
         Assert.Equal(7, binding!.ProcessDefinitionVersion);
         Assert.Equal("running", binding.FlowState);
         Assert.Equal(command.CallbackConfigSnapshot, binding.CallbackConfigSnapshot);
+    }
+
+    [Dm8Fact]
+    public async Task Terminal_business_can_start_new_round_but_active_business_cannot()
+    {
+        var store = CreateStore();
+        var suffix = Guid.NewGuid().ToString("N");
+        var businessId = $"business-round:{suffix}";
+        var first = await store.ReserveBusinessAsync(new ReserveBusinessCommand
+        {
+            BusinessId = businessId,
+            RequestId = $"request-1:{suffix}",
+            BusinessType = "problem_zero",
+            ProcessDefinitionKey = "problem_zero"
+        });
+        Assert.True(first.Created);
+        await store.BindStartedProcessAsync(
+            businessId, first.Instance.RequestId, $"process-1:{suffix}", 1);
+
+        var blocked = await store.ReserveBusinessAsync(new ReserveBusinessCommand
+        {
+            BusinessId = businessId,
+            RequestId = $"request-2:{suffix}",
+            BusinessType = "problem_zero",
+            ProcessDefinitionKey = "problem_zero"
+        });
+        Assert.False(blocked.Created);
+        Assert.Equal(first.Instance.RequestId, blocked.Instance.RequestId);
+
+        await store.MarkBusinessFlowStateAsync(businessId, "completed");
+        var second = await store.ReserveBusinessAsync(new ReserveBusinessCommand
+        {
+            BusinessId = businessId,
+            RequestId = $"request-2:{suffix}",
+            BusinessType = "problem_zero",
+            ProcessDefinitionKey = "problem_zero"
+        });
+        Assert.True(second.Created);
+        Assert.Equal(2, second.Instance.ApprovalRound);
+        Assert.NotEqual(first.Instance.Id, second.Instance.Id);
+
+        var replay = await store.ReserveBusinessAsync(new ReserveBusinessCommand
+        {
+            BusinessId = businessId,
+            RequestId = second.Instance.RequestId,
+            BusinessType = "problem_zero",
+            ProcessDefinitionKey = "problem_zero"
+        });
+        Assert.False(replay.Created);
+        Assert.Equal(second.Instance.Id, replay.Instance.Id);
     }
 
     [Dm8Fact]

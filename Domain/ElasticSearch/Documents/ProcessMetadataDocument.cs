@@ -14,6 +14,8 @@ namespace FlowableWrapper.Domain.ElasticSearch
         public string ProcessDefinitionKey { get; set; }
         public int? ProcessDefinitionVersion { get; set; }
         public string BusinessId { get; set; }
+        public string RequestId { get; set; }
+        public int ApprovalRound { get; set; }
         public string BusinessType { get; set; }
         public string BusinessTitle { get; set; }
 

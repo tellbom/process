@@ -295,7 +295,7 @@ public sealed class CallbackInboxWorker : BackgroundService
                     if (IsProcessEndCallback(callbackEvent))
                     {
                         await store.MarkBusinessCallbackStateAsync(
-                            callbackEvent.BusinessId,
+                            callbackEvent.ProcessInstanceId,
                             "succeeded",
                             flowCompleted: true,
                             cancellationToken: cancellationToken);
@@ -512,7 +512,7 @@ public sealed class CallbackInboxWorker : BackgroundService
         if (IsProcessEndCallback(callbackEvent))
         {
             await store.MarkBusinessCallbackStateAsync(
-                callbackEvent.BusinessId,
+                callbackEvent.ProcessInstanceId,
                 decision.Status == CallbackEventStatus.DeadLetter
                     ? "dead_letter"
                     : "retry_waiting",

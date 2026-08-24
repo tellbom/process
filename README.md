@@ -172,6 +172,7 @@
 
 | 字段 | 职责 |
 |---|---|
+| `requestId` | **必填**。一次发起意图的幂等标识；网络重试必须复用，新一轮审批必须生成新值 |
 | `initialSlotSelections` | 首节点选人 → 生成 Flowable 启动变量（执行路径） |
 | `assigneeContract` | 按 roleKey 传推荐人 → 写入 RecommendedAssigneesSnapshot（展示用，不影响执行） |
 | `assigneeContract.nodeDescriptions` | 本次流程实例的节点详细说明数组，可不传；按 roleKey 关联节点，不进入 slotConfig 或 Flowable 变量 |
@@ -298,7 +299,10 @@
 
 | 场景 | 预期 |
 |---|---|
-| `businessId` 重复（已有 running 流程） | `success: false` |
+| 未传 `requestId` | `REQUEST_ID_REQUIRED` |
+| 相同 `businessId + requestId` 重试 | 返回原流程实例，不创建新实例 |
+| `businessId` 重复（已有 running 流程且 requestId 不同） | `BUSINESS_PROCESS_ALREADY_RUNNING` |
+| 原流程 completed / terminated，使用新 requestId | 创建同一 businessId 的新审批轮次 |
 | `businessType` 未配置映射 | `success: false` |
 | `X-User-Id` 未传 | `success: false`（无法确定操作人） |
 | `initialSlotSelections` 含未知 slotKey | `errorCode: SLOT_KEY_INVALID` |

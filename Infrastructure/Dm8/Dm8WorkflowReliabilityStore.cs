@@ -31,6 +31,20 @@ public sealed class Dm8WorkflowReliabilityStore : IWorkflowReliabilityStore
         ReserveBusinessCommand command,
         CancellationToken cancellationToken = default)
     {
+        if (string.IsNullOrWhiteSpace(command.RequestId))
+            throw new ArgumentException("RequestId is required.", nameof(command));
+
+        var sameRequest = await GetBusinessByRequestIdAsync(
+            command.BusinessId, command.RequestId, cancellationToken);
+        if (sameRequest != null)
+            return new BusinessReservation(false, sameRequest);
+
+        var latest = await GetBusinessByBusinessIdAsync(
+            command.BusinessId, cancellationToken);
+        if (latest != null && IsActive(latest.FlowState))
+            return new BusinessReservation(false, latest);
+        var approvalRound = (latest?.ApprovalRound ?? 0) + 1;
+
         try
         {
             await using var connection = CreateConnection();
@@ -40,7 +54,8 @@ public sealed class Dm8WorkflowReliabilityStore : IWorkflowReliabilityStore
             insert.CommandText = $@"
 INSERT INTO {_businessTable}
 (
-    BUSINESS_ID, BUSINESS_TYPE, BUSINESS_TITLE, CREATED_BY,
+    BUSINESS_ID, REQUEST_ID, APPROVAL_ROUND,
+    BUSINESS_TYPE, BUSINESS_TITLE, CREATED_BY,
     PROCESS_DEFINITION_KEY, FLOW_STATE, CALLBACK_STATE,
     CALLBACK_CONFIG_SNAPSHOT, RECOMMENDED_ASSIGNEES_SNAPSHOT,
     NODE_DESCRIPTIONS_SNAPSHOT, ROW_VERSION, DATA_VERSION,
@@ -48,12 +63,15 @@ INSERT INTO {_businessTable}
 )
 VALUES
 (
-    :business_id, :business_type, :business_title, :created_by,
+    :business_id, :request_id, :approval_round,
+    :business_type, :business_title, :created_by,
     :definition_key, 'starting', 'not_requested', :callback_snapshot,
     :recommended_snapshot, :exception_snapshot, 0, 0,
     CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
 )";
             AddParameter(insert, "business_id", command.BusinessId);
+            AddParameter(insert, "request_id", command.RequestId);
+            AddParameter(insert, "approval_round", approvalRound);
             AddParameter(insert, "business_type", command.BusinessType);
             AddParameter(insert, "business_title", command.BusinessTitle);
             AddParameter(insert, "created_by", command.CreatedBy);
@@ -65,9 +83,13 @@ VALUES
         }
         catch
         {
-            var existing = await GetBusinessByBusinessIdAsync(
-                command.BusinessId,
-                cancellationToken);
+            var existing = await GetBusinessByRequestIdAsync(
+                               command.BusinessId,
+                               command.RequestId,
+                               cancellationToken)
+                           ?? await GetBusinessByBusinessIdAsync(
+                               command.BusinessId,
+                               cancellationToken);
             if (existing != null)
                 return new BusinessReservation(false, existing);
             throw;
@@ -81,6 +103,7 @@ VALUES
 
     public async Task BindStartedProcessAsync(
         string businessId,
+        string requestId,
         string processInstanceId,
         int? processDefinitionVersion,
         CancellationToken cancellationToken = default)
@@ -98,11 +121,13 @@ SET PROCESS_INSTANCE_ID = :process_instance_id,
     ROW_VERSION = ROW_VERSION + 1,
     DATA_VERSION = DATA_VERSION + 1
 WHERE BUSINESS_ID = :business_id
+  AND REQUEST_ID = :request_id
   AND FLOW_STATE IN ('starting', 'reconcile_required')
   AND PROCESS_INSTANCE_ID IS NULL";
         AddParameter(command, "process_instance_id", processInstanceId);
         AddParameter(command, "definition_version", processDefinitionVersion);
         AddParameter(command, "business_id", businessId);
+        AddParameter(command, "request_id", requestId);
         if (await command.ExecuteNonQueryAsync(cancellationToken) != 1)
             throw new DBConcurrencyException(
                 $"Unable to bind started process for business '{businessId}'.");
@@ -122,7 +147,10 @@ UPDATE {_businessTable}
 SET FLOW_STATE = :flow_state,
     UPDATED_AT = CURRENT_TIMESTAMP,
     ROW_VERSION = ROW_VERSION + 1
-WHERE BUSINESS_ID = :business_id";
+WHERE ID = (
+    SELECT MAX(ID) FROM {_businessTable}
+    WHERE BUSINESS_ID = :business_id
+)";
         AddParameter(command, "flow_state", flowState);
         AddParameter(command, "business_id", businessId);
         await command.ExecuteNonQueryAsync(cancellationToken);
@@ -143,7 +171,10 @@ SET RECOMMENDED_ASSIGNEES_SNAPSHOT = :snapshot,
     UPDATED_AT = CURRENT_TIMESTAMP,
     ROW_VERSION = ROW_VERSION + 1,
     DATA_VERSION = DATA_VERSION + 1
-WHERE BUSINESS_ID = :business_id";
+WHERE ID = (
+    SELECT MAX(ID) FROM {_businessTable}
+    WHERE BUSINESS_ID = :business_id
+)";
         AddParameter(command, "snapshot", snapshotJson, DbType.String);
         AddParameter(command, "business_id", businessId);
         if (await command.ExecuteNonQueryAsync(cancellationToken) != 1)
@@ -152,7 +183,7 @@ WHERE BUSINESS_ID = :business_id";
     }
 
     public async Task MarkBusinessCallbackStateAsync(
-        string businessId,
+        string processInstanceId,
         string callbackState,
         bool flowCompleted,
         CancellationToken cancellationToken = default)
@@ -172,10 +203,10 @@ SET CALLBACK_STATE = :callback_state,
     UPDATED_AT = CURRENT_TIMESTAMP,
     ROW_VERSION = ROW_VERSION + 1,
     DATA_VERSION = DATA_VERSION + 1
-WHERE BUSINESS_ID = :business_id";
+WHERE PROCESS_INSTANCE_ID = :process_instance_id";
         AddParameter(command, "callback_state", callbackState);
         AddParameter(command, "flow_completed", flowCompleted ? 1 : 0);
-        AddParameter(command, "business_id", businessId);
+        AddParameter(command, "process_instance_id", processInstanceId);
         await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
@@ -208,7 +239,8 @@ WHERE BUSINESS_ID = :business_id";
         var parameters = ids.Select((_, index) => $":process_id_{index}")
             .ToList();
         command.CommandText = $@"
-SELECT ID, BUSINESS_ID, BUSINESS_TYPE, BUSINESS_TITLE, CREATED_BY, PROCESS_INSTANCE_ID,
+        SELECT ID, BUSINESS_ID, REQUEST_ID, APPROVAL_ROUND,
+               BUSINESS_TYPE, BUSINESS_TITLE, CREATED_BY, PROCESS_INSTANCE_ID,
        PROCESS_DEFINITION_KEY, PROCESS_DEFINITION_VERSION, FLOW_STATE,
        CALLBACK_STATE, CALLBACK_CONFIG_SNAPSHOT,
        RECOMMENDED_ASSIGNEES_SNAPSHOT, NODE_DESCRIPTIONS_SNAPSHOT,
@@ -913,7 +945,32 @@ WHERE EVENT_ID = :event_id
             "BUSINESS_ID",
             "business_id",
             businessId,
-            cancellationToken);
+            cancellationToken,
+            "APPROVAL_ROUND DESC");
+
+    public async Task<WorkflowBusinessInstance?> GetBusinessByRequestIdAsync(
+        string businessId,
+        string requestId,
+        CancellationToken cancellationToken)
+    {
+        await using var connection = CreateConnection();
+        await connection.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        Configure(command);
+        command.CommandText = $@"
+SELECT ID, BUSINESS_ID, REQUEST_ID, APPROVAL_ROUND,
+       BUSINESS_TYPE, BUSINESS_TITLE, CREATED_BY, PROCESS_INSTANCE_ID,
+       PROCESS_DEFINITION_KEY, PROCESS_DEFINITION_VERSION, FLOW_STATE,
+       CALLBACK_STATE, CALLBACK_CONFIG_SNAPSHOT,
+       RECOMMENDED_ASSIGNEES_SNAPSHOT, NODE_DESCRIPTIONS_SNAPSHOT,
+       ROW_VERSION, DATA_VERSION, CREATED_AT, UPDATED_AT, COMPLETED_AT
+FROM {_businessTable}
+WHERE BUSINESS_ID = :business_id AND REQUEST_ID = :request_id";
+        AddParameter(command, "business_id", businessId);
+        AddParameter(command, "request_id", requestId);
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        return await reader.ReadAsync(cancellationToken) ? ReadBusiness(reader) : null;
+    }
 
     private async Task<WorkflowTaskAction?> GetTaskActionAsync(
         string column,
@@ -957,21 +1014,24 @@ WHERE {column} = :{parameterName}";
         string column,
         string parameterName,
         string value,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        string? orderBy = null)
     {
         await using var connection = CreateConnection();
         await connection.OpenAsync(cancellationToken);
         await using var command = connection.CreateCommand();
         Configure(command);
         command.CommandText = $@"
-SELECT ID, BUSINESS_ID, BUSINESS_TYPE, BUSINESS_TITLE, CREATED_BY, PROCESS_INSTANCE_ID,
+SELECT ID, BUSINESS_ID, REQUEST_ID, APPROVAL_ROUND,
+       BUSINESS_TYPE, BUSINESS_TITLE, CREATED_BY, PROCESS_INSTANCE_ID,
        PROCESS_DEFINITION_KEY, PROCESS_DEFINITION_VERSION, FLOW_STATE,
        CALLBACK_STATE, CALLBACK_CONFIG_SNAPSHOT,
        RECOMMENDED_ASSIGNEES_SNAPSHOT, NODE_DESCRIPTIONS_SNAPSHOT,
        ROW_VERSION, DATA_VERSION,
        CREATED_AT, UPDATED_AT, COMPLETED_AT
 FROM {_businessTable}
-WHERE {column} = :{parameterName}";
+WHERE {column} = :{parameterName}
+{(string.IsNullOrWhiteSpace(orderBy) ? string.Empty : $"ORDER BY {orderBy}")}";
         AddParameter(command, parameterName, value);
         await using var reader =
             await command.ExecuteReaderAsync(cancellationToken);
@@ -1125,24 +1185,29 @@ WHERE EVENT_ID = :event_id
         {
             Id = reader.GetInt64(0),
             BusinessId = reader.GetString(1),
-            BusinessType = reader.GetString(2),
-            BusinessTitle = GetNullableString(reader, 3),
-            CreatedBy = GetNullableString(reader, 4),
-            ProcessInstanceId = GetNullableString(reader, 5),
-            ProcessDefinitionKey = reader.GetString(6),
+            RequestId = reader.GetString(2),
+            ApprovalRound = reader.GetInt32(3),
+            BusinessType = reader.GetString(4),
+            BusinessTitle = GetNullableString(reader, 5),
+            CreatedBy = GetNullableString(reader, 6),
+            ProcessInstanceId = GetNullableString(reader, 7),
+            ProcessDefinitionKey = reader.GetString(8),
             ProcessDefinitionVersion =
-                reader.IsDBNull(7) ? null : reader.GetInt32(7),
-            FlowState = reader.GetString(8),
-            CallbackState = reader.GetString(9),
-            CallbackConfigSnapshot = GetNullableString(reader, 10),
-            RecommendedAssigneesSnapshot = GetNullableString(reader, 11),
-            NodeDescriptionsSnapshot = GetNullableString(reader, 12),
-            RowVersion = reader.GetInt64(13),
-            DataVersion = reader.GetInt64(14),
-            CreatedAt = reader.GetDateTime(15),
-            UpdatedAt = reader.GetDateTime(16),
-            CompletedAt = GetNullableDateTime(reader, 17)
+                reader.IsDBNull(9) ? null : reader.GetInt32(9),
+            FlowState = reader.GetString(10),
+            CallbackState = reader.GetString(11),
+            CallbackConfigSnapshot = GetNullableString(reader, 12),
+            RecommendedAssigneesSnapshot = GetNullableString(reader, 13),
+            NodeDescriptionsSnapshot = GetNullableString(reader, 14),
+            RowVersion = reader.GetInt64(15),
+            DataVersion = reader.GetInt64(16),
+            CreatedAt = reader.GetDateTime(17),
+            UpdatedAt = reader.GetDateTime(18),
+            CompletedAt = GetNullableDateTime(reader, 19)
         };
+
+    private static bool IsActive(string flowState)
+        => flowState is "starting" or "running" or "reconcile_required";
 
     private static string? GetNullableString(DbDataReader reader, int ordinal)
         => reader.IsDBNull(ordinal) ? null : reader.GetString(ordinal);

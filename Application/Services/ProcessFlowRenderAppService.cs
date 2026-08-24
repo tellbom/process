@@ -90,7 +90,12 @@ namespace FlowableWrapper.Application.Services
             await Task.WhenAll(activeTasksTask, auditRecordsTask, historicTasksTask);
 
             var activeTasks = activeTasksTask.Result;
-            var auditRecords = auditRecordsTask.Result;
+            var auditRecords = auditRecordsTask.Result
+                .Where(record => string.Equals(
+                    record.ProcessInstanceId,
+                    metadata.ProcessInstanceId,
+                    StringComparison.Ordinal))
+                .ToList();
             var historicTasks = historicTasksTask.Result;
 
             // ── 获取 BPMN XML ──────────────────────────────────────

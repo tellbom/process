@@ -141,7 +141,7 @@ Invoke-Api POST '/api/processes/terminate' 'GATE_START_A' @{
     reason = 'V3 businessId reuse regression gate'
 } | Out-Null
 
-$duplicateResponse = Invoke-Api POST '/api/processes/start' 'GATE_START_B' @{
+$restartResponse = Invoke-Api POST '/api/processes/start' 'GATE_START_B' @{
     requestId = "$reuseBusinessId-request-B"
     businessType = 'personnel_selection_approval'
     businessId = $reuseBusinessId
@@ -150,8 +150,9 @@ $duplicateResponse = Invoke-Api POST '/api/processes/start' 'GATE_START_B' @{
     assigneeContract = @{ roles = @(@{ roleKey = 'group_leader'; mode = 'single'; users = @('OTHER_GL') }) }
     businessVariables = @{ starterAssignee = 'GATE_START_B' }
     callback = @{ url = "$BaseUrl/api/test/process-callback"; timeoutSeconds = 30; retryCount = 1 }
-} @(400)
-Assert-True ($duplicateResponse.code -eq 'BUSINESS_ID_ALREADY_USED') "Unexpected duplicate start error code: $($duplicateResponse.code)"
+}
+Assert-True ($restartResponse.success -eq $true) 'Terminated businessId did not start a new approval round.'
+Assert-True ($restartResponse.data.processInstanceId -ne $reuseStart.data.processInstanceId) 'Terminated businessId reused the old process instance.'
 
 $fullStart = Start-Process $fullBusinessId 'GATE_START_FULL' 'V4 complete automatic process gate' "$fullBusinessId-request-A"
 Assert-True ($fullStart.success -eq $true) 'Full scenario start failed.'
@@ -191,7 +192,7 @@ Assert-True (@($progress.data.auditHistory).Count -eq 7) "Expected 7 audit recor
     baseUrl = $BaseUrl
     reuseBusinessId = $reuseBusinessId
     reuseProcessInstanceId = $reuseStart.data.processInstanceId
-    duplicateStartCode = $duplicateResponse.code
+    restartedProcessInstanceId = $restartResponse.data.processInstanceId
     fullBusinessId = $fullBusinessId
     fullProcessInstanceId = $fullStart.data.processInstanceId
     fullStatus = $status.data.status

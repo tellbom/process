@@ -4,6 +4,8 @@ public sealed class WorkflowBusinessInstance
 {
     public long Id { get; init; }
     public string BusinessId { get; init; } = string.Empty;
+    public string RequestId { get; init; } = string.Empty;
+    public int ApprovalRound { get; init; }
     public string BusinessType { get; init; } = string.Empty;
     public string? BusinessTitle { get; init; }
     public string? CreatedBy { get; init; }
@@ -75,6 +77,7 @@ public sealed class EnqueueCallbackCommand
 public sealed class ReserveBusinessCommand
 {
     public string BusinessId { get; init; } = string.Empty;
+    public string RequestId { get; init; } = string.Empty;
     public string BusinessType { get; init; } = string.Empty;
     public string ProcessDefinitionKey { get; init; } = string.Empty;
     public string? BusinessTitle { get; init; }
@@ -143,6 +146,7 @@ public interface IWorkflowReliabilityStore
 
     Task BindStartedProcessAsync(
         string businessId,
+        string requestId,
         string processInstanceId,
         int? processDefinitionVersion,
         CancellationToken cancellationToken = default);
@@ -158,13 +162,18 @@ public interface IWorkflowReliabilityStore
         CancellationToken cancellationToken = default);
 
     Task MarkBusinessCallbackStateAsync(
-        string businessId,
+        string processInstanceId,
         string callbackState,
         bool flowCompleted,
         CancellationToken cancellationToken = default);
 
     Task<WorkflowBusinessInstance?> GetBusinessByBusinessIdAsync(
         string businessId,
+        CancellationToken cancellationToken = default);
+
+    Task<WorkflowBusinessInstance?> GetBusinessByRequestIdAsync(
+        string businessId,
+        string requestId,
         CancellationToken cancellationToken = default);
 
     Task<WorkflowBusinessInstance?> GetBusinessByProcessInstanceAsync(

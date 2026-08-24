@@ -1,6 +1,7 @@
 param(
     [string]$BaseUrl = 'http://192.168.124.5:5012',
-    [string]$EvidenceDir = 'docs/test-reports/evidence/problem-zero'
+    [string]$EvidenceDir = 'docs/test-reports/evidence/problem-zero',
+    [string]$VersionLabel = 'V4'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -18,7 +19,7 @@ function New-TestJwt([string]$UserId) {
 }
 
 function Invoke-Api {
-    param([string]$Method, [string]$Path, [string]$UserId, $Body)
+    param([string]$Method, [string]$Path, [string]$UserId, $Body, [int[]]$ExpectedStatus = @(200))
     $parameters = @{
         Method = $Method
         Uri = "$BaseUrl$Path"
@@ -26,7 +27,22 @@ function Invoke-Api {
         ContentType = 'application/json; charset=utf-8'
     }
     if ($null -ne $Body) { $parameters.Body = $Body | ConvertTo-Json -Depth 20 -Compress }
-    Invoke-RestMethod @parameters
+    try {
+        $response = Invoke-WebRequest @parameters -UseBasicParsing
+        $status = [int]$response.StatusCode
+        $content = $response.Content
+    } catch {
+        if ($null -eq $_.Exception.Response) { throw }
+        $status = [int]$_.Exception.Response.StatusCode
+        $reader = New-Object IO.StreamReader($_.Exception.Response.GetResponseStream())
+        $content = $reader.ReadToEnd()
+        $reader.Dispose()
+    }
+    if ($ExpectedStatus -notcontains $status) {
+        throw "$Method $Path returned HTTP $status, expected $($ExpectedStatus -join ','): $content"
+    }
+    if ([string]::IsNullOrWhiteSpace($content)) { return $null }
+    $content | ConvertFrom-Json
 }
 
 function Save-Json([string]$Name, $Value) {
@@ -60,7 +76,7 @@ function Complete-Node {
     $response
 }
 
-function Start-Scenario([string]$BusinessId) {
+function Start-Scenario([string]$BusinessId, [string]$RequestId) {
     $roles = @(
         @{ roleKey = 'problem_zero_team_leader'; mode = 'multiple'; users = @('PZ_TEAM') },
         @{ roleKey = 'problem_zero_quality_member'; mode = 'multiple'; users = @('PZ_QUALITY') },
@@ -71,6 +87,8 @@ function Start-Scenario([string]$BusinessId) {
     $response = Invoke-Api POST '/api/processes/start' 'PZ_START' @{
         businessType = 'problem_zero'
         businessId = $BusinessId
+        requestId = $RequestId
+        businessTitle = "$VersionLabel problem zero $BusinessId"
         initialSlotSelections = @(@{ slotKey = 'team_leader'; users = @('PZ_TEAM') })
         assigneeContract = @{ roles = $roles }
         businessVariables = @{ starterAssignee = 'PZ_START' }
@@ -107,13 +125,68 @@ $ids = [ordered]@{
 }
 Save-Json 'scenario-ids.json' $ids
 
-Save-Json 'solved-start.json' (Start-Scenario $ids.solved)
+$missingRequest = Invoke-Api POST '/api/processes/start' 'PZ_START' @{
+    businessType = 'problem_zero'; businessId = "PZ_NO_REQUEST_$stamp"
+    initialSlotSelections = @(); businessVariables = @{}
+    callback = @{ url = "$BaseUrl/api/test/process-callback"; timeoutSeconds = 30; retryCount = 1 }
+} @(400)
+if ($missingRequest.code -ne 'REQUEST_ID_REQUIRED') {
+    throw "Missing requestId returned $($missingRequest.code), expected REQUEST_ID_REQUIRED."
+}
+
+$solvedStart = Start-Scenario $ids.solved "$($ids.solved)-round-1"
+Save-Json 'solved-start.json' $solvedStart
+$sameRequestReplay = Start-Scenario $ids.solved "$($ids.solved)-round-1"
+if ($sameRequestReplay.data.processInstanceId -ne $solvedStart.data.processInstanceId) {
+    throw 'Same requestId did not return the original process instance.'
+}
+$runningReject = Invoke-Api POST '/api/processes/start' 'PZ_START' @{
+    requestId = "$($ids.solved)-round-running-conflict"
+    businessType = 'problem_zero'
+    businessId = $ids.solved
+    initialSlotSelections = @(@{ slotKey = 'team_leader'; users = @('PZ_TEAM') })
+    assigneeContract = @{ roles = @() }
+    businessVariables = @{ starterAssignee = 'PZ_START' }
+    callback = @{ url = "$BaseUrl/api/test/process-callback"; timeoutSeconds = 30; retryCount = 1 }
+} @(400)
+if ($runningReject.code -ne 'BUSINESS_PROCESS_ALREADY_RUNNING') {
+    throw "Running duplicate returned $($runningReject.code)."
+}
 Complete-Node $ids.solved 'ut01_starter_submit' 'PZ_START' @(@{ slotKey = 'team_leader'; users = @('PZ_TEAM') }) | Out-Null
 Complete-Node $ids.solved 'ut02_team_leader_confirm' 'PZ_TEAM' @(@{ slotKey = 'quality_group'; users = @('PZ_QUALITY') }) | Out-Null
 Complete-Node $ids.solved 'ut03_quality_group_confirm' 'PZ_QUALITY' @(@{ slotKey = 'direct_end_when_solved'; users = @() }) @{ IS_SOLVED = $true } | Out-Null
 $solvedCallbacks = Save-ScenarioEvidence 'solved' $ids.solved
 
-Save-Json 'special-start.json' (Start-Scenario $ids.special)
+$round2 = Start-Scenario $ids.solved "$($ids.solved)-round-2"
+if ($round2.data.processInstanceId -eq $solvedStart.data.processInstanceId) {
+    throw 'Completed businessId reuse did not create a new process instance.'
+}
+$latestRound2 = Invoke-Api GET "/api/processes/$($ids.solved)/status" 'PZ_START' $null
+if ($latestRound2.data.processInstanceId -ne $round2.data.processInstanceId) {
+    throw 'businessId status did not resolve to the latest approval round.'
+}
+Invoke-Api POST '/api/processes/terminate' 'PZ_START' @{
+    businessId = $ids.solved; reason = 'problem_zero terminated reuse gate'
+} | Out-Null
+$round3 = Start-Scenario $ids.solved "$($ids.solved)-round-3"
+if ($round3.data.processInstanceId -eq $round2.data.processInstanceId) {
+    throw 'Terminated businessId reuse did not create a new process instance.'
+}
+Complete-Node $ids.solved 'ut01_starter_submit' 'PZ_START' @(@{ slotKey = 'team_leader'; users = @('PZ_TEAM') }) | Out-Null
+Complete-Node $ids.solved 'ut02_team_leader_confirm' 'PZ_TEAM' @(@{ slotKey = 'quality_group'; users = @('PZ_QUALITY') }) | Out-Null
+Complete-Node $ids.solved 'ut03_quality_group_confirm' 'PZ_QUALITY' @(@{ slotKey = 'direct_end_when_solved'; users = @() }) @{ IS_SOLVED = $true } | Out-Null
+$round3Progress = $null
+for ($attempt = 0; $attempt -lt 20; $attempt++) {
+    $round3Progress = Invoke-Api GET "/api/processes/$($ids.solved)/progress" 'PZ_START' $null
+    if ($round3Progress.data.processInstanceId -eq $round3.data.processInstanceId -and
+        @($round3Progress.data.auditHistory).Count -eq 3) { break }
+    Start-Sleep -Milliseconds 250
+}
+if ($round3Progress.data.processInstanceId -ne $round3.data.processInstanceId -or @($round3Progress.data.auditHistory).Count -ne 3) {
+    throw 'Latest-round progress or audit isolation failed after businessId reuse.'
+}
+
+Save-Json 'special-start.json' (Start-Scenario $ids.special "$($ids.special)-round-1")
 Complete-Node $ids.special 'ut01_starter_submit' 'PZ_START' @(@{ slotKey = 'team_leader'; users = @('PZ_TEAM') }) | Out-Null
 Complete-Node $ids.special 'ut02_team_leader_confirm' 'PZ_TEAM' @(@{ slotKey = 'quality_group'; users = @('PZ_QUALITY') }) | Out-Null
 Complete-Node $ids.special 'ut03_quality_group_confirm' 'PZ_QUALITY' @(@{ slotKey = 'responsible_person'; users = @('PZ_RESP') }) @{ IS_SOLVED = $false } | Out-Null
@@ -122,7 +195,7 @@ Complete-Node $ids.special 'ut05_counterpart_leader_review' 'PZ_COUNTER' @(@{ sl
 Complete-Node $ids.special 'ut06_discoverer_confirm' 'PZ_DISC' | Out-Null
 $specialCallbacks = Save-ScenarioEvidence 'special' $ids.special
 
-Save-Json 'nonspecial-start.json' (Start-Scenario $ids.nonspecial)
+Save-Json 'nonspecial-start.json' (Start-Scenario $ids.nonspecial "$($ids.nonspecial)-round-1")
 Complete-Node $ids.nonspecial 'ut01_starter_submit' 'PZ_START' @(@{ slotKey = 'team_leader'; users = @('PZ_TEAM') }) | Out-Null
 Complete-Node $ids.nonspecial 'ut02_team_leader_confirm' 'PZ_TEAM' @(@{ slotKey = 'quality_group'; users = @('PZ_QUALITY') }) | Out-Null
 Complete-Node $ids.nonspecial 'ut03_quality_group_confirm' 'PZ_QUALITY' @(@{ slotKey = 'responsible_person'; users = @('PZ_RESP') }) @{ IS_SOLVED = $false } | Out-Null
@@ -133,6 +206,11 @@ $nonspecialCallbacks = Save-ScenarioEvidence 'nonspecial' $ids.nonspecial
 $summary = [ordered]@{
     generatedAt = (Get-Date).ToString('o')
     baseUrl = $BaseUrl
+    version = $VersionLabel
+    requestIdRequiredCode = $missingRequest.code
+    runningDuplicateCode = $runningReject.code
+    completedReuseProcessInstanceId = $round2.data.processInstanceId
+    terminatedReuseProcessInstanceId = $round3.data.processInstanceId
     scenarios = @(
         @{ name = 'solved'; businessId = $ids.solved; expectedNodes = 3; actualCallbacks = $solvedCallbacks.count },
         @{ name = 'special'; businessId = $ids.special; expectedNodes = 6; actualCallbacks = $specialCallbacks.count },
