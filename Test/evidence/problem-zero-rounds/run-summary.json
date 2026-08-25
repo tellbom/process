@@ -1,0 +1,29 @@
+﻿{
+    "generatedAt":  "2026-08-24T10:44:54.4710626+08:00",
+    "baseUrl":  "http://127.0.0.1:5012",
+    "version":  "V3",
+    "requestIdRequiredCode":  "REQUEST_ID_REQUIRED",
+    "runningDuplicateCode":  "BUSINESS_PROCESS_ALREADY_RUNNING",
+    "completedReuseProcessInstanceId":  "a3803e22-9f65-11f1-8dbf-0242c0a81003",
+    "terminatedReuseProcessInstanceId":  "a3e393e5-9f65-11f1-8dbf-0242c0a81003",
+    "scenarios":  [
+                      {
+                          "expectedNodes":  3,
+                          "name":  "solved",
+                          "businessId":  "PZ_E2E_SOLVED_20260824104336",
+                          "actualCallbacks":  4
+                      },
+                      {
+                          "expectedNodes":  6,
+                          "name":  "special",
+                          "businessId":  "PZ_E2E_SPECIAL_20260824104336",
+                          "actualCallbacks":  7
+                      },
+                      {
+                          "expectedNodes":  5,
+                          "name":  "nonspecial",
+                          "businessId":  "PZ_E2E_NONSPECIAL_20260824104336",
+                          "actualCallbacks":  6
+                      }
+                  ]
+}

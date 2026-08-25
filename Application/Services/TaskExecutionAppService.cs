@@ -246,6 +246,22 @@ namespace FlowableWrapper.Application.Services
 
                 semanticMap.TryGetValue(task.TaskDefinitionKey, out var nodeInfo);
 
+                var nodeDescription = meta.NodeDescriptionsSnapshot?
+                    .FirstOrDefault(item =>
+                        string.Equals(
+                            item.RoleKey,
+                            nodeInfo?.RoleKey,
+                            StringComparison.OrdinalIgnoreCase))?
+                    .Description;
+                var businessDisplayName = !string.IsNullOrWhiteSpace(meta.BusinessTitle)
+                    ? meta.BusinessTitle.Trim()
+                    : meta.BusinessId;
+                var actionDescription = !string.IsNullOrWhiteSpace(nodeDescription)
+                    ? nodeDescription.Trim()
+                    : $"请处理当前节点：{task.Name}";
+                var isOverdue = task.DueDate.HasValue
+                    && task.DueDate.Value.ToUniversalTime() < DateTime.UtcNow;
+
                 var slotRecommendedUsers = new Dictionary<string, List<string>>();
                 var restrictMap = new Dictionary<string, bool>();
                 if (nodeInfo?.Slots != null)
@@ -272,10 +288,24 @@ namespace FlowableWrapper.Application.Services
                 {
                     TaskId = task.Id,
                     TaskName = task.Name,
+                    ProcessInstanceId = task.ProcessInstanceId,
+                    ProcessDefinitionKey = meta.ProcessDefinitionKey,
+                    TaskDefinitionKey = task.TaskDefinitionKey,
                     BusinessId = meta.BusinessId,
                     BusinessType = meta.BusinessType,
+                    BusinessTitle = meta.BusinessTitle,
+                    BusinessDisplayName = businessDisplayName,
+                    CreatedBy = meta.CreatedBy,
+                    ProcessCreatedTime = meta.CreatedTime,
+                    ProcessStatus = meta.Status,
                     NodeSemantic = nodeInfo?.NodeSemantic,
                     RoleKey = nodeInfo?.RoleKey,
+                    NodeDescription = nodeDescription,
+                    ActionDescription = actionDescription,
+                    Assignee = task.Assignee,
+                    Owner = task.Owner,
+                    DueDate = task.DueDate,
+                    IsOverdue = isOverdue,
                     PageCode = nodeInfo?.PageCode,
                     PageUrl = BuildPageUrl(
                         nodeInfo?.PageCode,
@@ -613,6 +643,17 @@ namespace FlowableWrapper.Application.Services
                 var slotDefs = await _slotConfigProvider.GetSlotsForNodeAsync(
                     metadata.ProcessDefinitionKey,
                     currentTask.TaskDefinitionKey);
+
+                var (hasOutOfRange, _, _) = EvaluateRecommendedRange(
+                    request.NextSlotSelections,
+                    slotDefs,
+                    metadata.RecommendedAssigneesSnapshot);
+                if (hasOutOfRange == true)
+                {
+                    throw new BusinessException(
+                        "所选办理人超出当前节点允许的推荐人范围",
+                        "ASSIGNEE_OUT_OF_RECOMMENDED_RANGE");
+                }
 
                 var conversionResult = _slotConverter.Convert(
                     request.NextSlotSelections,

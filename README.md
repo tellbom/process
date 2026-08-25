@@ -146,8 +146,11 @@
 
 | 字段 | 职责 |
 |---|---|
+| `requestId` | **必填**。一次发起意图的幂等标识；网络重试必须复用，新一轮审批必须生成新值 |
 | `initialSlotSelections` | 首节点选人 → 生成 Flowable 启动变量（执行路径） |
 | `assigneeContract` | 按 roleKey 传推荐人 → 写入 RecommendedAssigneesSnapshot（展示用，不影响执行） |
+| `assigneeContract.nodeDescriptions` | 本次流程实例的节点详细说明数组，可不传；按 roleKey 关联节点，不进入 slotConfig 或 Flowable 变量 |
+| `businessTitle` | 可选业务单据标题，供待办列表直接展示 |
 | `businessVariables` | 网关条件变量、starterAssignee 等 → 直接注入 Flowable |
 | `callback.url` | 流程级回调地址，仅在节点未声明 callbackUrl 时作为兼容降级使用 |
 
@@ -159,8 +162,10 @@
 
 ```json
 {
+  "requestId": "req-semi-auto-001-v1",
   "businessType": "personnel_selection_approval",
   "businessId": "SEMI_AUTO_001",
+  "businessTitle": "2026 年第 3 批人员选调审批",
   "initialSlotSelections": [
     { "slotKey": "group_leader", "users": ["EMP_001"] }
   ],
@@ -171,6 +176,12 @@
       { "roleKey": "integrity_head",             "users": ["EMP_015"] },
       { "roleKey": "office_director",            "users": ["EMP_020"] },
       { "roleKey": "secretary",                  "users": ["EMP_025"] }
+    ],
+    "nodeDescriptions": [
+      {
+        "roleKey": "group_leader",
+        "description": "请核对本批人员资格、回避关系及材料完整性"
+      }
     ]
   },
   "businessVariables": {
@@ -190,6 +201,7 @@
 
 ```json
 {
+  "requestId": "req-semi-no-recommend-001-v1",
   "businessType": "personnel_selection_approval",
   "businessId": "SEMI_NO_RECOMMEND_001",
   "initialSlotSelections": [
@@ -206,6 +218,7 @@
 
 ```json
 {
+  "requestId": "req-full-auto-001-v1",
   "businessType": "personnel_selection_approval",
   "businessId": "FULL_AUTO_001",
   "initialSlotSelections": [
@@ -234,6 +247,7 @@
 
 ```json
 {
+  "requestId": "req-legacy-001-v1",
   "businessType": "personnel_selection_approval",
   "businessId": "LEGACY_001",
   "initialSlotSelections": [
@@ -263,13 +277,25 @@
 
 | 场景 | 预期 |
 |---|---|
-| `businessId` 重复（已有 running 流程） | `success: false` |
+| 未传 `requestId` | `REQUEST_ID_REQUIRED` |
+| 相同 `businessId + requestId` 重试 | 返回原流程实例，不创建新实例 |
+| `businessId` 重复（已有 running 流程且 requestId 不同） | `BUSINESS_PROCESS_ALREADY_RUNNING` |
+| 原流程 completed / terminated，使用新 requestId | 创建同一 businessId 的新审批轮次 |
 | `businessType` 未配置映射 | `success: false` |
 | `X-User-Id` 未传 | `success: false`（无法确定操作人） |
 | `initialSlotSelections` 含未知 slotKey | `errorCode: SLOT_KEY_INVALID` |
 | slotConfig 中 slot 缺少 roleKey / variableName | 部署或运行时失败 |
 | Flowable 不可用 | `errorCode: FLOWABLE_START_FAILED` |
 | ES 两次写入均失败 | `errorCode: PROCESS_METADATA_INDEX_ORPHAN` |
+
+### 2.7 businessId 多轮审批与 requestId 规则
+
+- `businessId` 仍是业务系统与流程中心交互的业务唯一凭据，API 路径和既有查询方式不变。
+- `requestId` 只用于 `POST /api/processes/start`，标识“一次发起意图”。同一次发起的超时重试必须复用原值，不能每次重试都生成新值。
+- 同一 `businessId` 有运行中流程时，即使换用新 `requestId` 也禁止发起，返回 `BUSINESS_PROCESS_ALREADY_RUNNING`。
+- 同一 `businessId` 的上一轮已完成或已终止后，必须使用新的 `requestId` 才能开始下一轮审批。
+- 按 `businessId` 查询状态、进度、流程图和审批历史时返回最新审批轮次；历史轮次数据按 `processInstanceId` 隔离，不混入最新轮次。
+- 完成、驳回和转派任务不传 `requestId`。这些接口使用 `businessId` 定位最新审批轮次；并行节点或同一用户存在多个待办时，应同时传 `/api/tasks/pending` 返回的 `taskId` 精确定位任务。
 
 ---
 
@@ -278,7 +304,7 @@
 **GET** `/api/tasks/pending`
 `X-User-Id: EMP_001`
 
-Pending task responses include `slotRecommendedUsers` keyed by `slotKey`, `restrictToRecommended` keyed by `slotKey`, and `pageUrl` when `pageCode` is an http/https URL. `requiredSlots[]` includes `slotKey` / `roleKey` / `variableName` so the frontend can render by slot and submit by `slotKey`.
+Pending task responses retain the execution contract and additionally include business-facing fields: `businessDisplayName`, `actionDescription`, `processStatus`, `isOverdue`, the instance-level `nodeDescription`, business title/initiator/timestamps, `slotRecommendedUsers` keyed by `slotKey`, `restrictToRecommended` keyed by `slotKey`, and `pageUrl` when `pageCode` is an http/https URL. `requiredSlots[]` includes `slotKey` / `roleKey` / `variableName` so the frontend can render by slot and submit by `slotKey`.
 
 流程中心不解析 BPMN gateway 来预测后续路径。排他网关、并行网关场景下，如果当前节点需要提前选择多个下游处理人，必须在当前节点 `slots` 中显式声明多个选人槽；`/api/tasks/pending` 只返回这些显式声明的 requiredSlots 及其推荐人。
 
@@ -301,10 +327,24 @@ Pending task responses include `slotRecommendedUsers` keyed by `slotKey`, `restr
       {
         "taskId": "task-uuid-001",
         "taskName": "巡察组组长确认",
+        "processInstanceId": "process-instance-001",
+        "processDefinitionKey": "personnel_selection_approval",
+        "taskDefinitionKey": "ut01_group_leader_confirm",
         "businessId": "SEMI_AUTO_001",
         "businessType": "personnel_selection_approval",
+        "businessTitle": "2026 年第 3 批人员选调审批",
+        "businessDisplayName": "2026 年第 3 批人员选调审批",
+        "createdBy": "196045",
+        "processCreatedTime": "2026-08-21T08:20:00Z",
+        "processStatus": "running",
         "nodeSemantic": "GROUP_LEADER_CONFIRM",
         "roleKey": "group_leader",
+        "nodeDescription": "请核对本批人员资格、回避关系及材料完整性",
+        "actionDescription": "请核对本批人员资格、回避关系及材料完整性",
+        "assignee": "196045",
+        "owner": null,
+        "dueDate": null,
+        "isOverdue": false,
         "pageCode": "https://httpbin.org/get?node=group_leader_confirm",
         "pageUrl": "https://httpbin.org/get?node=group_leader_confirm&businessId=SEMI_AUTO_001&taskId=task-uuid-001&businessType=personnel_selection_approval&nodeId=ut01_group_leader_confirm&nodeSemantic=GROUP_LEADER_CONFIRM",
         "canReject": true,
@@ -464,6 +504,8 @@ Pending task responses include `slotRecommendedUsers` keyed by `slotKey`, `restr
 **POST** `/api/tasks/complete`
 `X-User-Id: {当前处理人}`
 `action = 1`
+
+本接口不接收也不需要 `requestId`。`businessId` 必填；普通单节点可由后端定位当前用户的任务，并行节点或同一用户存在多个待办时，`taskId` 必填，值取自 `/api/tasks/pending`。任务办理始终作用于该 `taskId` 所属的 `processInstanceId`，不会跨审批轮次串用推荐人或完成人信息。
 
 ### 5.1 半自动流程通过（传 NextSlotSelections）
 
@@ -852,6 +894,7 @@ BPMN 中只保留最后一个流程完成契约 HTTP ServiceTask，用于调用 
 
 ```json
 {
+  "requestId": "req-pz-001-v1",
   "businessType": "problem_zero",
   "businessId": "PZ_001",
   "initialSlotSelections": [

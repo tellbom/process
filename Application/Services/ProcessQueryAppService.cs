@@ -85,7 +85,12 @@ namespace FlowableWrapper.Application.Services
             await Task.WhenAll(currentTasksTask, auditRecordsTask);
 
             var currentTasks = currentTasksTask.Result;
-            var auditRecords = auditRecordsTask.Result;
+            var auditRecords = auditRecordsTask.Result
+                .Where(record => string.Equals(
+                    record.ProcessInstanceId,
+                    metadata.ProcessInstanceId,
+                    StringComparison.Ordinal))
+                .ToList();
 
             // ── 当前节点：补充 nodeSemantic / pageCode / candidateUsers / 推荐人 ──
             var currentNodes = await BuildCurrentNodesAsync(
@@ -124,10 +129,17 @@ namespace FlowableWrapper.Application.Services
             if (string.IsNullOrWhiteSpace(request.BusinessId))
                 throw new BusinessException("businessId 不能为空");
 
+            var metadata = await GetMetadataByBusinessIdAsync(request.BusinessId);
             var records = await _esService.QueryAuditRecordsByBusinessIdAsync(
                 request.BusinessId);
 
-            return records.Select(MapAuditRecord).ToList();
+            return records
+                .Where(record => string.Equals(
+                    record.ProcessInstanceId,
+                    metadata.ProcessInstanceId,
+                    StringComparison.Ordinal))
+                .Select(MapAuditRecord)
+                .ToList();
         }
 
         // ═══════════════════════════════════════════════════════════

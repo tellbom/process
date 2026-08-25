@@ -102,6 +102,12 @@ namespace FlowableWrapper.Application.Services
             if (string.IsNullOrWhiteSpace(request.BusinessId))
                 throw new BusinessException("businessId 不能为空");
 
+            if (string.IsNullOrWhiteSpace(request.RequestId))
+                throw new BusinessException("requestId 不能为空", "REQUEST_ID_REQUIRED");
+            request.RequestId = request.RequestId.Trim();
+            if (request.RequestId.Length > 200)
+                throw new BusinessException("requestId 长度不能超过 200");
+
             var createdBy = _currentUser.UserId;
             if (string.IsNullOrWhiteSpace(createdBy))
                 throw new BusinessException("无法确定当前操作人，请先完成登录");
@@ -126,9 +132,45 @@ namespace FlowableWrapper.Application.Services
 
             try
             {
-                // 1. 校验是否已存在运行中的流程实例
-                var existingRunning = await _esService.GetProcessMetadataByBusinessIdAsync(
-                    request.BusinessId);
+                // requestId 标识一次发起意图；相同请求重放返回原实例。
+                var (sameRequestItems, _) = await _esService.QueryProcessListAsync(
+                    new ProcessListRequest
+                    {
+                        BusinessId = request.BusinessId,
+                        RequestId = request.RequestId,
+                        PageIndex = 1,
+                        PageSize = 1
+                    });
+                var sameRequest = sameRequestItems.FirstOrDefault();
+                if (sameRequest != null)
+                    return await BuildExistingStartResponseAsync(sameRequest);
+
+                // 同一业务对象只允许一个运行中实例；终止/完成后可用新 requestId 开新轮次。
+                var existingRunning = await _esService
+                    .GetProcessMetadataByBusinessIdAsync(request.BusinessId);
+
+                if (existingRunning != null)
+                {
+                    FlowableProcessInstance activeRuntime = null;
+                    try
+                    {
+                        activeRuntime = await _runtimeService.GetProcessInstanceAsync(
+                            existingRunning.ProcessInstanceId);
+                    }
+                    catch (FlowableApiException ex) when (ex.StatusCode == 404)
+                    {
+                        // Flowable runtime is authoritative. ES terminal-state refresh
+                        // may lag briefly after completion or termination.
+                    }
+                    if (activeRuntime == null)
+                    {
+                        _logger.LogWarning(
+                            "ES 仍标记 running，但 Flowable 已无运行实例，允许新审批轮次: BusinessId={BusinessId}, ProcessInstanceId={ProcessInstanceId}",
+                            request.BusinessId,
+                            existingRunning.ProcessInstanceId);
+                        existingRunning = null;
+                    }
+                }
 
                 if (existingRunning != null)
                 {
@@ -139,8 +181,18 @@ namespace FlowableWrapper.Application.Services
                         createdBy);
 
                     throw new BusinessException(
-                        $"业务 [{request.BusinessId}] 已存在运行中流程，不能重复启动");
+                        $"业务 [{request.BusinessId}] 已存在运行中流程，不能再次发起",
+                        "BUSINESS_PROCESS_ALREADY_RUNNING");
                 }
+
+                var (previousItems, _) = await _esService.QueryProcessListAsync(
+                    new ProcessListRequest
+                    {
+                        BusinessId = request.BusinessId,
+                        PageIndex = 1,
+                        PageSize = 1
+                    });
+                var approvalRound = (previousItems.FirstOrDefault()?.ApprovalRound ?? 0) + 1;
 
                 // 2. businessType -> processDefinitionKey
                 var processDefinitionKey = _businessTypeMapping.GetProcessDefinitionKey(
@@ -185,6 +237,35 @@ namespace FlowableWrapper.Application.Services
                         _logger.LogWarning(ex,
                             "AssigneeContract recommended snapshot expansion failed and will be skipped. BusinessId={BusinessId}",
                             request.BusinessId);
+                    }
+                }
+
+                await ValidateRestrictedInitialSelectionsAsync(
+                    request.InitialSlotSelections,
+                    processDefinitionKey,
+                    contractSnapshot);
+
+                var nodeDescriptionsSnapshot = new List<NodeDescriptionSnapshot>();
+                if (request.AssigneeContract?.NodeDescriptions?.Any() == true)
+                {
+                    try
+                    {
+                        var semanticMap = await _slotConfigProvider
+                            .GetNodeSemanticMapAsync(processDefinitionKey);
+                        nodeDescriptionsSnapshot = _assigneeContractConverter
+                            .ToNodeDescriptionsSnapshot(
+                                request.AssigneeContract,
+                                semanticMap);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(
+                            ex,
+                            "Instance node description snapshot validation failed. BusinessId={BusinessId}",
+                            request.BusinessId);
+                        throw new BusinessException(
+                            "节点详细说明与当前流程定义不匹配，流程未启动",
+                            "NODE_DESCRIPTION_INVALID");
                     }
                 }
 
@@ -237,7 +318,9 @@ namespace FlowableWrapper.Application.Services
                     request,
                     processDefinitionKey,
                     createdBy,
-                    contractSnapshot);
+                    approvalRound,
+                    contractSnapshot,
+                    nodeDescriptionsSnapshot);
 
                 try
                 {
@@ -509,6 +592,45 @@ namespace FlowableWrapper.Application.Services
             return result;
         }
 
+        private async Task ValidateRestrictedInitialSelectionsAsync(
+            List<SlotSelection> selections,
+            string processDefinitionKey,
+            Dictionary<string, List<string>> recommendedSnapshot)
+        {
+            if (selections == null || selections.Count == 0
+                || recommendedSnapshot == null || recommendedSnapshot.Count == 0)
+                return;
+
+            var slotDefinitions = await GetAllSlotDefsForProcessAsync(processDefinitionKey);
+            var slotByKey = slotDefinitions.ToDictionary(
+                item => item.SlotKey,
+                item => item,
+                StringComparer.OrdinalIgnoreCase);
+
+            foreach (var selection in selections)
+            {
+                if (!slotByKey.TryGetValue(selection.SlotKey, out var slot)
+                    || !slot.RestrictToRecommended
+                    || string.IsNullOrWhiteSpace(slot.RoleKey)
+                    || !recommendedSnapshot.TryGetValue(slot.RoleKey, out var recommended)
+                    || recommended == null
+                    || recommended.Count == 0)
+                    continue;
+
+                var outOfRange = (selection.Users ?? new List<string>())
+                    .Where(user => !recommended.Contains(user, StringComparer.OrdinalIgnoreCase))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+
+                if (outOfRange.Count > 0)
+                {
+                    throw new BusinessException(
+                        $"slotKey [{selection.SlotKey}] 包含推荐范围外人员: {string.Join(",", outOfRange)}",
+                        "ASSIGNEE_OUT_OF_RECOMMENDED_RANGE");
+                }
+            }
+        }
+
         /// <summary>
         /// 构建 Flowable 启动变量
         ///
@@ -560,7 +682,9 @@ namespace FlowableWrapper.Application.Services
             StartProcessRequest request,
             string processDefinitionKey,
             string createdBy,
-            Dictionary<string, List<string>> contractSnapshot)
+            int approvalRound,
+            Dictionary<string, List<string>> contractSnapshot,
+            List<NodeDescriptionSnapshot> nodeDescriptionsSnapshot)
         {
             CallbackMetadata callbackMetadata = null;
             if (request.Callback != null
@@ -582,7 +706,10 @@ namespace FlowableWrapper.Application.Services
                 ProcessInstanceId    = processInstance.Id,
                 ProcessDefinitionKey = processDefinitionKey,
                 BusinessId           = request.BusinessId,
+                RequestId            = request.RequestId,
+                ApprovalRound         = approvalRound,
                 BusinessType         = request.BusinessType,
+                BusinessTitle        = request.BusinessTitle?.Trim(),
                 Status               = "running",
                 CreatedBy            = createdBy,
                 CreatedTime          = DateTime.UtcNow,
@@ -592,7 +719,35 @@ namespace FlowableWrapper.Application.Services
                 // 查询时从 ProcessDefinitionSemanticDocument 读取，不存在于实例文档中
                 NodeSemanticMap      = new Dictionary<string, NodeSemanticInfo>(),
                 RecommendedAssigneesSnapshot = contractSnapshot
-                    ?? new Dictionary<string, List<string>>()
+                    ?? new Dictionary<string, List<string>>(),
+                NodeDescriptionsSnapshot = nodeDescriptionsSnapshot
+                    ?? new List<NodeDescriptionSnapshot>()
+            };
+        }
+
+        private async Task<StartProcessResponse> BuildExistingStartResponseAsync(
+            ProcessMetadataDocument metadata)
+        {
+            var firstTask = (await _taskService.QueryTasksAsync(new FlowableTaskQuery
+            {
+                ProcessInstanceId = metadata.ProcessInstanceId
+            }))?.FirstOrDefault();
+
+            NodeSemanticInfo semantic = null;
+            if (firstTask != null)
+            {
+                var semanticMap = await _slotConfigProvider.GetNodeSemanticMapAsync(
+                    metadata.ProcessDefinitionKey);
+                semanticMap?.TryGetValue(firstTask.TaskDefinitionKey, out semantic);
+            }
+
+            return new StartProcessResponse
+            {
+                ProcessInstanceId = metadata.ProcessInstanceId,
+                BusinessId = metadata.BusinessId,
+                FirstTaskId = firstTask?.Id,
+                FirstNodeSemantic = semantic?.NodeSemantic,
+                FirstPageCode = semantic?.PageCode
             };
         }
     }

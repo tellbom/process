@@ -13,7 +13,10 @@ namespace FlowableWrapper.Domain.ElasticSearch
         public string ProcessInstanceId { get; set; }
         public string ProcessDefinitionKey { get; set; }
         public string BusinessId { get; set; }
+        public string RequestId { get; set; }
+        public int ApprovalRound { get; set; }
         public string BusinessType { get; set; }
+        public string BusinessTitle { get; set; }
 
         /// <summary>running / completed / terminated / callback_failed</summary>
         public string Status { get; set; }
@@ -37,6 +40,12 @@ namespace FlowableWrapper.Domain.ElasticSearch
         public Dictionary<string, List<string>> RecommendedAssigneesSnapshot { get; set; }
             = new Dictionary<string, List<string>>();
 
+        /// <summary>
+        /// 本流程实例的动态节点说明。使用对象数组避免 roleKey 扩张 ES mapping。
+        /// </summary>
+        public List<NodeDescriptionSnapshot> NodeDescriptionsSnapshot { get; set; }
+            = new List<NodeDescriptionSnapshot>();
+
         public ProcessMetadataDocument() { }
     }
 
@@ -49,6 +58,12 @@ namespace FlowableWrapper.Domain.ElasticSearch
         public int TimeoutSeconds { get; set; } = 30;
         public int RetryCount { get; set; } = 3;
         public Dictionary<string, string> Headers { get; set; } = new();
+    }
+
+    public class NodeDescriptionSnapshot
+    {
+        public string RoleKey { get; set; }
+        public string Description { get; set; }
     }
 
     // ══════════════════════════════════════════════════════════════

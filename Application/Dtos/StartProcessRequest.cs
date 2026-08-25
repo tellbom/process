@@ -17,6 +17,14 @@ namespace FlowableWrapper.Application.Dtos
         public string BusinessId { get; set; }
 
         /// <summary>
+        /// 发起请求幂等标识。同一次网络重试必须复用；重新审批必须生成新值。
+        /// </summary>
+        public string? RequestId { get; set; }
+
+        /// <summary>业务单据标题，用于待办列表展示；可不传。</summary>
+        public string? BusinessTitle { get; set; }
+
+        /// <summary>
         /// 首节点选人（基于 Slot 契约）
         /// 传空数组时通过 businessVariables 直接传 assignee 变量名也可
         /// 推荐人通过 AssigneeContract 传入（roleKey 维度），不通过此字段。
@@ -46,6 +54,18 @@ namespace FlowableWrapper.Application.Dtos
     public class AssigneeContract
     {
         public List<RoleAssignment> Roles { get; set; } = new List<RoleAssignment>();
+
+        /// <summary>
+        /// 本次流程实例中各节点的动态详细说明，可不传或传空数组。
+        /// </summary>
+        public List<NodeDescriptionInput> NodeDescriptions { get; set; }
+            = new List<NodeDescriptionInput>();
+    }
+
+    public class NodeDescriptionInput
+    {
+        public string RoleKey { get; set; }
+        public string Description { get; set; }
     }
 
     public class RoleAssignment
@@ -83,6 +103,7 @@ namespace FlowableWrapper.Application.Dtos
     public class ProcessListRequest
     {
         public string? BusinessId { get; set; }
+        public string? RequestId { get; set; }
         public string? BusinessType { get; set; }
         public string? Status { get; set; }
         public string? CreatedBy { get; set; }

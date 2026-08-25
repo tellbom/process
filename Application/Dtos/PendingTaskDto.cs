@@ -54,6 +54,10 @@ namespace FlowableWrapper.Application.Dtos
         /// </summary>
         public string TaskName { get; set; }
 
+        public string ProcessInstanceId { get; set; }
+        public string ProcessDefinitionKey { get; set; }
+        public string TaskDefinitionKey { get; set; }
+
         /// <summary>
         /// 业务 ID
         /// </summary>
@@ -63,6 +67,13 @@ namespace FlowableWrapper.Application.Dtos
         /// 业务类型
         /// </summary>
         public string BusinessType { get; set; }
+        public string BusinessTitle { get; set; }
+        /// <summary>面向用户展示的业务名称；优先使用业务标题，未提供时回退到业务 ID。</summary>
+        public string BusinessDisplayName { get; set; }
+        public string CreatedBy { get; set; }
+        public DateTime ProcessCreatedTime { get; set; }
+        /// <summary>流程实例状态，例如 running。</summary>
+        public string ProcessStatus { get; set; }
 
         /// <summary>
         /// 节点业务语义
@@ -75,6 +86,17 @@ namespace FlowableWrapper.Application.Dtos
         /// Current node role key. Recommendations are keyed by this value.
         /// </summary>
         public string RoleKey { get; set; }
+
+        /// <summary>发起人针对本流程实例的当前节点详细说明；未填写时为 null。</summary>
+        public string NodeDescription { get; set; }
+
+        /// <summary>面向待办列表的操作说明；节点详细说明为空时回退为当前任务名称。</summary>
+        public string ActionDescription { get; set; }
+
+        public string Assignee { get; set; }
+        public string Owner { get; set; }
+        public DateTime? DueDate { get; set; }
+        public bool IsOverdue { get; set; }
 
         /// <summary>
         /// 原始页面配置。

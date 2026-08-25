@@ -1,0 +1,11 @@
+﻿{
+    "success":  true,
+    "data":  {
+                 "processInstanceId":  "ab199660-9f65-11f1-8dbf-0242c0a81003",
+                 "businessId":  "PZ_E2E_SPECIAL_20260824104336",
+                 "firstTaskId":  "ab19bd80-9f65-11f1-8dbf-0242c0a81003",
+                 "firstNodeSemantic":  "PROBLEM_ZERO_STARTER_SUBMIT",
+                 "firstPageCode":  "ProblemZero/StarterSubmitForm"
+             },
+    "message":  null
+}

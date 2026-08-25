@@ -1,0 +1,14 @@
+﻿{
+    "success":  true,
+    "data":  {
+                 "processInstanceId":  "ab199660-9f65-11f1-8dbf-0242c0a81003",
+                 "businessId":  "PZ_E2E_SPECIAL_20260824104336",
+                 "businessType":  "problem_zero",
+                 "processDefinitionKey":  "problem_zero",
+                 "status":  "completed",
+                 "createdBy":  "PZ_START",
+                 "createdTime":  "2026-08-24T02:44:03.3611868Z",
+                 "completedTime":  "2026-08-24T02:44:30.0541865Z"
+             },
+    "message":  null
+}
