@@ -64,6 +64,26 @@ namespace FlowableWrapper.Infrastructure.Flowable
             return await response.Content.ReadFromJsonAsync<T>(JsonOptions);
         }
 
+        public async Task<T?> TryGetAsync<T>(string path)
+        {
+            _logger.LogDebug("Flowable GET {Path}", path);
+            var response = await _http.GetAsync(path);
+            if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+                return default;
+            await EnsureSuccessAsync(response, path);
+            return await response.Content.ReadFromJsonAsync<T>(JsonOptions);
+        }
+
+        public async Task<string?> TryGetStringAsync(string path)
+        {
+            _logger.LogDebug("Flowable GET (raw) {Path}", path);
+            var response = await _http.GetAsync(path);
+            if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+                return null;
+            await EnsureSuccessAsync(response, path);
+            return await response.Content.ReadAsStringAsync();
+        }
+
         public async Task<T> PostAsync<T>(string path, object body)
         {
             _logger.LogDebug("Flowable POST {Path}", path);

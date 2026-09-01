@@ -139,7 +139,7 @@ namespace FlowableWrapper.Application.Services
             var activeTaskRenders = await BuildActiveTaskRendersAsync(activeTasks);
 
             // ── 构建 completedRecords 渲染数据 ─────────────────────
-            var completedRecords = BuildCompletedRecords(auditRecords, historicTasks);
+            var completedRecords = CompletedRecordRenderBuilder.Build(auditRecords, historicTasks);
 
             // ── 构建 rejectHistory ─────────────────────────────────
             var rejectHistory = BuildRejectHistory(auditRecords, nodes);
@@ -410,79 +410,6 @@ namespace FlowableWrapper.Application.Services
                     CandidateUsers = candidates,
                     CreatedAt = task.CreateTime,
                     WaitingSeconds = Math.Max(0, waitingSeconds)
-                });
-            }
-
-            return result;
-        }
-
-        // ═══════════════════════════════════════════════════════════
-        // 已完成审批记录
-        // ═══════════════════════════════════════════════════════════
-
-        private List<CompletedRecordRenderDto> BuildCompletedRecords(
-            List<ProcessAuditRecord> auditRecords,
-            List<FlowableHistoricTask> historicTasks)
-        {
-            // 以审计记录为主，补充历史任务的时间信息
-            var historicMap = historicTasks
-                .GroupBy(h => h.TaskDefinitionKey)
-                .ToDictionary(g => g.Key, g => g.ToList());
-
-            var result = new List<CompletedRecordRenderDto>();
-            int round = 1;
-            string lastNodeId = null;
-
-            foreach (var record in auditRecords.OrderBy(r => r.OperatedAt))
-            {
-                // 同一节点第二次出现（驳回后重走）轮次递增
-                if (record.TaskDefinitionKey == lastNodeId)
-                    round++;
-                else
-                    round = 1;
-                lastNodeId = record.TaskDefinitionKey;
-
-                // 从历史任务找时间
-                DateTime startTime = record.OperatedAt;
-                DateTime endTime = record.OperatedAt;
-                long duration = 0;
-
-                if (historicMap.TryGetValue(record.TaskDefinitionKey, out var hList))
-                {
-                    var matched = hList.FirstOrDefault(h =>
-                        h.Assignee == record.OperatorId && h.EndTime.HasValue);
-                    if (matched != null)
-                    {
-                        startTime = matched.StartTime;
-                        endTime = matched.EndTime!.Value;
-                        duration = matched.DurationInMillis.HasValue
-                            ? matched.DurationInMillis.Value / 1000
-                            : (long)(endTime - startTime).TotalSeconds;
-                    }
-                }
-
-                // 推断 outcome
-                string outcome;
-                if (record.Action == "reject")
-                    outcome = "rejected_return";
-                else if (record.Action == "reassign")
-                    outcome = "reassigned";
-                else
-                    outcome = "approved";
-
-                result.Add(new CompletedRecordRenderDto
-                {
-                    TaskId = record.TaskId,
-                    NodeId = record.TaskDefinitionKey,
-                    NodeName = record.NodeSemantic ?? record.TaskDefinitionKey,
-                    OperatorId = record.OperatorId,
-                    StartTime = startTime,
-                    EndTime = endTime,
-                    DurationSeconds = duration,
-                    Outcome = outcome,
-                    RejectReason = record.RejectReason,
-                    Comment = record.Comment,
-                    Round = round
                 });
             }
 

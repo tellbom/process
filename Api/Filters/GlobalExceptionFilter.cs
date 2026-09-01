@@ -33,7 +33,11 @@ namespace FlowableWrapper.Api.Filters
                     => (400, be.Code, be.Message),
 
                 ConcurrentUpdateException
-                    => (409, "CONCURRENT_UPDATE", "数据并发冲突，请稍后重试"),
+                    concurrent
+                    => (409, concurrent.Code, concurrent.Message),
+
+                ResourceNotFoundException notFound
+                    => (404, notFound.Code, notFound.Message),
 
                 FlowableApiException fae
                     => (502, "FLOWABLE_ERROR", $"Flowable 引擎错误: {fae.Message}"),

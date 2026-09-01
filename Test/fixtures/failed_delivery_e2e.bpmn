@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xmlns:flowable="http://flowable.org/bpmn"
+             targetNamespace="http://flowable.org/processdef">
+  <process id="failed_delivery_e2e" name="Failed Delivery E2E" isExecutable="true">
+    <startEvent id="start_event"/>
+    <sequenceFlow id="flow_start_to_callback" sourceRef="start_event" targetRef="st01_framework_callback"/>
+    <serviceTask id="st01_framework_callback"
+                 name="Framework callback"
+                 flowable:async="true"
+                 flowable:type="http">
+      <extensionElements>
+        <flowable:failedJobRetryTimeCycle>R2/PT1S</flowable:failedJobRetryTimeCycle>
+        <flowable:field name="requestMethod"><flowable:string>POST</flowable:string></flowable:field>
+        <flowable:field name="requestUrl"><flowable:expression>${frameworkCallbackUrl}</flowable:expression></flowable:field>
+        <flowable:field name="requestHeaders"><flowable:string>Content-Type: application/json</flowable:string></flowable:field>
+        <flowable:field name="requestBody">
+          <flowable:expression>{"processInstanceId":"${execution.processInstanceId}","businessId":"${businessId}","processDefinitionKey":"${processDefinitionKey}","callbackActivityId":"st01_framework_callback","callbackType":"PROCESS_COMPLETED"}</flowable:expression>
+        </flowable:field>
+        <flowable:field name="failStatusCodes"><flowable:string>4XX,5XX</flowable:string></flowable:field>
+        <flowable:field name="saveResponseParameters"><flowable:string>false</flowable:string></flowable:field>
+      </extensionElements>
+    </serviceTask>
+    <sequenceFlow id="flow_callback_to_end" sourceRef="st01_framework_callback" targetRef="end_event"/>
+    <endEvent id="end_event"/>
+  </process>
+</definitions>

@@ -14,9 +14,9 @@
     路径：
       UT-01 申请人
       UT-02 基层工会主席
-      EG-01 联合判断（IS_JOINT_COMPETITION）
-      UT-03 公司工会业务主管
-      ST-04 框架回调
+      UT-03 联合单位工会主席（会签）
+      UT-04 公司工会业务主管
+      ST-05 框架回调
   -->
   <process id="labor_competition_special_joint_midterm_approval"
            name="专题/联合劳动竞赛中期审批"
@@ -45,7 +45,8 @@
               name="基层工会主席"
               flowable:assignee="${grassrootsChairAssignee.asText()}">
       <documentation>
-        操作: 基层工会主席审批，并提交 IS_JOINT_COMPETITION。
+        操作: 基层工会主席审批，并提交联合单位工会主席和公司工会业务主管。
+        slots: 选联合单位工会主席 -> jointUnitUnionChairAssigneeList
         slots: 选公司工会业务主管 -> companyBusinessSupervisorAssigneeList
       </documentation>
       <extensionElements>
@@ -60,17 +61,29 @@
       </multiInstanceLoopCharacteristics>
     </userTask>
 
-    <sequenceFlow id="flow_ut02_to_eg01" sourceRef="ut02_grassroots_chair_approve" targetRef="eg01_is_joint"/>
-    <exclusiveGateway id="eg01_is_joint" name="是否联合"/>
+    <sequenceFlow id="flow_ut02_to_ut03" sourceRef="ut02_grassroots_chair_approve" targetRef="ut03_joint_unit_union_chair_countersign"/>
 
-    <sequenceFlow id="flow_eg01_true_to_ut03" name="联合" sourceRef="eg01_is_joint" targetRef="ut03_company_business_supervisor_approve">
-      <conditionExpression xsi:type="tFormalExpression">${IS_JOINT_COMPETITION == true}</conditionExpression>
-    </sequenceFlow>
-    <sequenceFlow id="flow_eg01_false_to_ut03" name="专题" sourceRef="eg01_is_joint" targetRef="ut03_company_business_supervisor_approve">
-      <conditionExpression xsi:type="tFormalExpression">${IS_JOINT_COMPETITION == false}</conditionExpression>
-    </sequenceFlow>
+    <userTask id="ut03_joint_unit_union_chair_countersign"
+              name="联合单位工会主席"
+              flowable:assignee="${jointUnitUnionChairAssignee.asText()}">
+      <documentation>
+        操作: 联合单位工会主席会签，全部实例完成后进入公司工会业务主管。
+      </documentation>
+      <extensionElements>
+        <flowable:field name="nodeSemantic" stringValue="LC_SPECIAL_JOINT_MIDTERM_JOINT_UNIT_UNION_CHAIR_COUNTERSIGN"/>
+        <flowable:field name="pageCode" stringValue="LaborCompetition/SpecialJointMidterm/JointUnitUnionChairCountersignForm"/>
+        <flowable:field name="isConvergencePoint" stringValue="false"/>
+      </extensionElements>
+      <multiInstanceLoopCharacteristics isSequential="false"
+                                        flowable:collection="${jointUnitUnionChairAssigneeList}"
+                                        flowable:elementVariable="jointUnitUnionChairAssignee">
+        <completionCondition>${nrOfCompletedInstances == nrOfInstances}</completionCondition>
+      </multiInstanceLoopCharacteristics>
+    </userTask>
 
-    <userTask id="ut03_company_business_supervisor_approve"
+    <sequenceFlow id="flow_ut03_to_ut04" sourceRef="ut03_joint_unit_union_chair_countersign" targetRef="ut04_company_business_supervisor_approve"/>
+
+    <userTask id="ut04_company_business_supervisor_approve"
               name="公司工会业务主管"
               flowable:assignee="${companyBusinessSupervisorAssignee.asText()}">
       <documentation>
@@ -88,10 +101,12 @@
       </multiInstanceLoopCharacteristics>
     </userTask>
 
-    <sequenceFlow id="flow_ut03_to_st04" sourceRef="ut03_company_business_supervisor_approve" targetRef="st04_framework_callback"/>
+    <sequenceFlow id="flow_ut04_to_st05" sourceRef="ut04_company_business_supervisor_approve" targetRef="st05_framework_callback"/>
 
-    <serviceTask id="st04_framework_callback" name="框架回调业务系统" flowable:type="http">
+    <serviceTask id="st05_framework_callback" name="框架回调业务系统" flowable:async="true" flowable:type="http">
       <extensionElements>
+        <flowable:failedJobRetryTimeCycle>R5/PT10M</flowable:failedJobRetryTimeCycle>
+        <flowable:field name="failStatusCodes"><flowable:string>4XX,5XX</flowable:string></flowable:field>
         <flowable:field name="requestMethod"><flowable:string>POST</flowable:string></flowable:field>
         <flowable:field name="requestUrl"><flowable:expression>${frameworkCallbackUrl}</flowable:expression></flowable:field>
         <flowable:field name="requestHeaders"><flowable:string>Content-Type: application/json</flowable:string></flowable:field>
@@ -102,7 +117,7 @@
       </extensionElements>
     </serviceTask>
 
-    <sequenceFlow id="flow_st04_to_end" sourceRef="st04_framework_callback" targetRef="end_event"/>
+    <sequenceFlow id="flow_st05_to_end" sourceRef="st05_framework_callback" targetRef="end_event"/>
     <endEvent id="end_event" name="结束"/>
   </process>
 </definitions>

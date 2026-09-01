@@ -45,6 +45,16 @@
     "assigneeMode": "multiple",
     "slots": [
       {
+        "slotKey": "joint_unit_union_chair",
+        "roleKey": "lc_joint_unit_union_chair",
+        "label": "联合单位工会主席",
+        "mode": "multiple",
+        "variableName": "jointUnitUnionChairAssigneeList",
+        "required": true,
+        "conditionalOn": null,
+        "restrictToRecommended": true
+      },
+      {
         "slotKey": "company_business_supervisor",
         "roleKey": "lc_company_union_business_supervisor",
         "label": "公司工会业务主管",
@@ -58,7 +68,28 @@
     "callbackUrl": null
   },
   {
-    "taskDefinitionKey": "ut03_company_business_supervisor_approve",
+    "taskDefinitionKey": "ut03_joint_unit_union_chair_countersign",
+    "nodeSemantic": "LC_SPECIAL_JOINT_MIDTERM_JOINT_UNIT_UNION_CHAIR_COUNTERSIGN",
+    "pageCode": "http://192.168.124.3:1919/contest/audit/competition/readOnly",
+    "isStarterNode": false,
+    "isConvergencePoint": false,
+    "canReject": true,
+    "rejectOptions": [
+      {
+        "rejectCode": "TO_APPLICANT_SUBMIT",
+        "label": "驳回申请人修改",
+        "description": "联合单位工会主席会签不通过，退回申请人发起节点"
+      }
+    ],
+    "isRejectTarget": false,
+    "rejectCode": null,
+    "roleKey": "lc_joint_unit_union_chair",
+    "assigneeMode": "multiple",
+    "slots": [],
+    "callbackUrl": null
+  },
+  {
+    "taskDefinitionKey": "ut04_company_business_supervisor_approve",
     "nodeSemantic": "LC_SPECIAL_JOINT_MIDTERM_COMPANY_BUSINESS_SUPERVISOR_APPROVE",
     "pageCode": "http://192.168.124.3:1919/contest/audit/competition/midterm",
     "isStarterNode": false,

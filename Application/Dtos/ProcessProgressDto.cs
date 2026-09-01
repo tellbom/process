@@ -138,6 +138,11 @@ namespace FlowableWrapper.Application.Dtos
     public class AuditRecordDto
     {
         /// <summary>
+        /// Flowable 任务 ID；同一节点驳回重走后仍保持唯一。
+        /// </summary>
+        public string TaskId { get; set; }
+
+        /// <summary>
         /// 节点 Key
         /// </summary>
         public string TaskDefinitionKey { get; set; }

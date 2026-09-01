@@ -142,12 +142,15 @@
     <!-- ST-02 框架回调业务系统（HTTP Task） -->
     <serviceTask id="st02_framework_callback"
                  name="框架回调业务系统"
+                 flowable:async="true"
                  flowable:type="http">
       <documentation>
         框架标准回调节点，引擎 POST frameworkCallbackUrl
         FlowableCallbackController 接收后触发业务系统回调链
       </documentation>
       <extensionElements>
+        <flowable:failedJobRetryTimeCycle>R5/PT10M</flowable:failedJobRetryTimeCycle>
+        <flowable:field name="failStatusCodes"><flowable:string>4XX,5XX</flowable:string></flowable:field>
         <flowable:field name="requestMethod">
           <flowable:string>POST</flowable:string>
         </flowable:field>

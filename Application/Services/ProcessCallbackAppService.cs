@@ -615,8 +615,6 @@ namespace FlowableWrapper.Application.Services
                     (int)response.StatusCode,
                     body);
 
-                await UpdateCallbackFailedSafeAsync(metadata.ProcessInstanceId);
-
                 throw new BusinessException(
                     $"业务系统通知失败: HTTP {(int)response.StatusCode}",
                     "BUSINESS_CALLBACK_FAILED");
@@ -631,8 +629,6 @@ namespace FlowableWrapper.Application.Services
                     "业务系统通知异常: BusinessId={BusinessId}, Url={Url}",
                     metadata.BusinessId,
                     callbackUrl);
-
-                await UpdateCallbackFailedSafeAsync(metadata.ProcessInstanceId);
 
                 throw new BusinessException(
                     $"业务系统通知异常: {ex.Message}",
@@ -658,26 +654,6 @@ namespace FlowableWrapper.Application.Services
 
         private static FlowableCallbackResponse OkResponse(string message)
             => new FlowableCallbackResponse { Success = true, Message = message };
-
-        private async Task UpdateCallbackFailedSafeAsync(string processInstanceId)
-        {
-            try
-            {
-                await _esService.UpdateProcessStatusAsync(
-                    processInstanceId,
-                    "callback_failed");
-
-                _logger.LogWarning(
-                    "流程标记为 callback_failed: ProcessInstanceId={ProcessInstanceId}",
-                    processInstanceId);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex,
-                    "标记 callback_failed 失败: ProcessInstanceId={ProcessInstanceId}",
-                    processInstanceId);
-            }
-        }
 
         private class NodeCallbackContext
         {

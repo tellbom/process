@@ -429,6 +429,7 @@ namespace FlowableWrapper.Application.Services
         {
             return new AuditRecordDto
             {
+                TaskId = record.TaskId,
                 TaskDefinitionKey = record.TaskDefinitionKey,
                 NodeSemantic = record.NodeSemantic,
                 PageCode = record.PageCode,

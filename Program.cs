@@ -99,6 +99,7 @@ builder.Services.AddScoped<IFlowableRuntimeService, FlowableRuntimeServiceImpl>(
 builder.Services.AddScoped<IFlowableTaskService, FlowableTaskServiceImpl>();
 builder.Services.AddScoped<IFlowableHistoryService, FlowableHistoryServiceImpl>();
 builder.Services.AddScoped<IFlowableRepositoryService, FlowableRepositoryServiceImpl>();
+builder.Services.AddScoped<IFlowableManagementService, FlowableManagementServiceImpl>();
 
 // ═══════════════════════════════════════════════════════════════
 // 基础设施：Elasticsearch
@@ -130,6 +131,8 @@ builder.Services.AddScoped<BpmnDeploymentAppService>();
 // Phase 8 — 回调
 // 1. 注册 ProcessCallbackAppService
 builder.Services.AddScoped<ProcessCallbackAppService>();
+builder.Services.AddScoped<IFailedDeliveryProvider, FlowableFailedDeliveryProvider>();
+builder.Services.AddScoped<FailedDeliveryAppService>();
 
 // 2. 注册具名 HttpClient（用于回调业务系统）
 builder.Services.AddHttpClient("BusinessCallback");
