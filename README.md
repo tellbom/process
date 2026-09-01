@@ -772,6 +772,277 @@ Pending task responses retain the execution contract and additionally include bu
 | ES 元数据不存在 | 500（触发 Flowable 重试） |
 | 流程结束通知失败（非 2xx） | 500（触发 Flowable 重试） |
 
+### 9.3 Failed Delivery / Flowable DeadLetter 管理 API
+
+末尾流程完成回调使用 Flowable 原生 Async Job。HTTP 4xx/5xx、连接异常、IO 异常或超时会使 Job 执行失败；BPMN 中的 `failedJobRetryTimeCycle` 耗尽后，Job 进入 Flowable DeadLetter。
+
+管理 API 使用中性 `Failed Delivery` 契约，前端不得直接依赖 Flowable Job DTO。V3 的数据来源是 Flowable DeadLetter；未来 V4 可由 Outbox Provider 实现同一查询契约，但两者不共用底层重试状态机。
+
+```text
+末尾 UserTask 完成
+  -> Async HTTP ServiceTask
+  -> Flowable Retry
+  -> DeadLetter
+  -> Failed Delivery API
+       |- retry_delivery
+       `- terminate_process
+```
+
+#### 9.3.1 认证和权限边界
+
+请求使用当前项目统一认证方式：
+
+```http
+Authorization: Bearer {jwt}
+```
+
+本接口没有硬编码 `role=workflow_admin`。界面访问和管理权限由外部 RBAC 控制；后端仍要求请求已经通过统一身份认证。未认证请求返回 HTTP 401。
+
+#### 9.3.2 BPMN 前置配置
+
+末尾 HTTP ServiceTask 必须让异常继续抛给 Flowable Async Executor，不能用 BPMN 错误分支吞掉投递失败：
+
+```xml
+<serviceTask id="st07_framework_callback"
+             name="框架回调业务系统"
+             flowable:async="true"
+             flowable:type="http">
+  <extensionElements>
+    <flowable:failedJobRetryTimeCycle>R5/PT10M</flowable:failedJobRetryTimeCycle>
+    <flowable:field name="failStatusCodes">
+      <flowable:string>4XX,5XX</flowable:string>
+    </flowable:field>
+    <flowable:field name="ignoreException">
+      <flowable:string>false</flowable:string>
+    </flowable:field>
+    <flowable:field name="requestMethod">
+      <flowable:string>POST</flowable:string>
+    </flowable:field>
+    <flowable:field name="requestUrl">
+      <flowable:expression>${frameworkCallbackUrl}</flowable:expression>
+    </flowable:field>
+    <flowable:field name="requestHeaders">
+      <flowable:string>Content-Type: application/json</flowable:string>
+    </flowable:field>
+    <flowable:field name="requestBody">
+      <flowable:expression>{"processInstanceId":"${execution.processInstanceId}","businessId":"${businessId}","processDefinitionKey":"${processDefinitionKey}","callbackActivityId":"st07_framework_callback","callbackType":"PROCESS_COMPLETED"}</flowable:expression>
+    </flowable:field>
+  </extensionElements>
+</serviceTask>
+```
+
+不要为此节点配置 `handleStatusCodes + boundaryEvent`，也不要设置 `ignoreException=true`。这两种方式会处理或忽略错误，使失败不再进入预期的 Async Retry / DeadLetter 链路。
+
+#### 9.3.3 查询失败投递列表
+
+**GET** `/api/admin/failed-deliveries`
+
+查询参数：
+
+| 参数 | 类型 | 必填 | 说明 |
+|---|---|---|---|
+| `businessId` | string | 否 | 按业务单号精确过滤 |
+| `processInstanceId` | string | 否 | 按 Flowable 流程实例过滤 |
+| `source` | string | 否 | V3 只支持 `flowable_async_job` |
+| `status` | string | 否 | V3 只支持 `dead_letter` |
+| `deliveryType` | string | 否 | V3 只支持 `process_completed` |
+| `pageIndex` | int | 否 | 默认 1，小于 1 时按 1 处理 |
+| `pageSize` | int | 否 | 默认 20，范围限制为 1-100 |
+
+示例：
+
+```http
+GET /api/admin/failed-deliveries?businessId=PZ_001&pageIndex=1&pageSize=20
+Authorization: Bearer {jwt}
+```
+
+成功响应：
+
+```json
+{
+  "success": true,
+  "message": null,
+  "data": {
+    "items": [
+      {
+        "deliveryId": "deadletter-job-id",
+        "source": "flowable_async_job",
+        "sourceId": "deadletter-job-id",
+        "deliveryType": "process_completed",
+        "businessId": "PZ_001",
+        "processInstanceId": "process-instance-id",
+        "processState": "running",
+        "activityId": "st07_framework_callback",
+        "target": "https://business.example/api/callback",
+        "status": "dead_letter",
+        "attemptCount": null,
+        "lastHttpStatus": null,
+        "lastError": "HTTP 500 ...",
+        "createdAt": "2026-09-01T01:17:46.981Z",
+        "lastFailedAt": null,
+        "availableActions": [
+          "retry_delivery",
+          "terminate_process"
+        ]
+      }
+    ],
+    "total": 1,
+    "pageIndex": 1,
+    "pageSize": 20
+  }
+}
+```
+
+只有 activityId 以 `_framework_callback` 结尾的 DeadLetter Job 会进入该列表，其他 Flowable 异步任务失败不会被当成业务回调失败展示。
+
+#### 9.3.4 查询失败投递详情
+
+**GET** `/api/admin/failed-deliveries/{deliveryId}`
+
+详情响应字段与列表项一致，但 `lastError` 会优先读取 Flowable DeadLetter Job 的 exception stacktrace，适合管理界面展开查看技术异常。
+
+```http
+GET /api/admin/failed-deliveries/deadletter-job-id
+Authorization: Bearer {jwt}
+```
+
+不存在、已经成功、已被 Retry 移走或已随流程终止清理时返回：
+
+```http
+HTTP/1.1 404 Not Found
+```
+
+```json
+{
+  "code": "FAILED_DELIVERY_NOT_FOUND",
+  "message": "失败投递不存在"
+}
+```
+
+#### 9.3.5 Retry Delivery
+
+**POST** `/api/admin/failed-deliveries/{deliveryId}/retry`
+
+Retry 将原 Flowable DeadLetter Job 移回 executable，由 Async Executor 重新执行原 HTTP ServiceTask。它不会创建新 ProcessInstance，也不会重新创建或执行已经完成的 UserTask。
+
+请求体可省略；`reason` 用于操作日志：
+
+```json
+{
+  "reason": "接收方服务已恢复，人工重新投递"
+}
+```
+
+成功返回 HTTP 202：
+
+```json
+{
+  "success": true,
+  "message": null,
+  "data": {
+    "deliveryId": "deadletter-job-id",
+    "action": "retry_delivery",
+    "status": "executable"
+  }
+}
+```
+
+`executable` 表示恢复动作已被 Flowable 接受，不表示业务回调已经成功。之后的实际状态由 Async Executor 决定：
+
+- 回调成功：流程经过 EndEvent 完成，DeadLetter 消失。
+- 回调继续失败：重新进入 Flowable 原生重试周期，耗尽后再次进入 DeadLetter。
+
+允许条件：
+
+```text
+source = flowable_async_job
+status = dead_letter
+ProcessInstance 仍 active
+Job activityId 为框架回调节点
+```
+
+#### 9.3.6 Terminate Process
+
+**POST** `/api/admin/failed-deliveries/{deliveryId}/terminate-process`
+
+Terminate 终止 DeadLetter 所属的整个 active ProcessInstance。它不会只删除 DeadLetter Job，因此不会留下停在异步回调节点、但已经没有 Job 的孤儿流程。
+
+`reason` 必填：
+
+```json
+{
+  "reason": "业务确认该流程不再继续，人工终止"
+}
+```
+
+成功响应：
+
+```json
+{
+  "success": true,
+  "message": null,
+  "data": {
+    "deliveryId": "deadletter-job-id",
+    "action": "terminate_process",
+    "status": "terminated"
+  }
+}
+```
+
+操作完成后：
+
+- Flowable active ProcessInstance 消失；
+- 该实例的 DeadLetter Job 随流程终止清理；
+- ES 流程生命周期状态更新为 `terminated`，不能标记为 `completed`；
+- 后续不会再次自动执行该 callback。
+
+空 `reason` 返回 HTTP 400、错误码 `REASON_REQUIRED`。Job 或流程状态已经变化时，返回 HTTP 404 或 409，不会终止其他 ProcessInstance。
+
+#### 9.3.7 DTO 字段语义
+
+| 字段 | V3 语义 |
+|---|---|
+| `deliveryId` | 管理 API 的失败投递 ID；当前 V3 等于 Flowable DeadLetter Job ID，但前端不得依赖这个等式 |
+| `source` | 固定为 `flowable_async_job` |
+| `sourceId` | Flowable DeadLetter Job ID |
+| `deliveryType` | 当前为 `process_completed` |
+| `businessId` | 从流程中心 ES 元数据补全；元数据不存在时可为 null |
+| `processInstanceId` | Flowable ProcessInstance ID |
+| `processState` | Flowable active 时为 `running`；否则使用已持久化生命周期状态或 `not_active` |
+| `activityId` | 失败 Job 所在 BPMN activityId |
+| `target` | 启动流程时保存的业务回调 URL |
+| `status` | 当前固定为 `dead_letter` |
+| `attemptCount` | Flowable DeadLetter 无法准确还原累计尝试次数，返回 null |
+| `lastHttpStatus` | 无法从 Flowable DeadLetter 稳定、准确提取时返回 null |
+| `lastError` | 列表返回异常摘要；详情优先返回 exception stacktrace |
+| `createdAt` | Flowable Job 创建时间 |
+| `lastFailedAt` | 无准确原生字段时返回 null，不用其他时间冒充 |
+| `availableActions` | 后端根据当前 Job 和 ProcessInstance 状态计算，前端只按此字段展示按钮 |
+
+V3 中，只有 DeadLetter 仍存在且流程仍 active 时，`availableActions` 才包含：
+
+```json
+["retry_delivery", "terminate_process"]
+```
+
+前端禁止根据 `source` 或 `status` 自行推导动作。未来 V4 Outbox DeadLetter 通常只返回 `retry_delivery`，不会返回 `terminate_process`。
+
+#### 9.3.8 错误码和 HTTP 状态
+
+| HTTP 状态 | 错误码 | 含义 |
+|---|---|---|
+| 400 | `INVALID_SOURCE` | source 不是 `flowable_async_job` |
+| 400 | `INVALID_STATUS` | status 不是 `dead_letter` |
+| 400 | `INVALID_DELIVERY_TYPE` | deliveryType 不是 `process_completed` |
+| 400 | `REASON_REQUIRED` | Terminate 未提供非空原因 |
+| 401 | — | 请求未通过统一认证 |
+| 404 | `FAILED_DELIVERY_NOT_FOUND` | Job 不存在、已恢复或已被清理 |
+| 409 | `FAILED_DELIVERY_STATE_CHANGED` | 恢复过程中 Job 状态已被其他操作改变 |
+| 409 | `PROCESS_NOT_ACTIVE` | 对应流程已经不再 active |
+| 502 | `FLOWABLE_ERROR` | Flowable Management/Runtime API 调用失败 |
+
+管理动作记录结构化日志，包含：`operator`、`operation`、`deliveryId`、`sourceId`、`businessId`、`processInstanceId`、`beforeStatus`、`afterStatus`、`reason` 和操作时间。
+
 ---
 
 ## 10. 端到端完整测试流程
@@ -868,6 +1139,10 @@ BPMN 中只保留最后一个流程完成契约 HTTP ServiceTask，用于调用 
 | 流程状态 | GET | `/api/processes/{businessId}/status` |
 | 流程列表 | GET | `/api/processes` |
 | Flowable 回调 | POST | `/api/callback/flowable` |
+| 查询失败投递 | GET | `/api/admin/failed-deliveries` |
+| 查询失败投递详情 | GET | `/api/admin/failed-deliveries/{deliveryId}` |
+| 重试失败投递 | POST | `/api/admin/failed-deliveries/{deliveryId}/retry` |
+| 终止失败投递所属流程 | POST | `/api/admin/failed-deliveries/{deliveryId}/terminate-process` |
 ---
 
 ## 当前有效说明：slotConfigJson / slots 配置

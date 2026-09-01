@@ -229,7 +229,12 @@
       </documentation>
       <extensionElements>
         <flowable:failedJobRetryTimeCycle>R5/PT10M</flowable:failedJobRetryTimeCycle>
+        <!--
+          回调异常必须抛给 Flowable Async Executor，由原生 Retry / DeadLetter 管理。
+          禁止改为 handleStatusCodes + boundaryEvent，也禁止忽略连接、IO、超时异常。
+        -->
         <flowable:field name="failStatusCodes"><flowable:string>4XX,5XX</flowable:string></flowable:field>
+        <flowable:field name="ignoreException"><flowable:string>false</flowable:string></flowable:field>
         <flowable:field name="requestMethod">
           <flowable:string>POST</flowable:string>
         </flowable:field>
@@ -240,7 +245,7 @@
           <flowable:string>Content-Type: application/json</flowable:string>
         </flowable:field>
         <flowable:field name="requestBody">
-          <flowable:expression>{"processInstanceId":"${execution.processInstanceId}","businessId":"${businessId}","processDefinitionKey":"${processDefinitionKey}"}</flowable:expression>
+          <flowable:expression>{"processInstanceId":"${execution.processInstanceId}","businessId":"${businessId}","processDefinitionKey":"${processDefinitionKey}","callbackActivityId":"st07_framework_callback","callbackType":"PROCESS_COMPLETED"}</flowable:expression>
         </flowable:field>
         <flowable:field name="saveResponseParameters">
           <flowable:string>false</flowable:string>
