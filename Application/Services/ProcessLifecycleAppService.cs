@@ -273,7 +273,8 @@ namespace FlowableWrapper.Application.Services
                 var variables = BuildStartVariables(
                     request,
                     processDefinitionKey,
-                    initConversionResult.Variables);
+                    initConversionResult.Variables,
+                    createdBy);
 
                 // 5. 调用 Flowable 启动流程
                 FlowableProcessInstance processInstance;
@@ -643,7 +644,8 @@ namespace FlowableWrapper.Application.Services
         private Dictionary<string, object> BuildStartVariables(
             StartProcessRequest request,
             string processDefinitionKey,
-            Dictionary<string, object> slotVariables)
+            Dictionary<string, object> slotVariables,
+            string createdBy)
         {
             // 从业务变量开始（最低优先级）
             var variables = new Dictionary<string, object>(
@@ -666,6 +668,7 @@ namespace FlowableWrapper.Application.Services
 
             variables["businessId"]           = request.BusinessId;
             variables["processDefinitionKey"] = processDefinitionKey;
+            variables["starterAssignee"]      = createdBy;
 
             _logger.LogDebug(
                 "启动变量构建完成: BusinessId={BusinessId}, 变量Keys=[{Keys}]",

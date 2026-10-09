@@ -1,0 +1,145 @@
+[
+ {
+  "taskDefinitionKey": "ut_starter",
+  "nodeSemantic": "CASEFLOW_CLUE_STARTER_SUBMIT",
+  "pageCode": "http://192.168.124.5:1660/preview/clue",
+  "isStarterNode": true,
+  "isConvergencePoint": false,
+  "canReject": false,
+  "rejectOptions": [],
+  "isRejectTarget": true,
+  "rejectCode": "TO_STARTER",
+  "roleKey": "caseflow_clue_starter",
+  "assigneeMode": "single",
+  "slots": [
+   {
+    "slotKey": "clue_review_approver",
+    "roleKey": "clue_review_approver",
+    "label": "选择审核人",
+    "mode": "multiple",
+    "variableName": "reviewApproverAssigneeList",
+    "required": true,
+    "conditionalOn": null,
+    "restrictToRecommended": true
+   }
+  ],
+  "callbackUrl": null
+ },
+ {
+  "taskDefinitionKey": "ut_review",
+  "nodeSemantic": "CASEFLOW_CLUE_REVIEW",
+  "pageCode": "http://192.168.124.5:1660/preview/clue",
+  "isStarterNode": false,
+  "isConvergencePoint": false,
+  "canReject": true,
+  "rejectOptions": [
+   {
+    "rejectCode": "TO_STARTER",
+    "label": "退回分办人修改",
+    "description": "审核不通过，退回问题线索分办单分办人"
+   }
+  ],
+  "isRejectTarget": false,
+  "rejectCode": null,
+  "roleKey": "clue_review_approver",
+  "assigneeMode": "multiple",
+  "slots": [
+   {
+    "slotKey": "clue_discipline_head",
+    "roleKey": "clue_discipline_head",
+    "label": "选择纪检部门负责人",
+    "mode": "multiple",
+    "variableName": "disciplineHeadAssigneeList",
+    "required": true,
+    "conditionalOn": null,
+    "restrictToRecommended": true
+   }
+  ],
+  "callbackUrl": null
+ },
+ {
+  "taskDefinitionKey": "ut_discipline_head",
+  "nodeSemantic": "CASEFLOW_CLUE_DISCIPLINE_HEAD",
+  "pageCode": "http://192.168.124.5:1660/preview/clue",
+  "isStarterNode": false,
+  "isConvergencePoint": false,
+  "canReject": true,
+  "rejectOptions": [
+   {
+    "rejectCode": "TO_STARTER",
+    "label": "退回分办人修改",
+    "description": "纪检部门负责人审批不通过，退回问题线索分办单分办人"
+   }
+  ],
+  "isRejectTarget": false,
+  "rejectCode": null,
+  "roleKey": "clue_discipline_head",
+  "assigneeMode": "multiple",
+  "slots": [
+   {
+    "slotKey": "clue_secretary",
+    "roleKey": "clue_secretary",
+    "label": "选择公司纪委书记",
+    "mode": "multiple",
+    "variableName": "secretaryAssigneeList",
+    "required": true,
+    "conditionalOn": null,
+    "restrictToRecommended": true
+   }
+  ],
+  "callbackUrl": null
+ },
+ {
+  "taskDefinitionKey": "ut_secretary",
+  "nodeSemantic": "CASEFLOW_CLUE_SECRETARY",
+  "pageCode": "http://192.168.124.5:1660/preview/clue",
+  "isStarterNode": false,
+  "isConvergencePoint": false,
+  "canReject": true,
+  "rejectOptions": [
+   {
+    "rejectCode": "TO_STARTER",
+    "label": "退回分办人修改",
+    "description": "公司纪委书记批示不通过，退回问题线索分办单分办人"
+   }
+  ],
+  "isRejectTarget": false,
+  "rejectCode": null,
+  "roleKey": "clue_secretary",
+  "assigneeMode": "multiple",
+  "slots": [
+   {
+    "slotKey": "clue_discipline_leader",
+    "roleKey": "clue_discipline_leader",
+    "label": "选择公司纪委领导",
+    "mode": "multiple",
+    "variableName": "disciplineLeaderAssigneeList",
+    "required": true,
+    "conditionalOn": null,
+    "restrictToRecommended": true
+   }
+  ],
+  "callbackUrl": null
+ },
+ {
+  "taskDefinitionKey": "ut_discipline_leader",
+  "nodeSemantic": "CASEFLOW_CLUE_DISCIPLINE_LEADER",
+  "pageCode": "http://192.168.124.5:1660/preview/clue",
+  "isStarterNode": false,
+  "isConvergencePoint": true,
+  "canReject": true,
+  "rejectOptions": [
+   {
+    "rejectCode": "TO_STARTER",
+    "label": "退回分办人修改",
+    "description": "公司纪委领导批示不通过，退回问题线索分办单分办人"
+   }
+  ],
+  "isRejectTarget": false,
+  "rejectCode": null,
+  "roleKey": "clue_discipline_leader",
+  "assigneeMode": "multiple",
+  "slots": [],
+  "callbackUrl": null
+ }
+]

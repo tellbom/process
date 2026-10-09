@@ -205,6 +205,12 @@ namespace FlowableWrapper.Application.Services
                 .OrderByDescending(t => t.CreateTime)
                 .ToList();
 
+            // 深链按 taskId 精确定位时直接在任务层收窄，避免 total 被其他待办放大
+            if (!string.IsNullOrWhiteSpace(request.TaskId))
+                allTasks = allTasks
+                    .Where(t => string.Equals(t.Id, request.TaskId.Trim(), StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+
             if (!allTasks.Any())
                 return new PendingTaskPageResult
                 {
@@ -235,6 +241,10 @@ namespace FlowableWrapper.Application.Services
 
                 if (businessTypes.Count > 0
                     && !businessTypes.Contains(meta.BusinessType))
+                    continue;
+
+                if (!string.IsNullOrWhiteSpace(request.BusinessId)
+                    && !string.Equals(meta.BusinessId, request.BusinessId.Trim(), StringComparison.OrdinalIgnoreCase))
                     continue;
 
                 if (!semanticMapCache.TryGetValue(meta.ProcessDefinitionKey, out var semanticMap))

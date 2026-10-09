@@ -162,7 +162,7 @@ namespace FlowableWrapper.Infrastructure.Flowable
             return list;
         }
 
-        private static (string type, object value) ResolveVariable(object raw)
+        private static (string? type, object? value) ResolveVariable(object raw)
         {
             if (raw is JsonElement je)
             {
@@ -174,7 +174,7 @@ namespace FlowableWrapper.Infrastructure.Flowable
                     JsonValueKind.Number when je.TryGetDouble(out var d) => ("double", (object)d),
                     JsonValueKind.String => ("string", (object)(je.GetString() ?? "")),
                     JsonValueKind.Array or
-                    JsonValueKind.Object => ("json", (object)je.GetRawText()),
+                    JsonValueKind.Object => ("json", (object)je),
                     _ => ("string", (object)je.ToString())
                 };
             }
@@ -187,7 +187,7 @@ namespace FlowableWrapper.Infrastructure.Flowable
                 double d => ("double", (object)d),
                 float f => ("double", (object)(double)f),
                 decimal dec => ("double", (object)(double)dec),
-                System.Collections.IList => ("json", (object)JsonSerializer.Serialize(raw)),
+                System.Collections.IList => ("json", raw),
                 string s => ("string", (object)s),
                 _ => ("string", (object)(raw?.ToString() ?? ""))
             };

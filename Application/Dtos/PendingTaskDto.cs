@@ -24,6 +24,10 @@ namespace FlowableWrapper.Application.Dtos
         /// businessType=type_a&amp;businessType=type_b。多个值按 OR 匹配。
         /// </summary>
         public List<string>? BusinessType { get; set; }
+        /// <summary>按 Flowable 任务 ID 精确过滤（跳转深链场景）。</summary>
+        public string? TaskId { get; set; }
+        /// <summary>按业务单据 ID 过滤（忽略大小写）。</summary>
+        public string? BusinessId { get; set; }
         public int PageIndex       { get; set; } = 1;
         public int PageSize        { get; set; } = 20;
     }

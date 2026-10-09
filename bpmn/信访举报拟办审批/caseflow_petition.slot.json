@@ -1,0 +1,145 @@
+[
+ {
+  "taskDefinitionKey": "ut_starter",
+  "nodeSemantic": "CASEFLOW_PETITION_STARTER_SUBMIT",
+  "pageCode": "http://192.168.124.5:1660/preview/petition",
+  "isStarterNode": true,
+  "isConvergencePoint": false,
+  "canReject": false,
+  "rejectOptions": [],
+  "isRejectTarget": true,
+  "rejectCode": "TO_STARTER",
+  "roleKey": "caseflow_petition_starter",
+  "assigneeMode": "single",
+  "slots": [
+   {
+    "slotKey": "petition_review_approver",
+    "roleKey": "petition_review_approver",
+    "label": "选择审核人",
+    "mode": "multiple",
+    "variableName": "reviewApproverAssigneeList",
+    "required": true,
+    "conditionalOn": null,
+    "restrictToRecommended": true
+   }
+  ],
+  "callbackUrl": null
+ },
+ {
+  "taskDefinitionKey": "ut_review",
+  "nodeSemantic": "CASEFLOW_PETITION_REVIEW",
+  "pageCode": "http://192.168.124.5:1660/preview/petition",
+  "isStarterNode": false,
+  "isConvergencePoint": false,
+  "canReject": true,
+  "rejectOptions": [
+   {
+    "rejectCode": "TO_STARTER",
+    "label": "退回反映人修改",
+    "description": "审核不通过，退回信访举报拟办单反映人"
+   }
+  ],
+  "isRejectTarget": false,
+  "rejectCode": null,
+  "roleKey": "petition_review_approver",
+  "assigneeMode": "multiple",
+  "slots": [
+   {
+    "slotKey": "petition_discipline_head",
+    "roleKey": "petition_discipline_head",
+    "label": "选择纪检部门负责人",
+    "mode": "multiple",
+    "variableName": "disciplineHeadAssigneeList",
+    "required": true,
+    "conditionalOn": null,
+    "restrictToRecommended": true
+   }
+  ],
+  "callbackUrl": null
+ },
+ {
+  "taskDefinitionKey": "ut_discipline_head",
+  "nodeSemantic": "CASEFLOW_PETITION_DISCIPLINE_HEAD",
+  "pageCode": "http://192.168.124.5:1660/preview/petition",
+  "isStarterNode": false,
+  "isConvergencePoint": false,
+  "canReject": true,
+  "rejectOptions": [
+   {
+    "rejectCode": "TO_STARTER",
+    "label": "退回反映人修改",
+    "description": "纪检部门负责人审批不通过，退回信访举报拟办单反映人"
+   }
+  ],
+  "isRejectTarget": false,
+  "rejectCode": null,
+  "roleKey": "petition_discipline_head",
+  "assigneeMode": "multiple",
+  "slots": [
+   {
+    "slotKey": "petition_secretary",
+    "roleKey": "petition_secretary",
+    "label": "选择公司纪委书记",
+    "mode": "multiple",
+    "variableName": "secretaryAssigneeList",
+    "required": true,
+    "conditionalOn": null,
+    "restrictToRecommended": true
+   }
+  ],
+  "callbackUrl": null
+ },
+ {
+  "taskDefinitionKey": "ut_secretary",
+  "nodeSemantic": "CASEFLOW_PETITION_SECRETARY",
+  "pageCode": "http://192.168.124.5:1660/preview/petition",
+  "isStarterNode": false,
+  "isConvergencePoint": false,
+  "canReject": true,
+  "rejectOptions": [
+   {
+    "rejectCode": "TO_STARTER",
+    "label": "退回反映人修改",
+    "description": "公司纪委书记批示不通过，退回信访举报拟办单反映人"
+   }
+  ],
+  "isRejectTarget": false,
+  "rejectCode": null,
+  "roleKey": "petition_secretary",
+  "assigneeMode": "multiple",
+  "slots": [
+   {
+    "slotKey": "petition_discipline_leader",
+    "roleKey": "petition_discipline_leader",
+    "label": "选择公司纪委领导",
+    "mode": "multiple",
+    "variableName": "disciplineLeaderAssigneeList",
+    "required": true,
+    "conditionalOn": null,
+    "restrictToRecommended": true
+   }
+  ],
+  "callbackUrl": null
+ },
+ {
+  "taskDefinitionKey": "ut_discipline_leader",
+  "nodeSemantic": "CASEFLOW_PETITION_DISCIPLINE_LEADER",
+  "pageCode": "http://192.168.124.5:1660/preview/petition",
+  "isStarterNode": false,
+  "isConvergencePoint": true,
+  "canReject": true,
+  "rejectOptions": [
+   {
+    "rejectCode": "TO_STARTER",
+    "label": "退回反映人修改",
+    "description": "公司纪委领导批示不通过，退回信访举报拟办单反映人"
+   }
+  ],
+  "isRejectTarget": false,
+  "rejectCode": null,
+  "roleKey": "petition_discipline_leader",
+  "assigneeMode": "multiple",
+  "slots": [],
+  "callbackUrl": null
+ }
+]

@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using FlowableWrapper.Api.Filters;
 using FlowableWrapper.Application.Dtos;
 using FlowableWrapper.Application.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 
@@ -52,7 +53,10 @@ namespace FlowableWrapper.Api.Controllers
         /// 适用场景：
         ///   - 只需要历史记录，不需要当前节点信息
         ///   - 业务系统判断审批结果（查最后一条 action）
+        ///
+        /// 鉴权：匿名可访问（业务系统无用户上下文时直接查询）
         /// </summary>
+        [AllowAnonymous]
         [HttpGet("{businessId}/audit-history")]
         public async Task<ActionResult<ApiResult<List<AuditRecordDto>>>> GetAuditHistory(
             string businessId)

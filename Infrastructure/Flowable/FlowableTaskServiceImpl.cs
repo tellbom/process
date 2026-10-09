@@ -50,7 +50,7 @@ namespace FlowableWrapper.Infrastructure.Flowable
                     variableList.Add(new
                     {
                         name = kv.Key,
-                        value = kv.Value,
+                        value,
                         type = type
                     });
                 }
@@ -150,7 +150,7 @@ namespace FlowableWrapper.Infrastructure.Flowable
             };
         }
 
-        private static (string type, object value) ResolveVariable(object raw)
+        private static (string? type, object? value) ResolveVariable(object raw)
         {
             // System.Text.Json 反序列化 Dictionary<string,object> 时
             // 所有值都是 JsonElement，需要先拆包
@@ -164,7 +164,7 @@ namespace FlowableWrapper.Infrastructure.Flowable
                     JsonValueKind.Number when je.TryGetDouble(out var d) => ("double", d),
                     JsonValueKind.String => ("string", je.GetString()),
                     JsonValueKind.Array or
-                    JsonValueKind.Object => ("json", je.GetRawText()),
+                    JsonValueKind.Object => ("json", je),
                     _ => ("string", je.ToString())
                 };
             }
@@ -178,7 +178,7 @@ namespace FlowableWrapper.Infrastructure.Flowable
                 double d => ("double", (object)d),
                 float f => ("double", (object)(double)f),
                 decimal dec => ("double", (object)(double)dec),
-                System.Collections.IList => ("json", System.Text.Json.JsonSerializer.Serialize(raw)),
+                System.Collections.IList => ("json", raw),
                 string s => ("string", (object)s),
                 _ => ("string", (object)(raw?.ToString() ?? ""))
             };
