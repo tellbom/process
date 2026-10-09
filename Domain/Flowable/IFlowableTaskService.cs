@@ -32,7 +32,7 @@ namespace FlowableWrapper.Domain.Flowable
         /// <summary>
         /// 设置单一处理人
         /// </summary>
-        Task SetAssigneeAsync(string taskId, string userId);
+        Task SetAssigneeAsync(string taskId, string? userId);
 
         /// <summary>
         /// 批量添加候选人（用于多人候选场景）

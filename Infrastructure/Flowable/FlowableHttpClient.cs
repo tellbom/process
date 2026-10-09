@@ -107,6 +107,17 @@ namespace FlowableWrapper.Infrastructure.Flowable
             await EnsureSuccessAsync(response, path);
         }
 
+        public async Task PutAsync(string path, object body)
+        {
+            _logger.LogDebug("Flowable PUT {Path}", path);
+            var content = new StringContent(
+                JsonSerializer.Serialize(body, JsonOptions),
+                Encoding.UTF8,
+                "application/json");
+            var response = await _http.PutAsync(path, content);
+            await EnsureSuccessAsync(response, path);
+        }
+
         public async Task<T> PostMultipartAsync<T>(string path, MultipartFormDataContent content)
         {
             _logger.LogDebug("Flowable POST multipart {Path}", path);

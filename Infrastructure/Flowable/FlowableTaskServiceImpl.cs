@@ -75,11 +75,11 @@ namespace FlowableWrapper.Infrastructure.Flowable
             _logger.LogInformation("任务已认领: {TaskId} → {UserId}", taskId, userId);
         }
 
-        public async Task SetAssigneeAsync(string taskId, string userId)
+        public async Task SetAssigneeAsync(string taskId, string? userId)
         {
-            await _http.PostAsync($"runtime/tasks/{taskId}", new
+            // Flowable REST 无 action=assign；更新办理人须 PUT /runtime/tasks/{id}
+            await _http.PutAsync($"runtime/tasks/{taskId}", new
             {
-                action = "assign",
                 assignee = userId
             });
         }
