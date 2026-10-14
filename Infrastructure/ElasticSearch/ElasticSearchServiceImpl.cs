@@ -57,13 +57,10 @@ namespace FlowableWrapper.Infrastructure.ElasticSearch
         /// </summary>
         private async Task EnsureSemanticIndexAsync()
         {
+            // NEST 7.x：索引不存在时 HEAD 返回 404，IsValid=false 且 Exists=false，
+            // 因此以 Exists 属性为准，不存在时直接创建
             var existsResponse = await _client.Indices.ExistsAsync(
                 _options.SemanticIndexName);
-            if (!existsResponse.IsValid)
-            {
-                throw new Exception(
-                    $"检查 ES 语义索引失败: {existsResponse.DebugInformation}");
-            }
 
             if (!existsResponse.Exists)
             {
@@ -76,7 +73,7 @@ namespace FlowableWrapper.Infrastructure.ElasticSearch
                                 .Name(n => n.NodeSemanticMap)
                                 .Dynamic(false)))));
 
-                if (!createResponse.IsValid)
+                if (!createResponse.IsValid && !IsIndexAlreadyExists(createResponse.ServerError))
                 {
                     throw new Exception(
                         $"创建 ES 语义索引失败: {createResponse.DebugInformation}");
@@ -111,15 +108,10 @@ namespace FlowableWrapper.Infrastructure.ElasticSearch
             where TDocument : class
         {
             var existsResponse = await _client.Indices.ExistsAsync(indexName);
-            if (!existsResponse.IsValid)
-            {
-                _logger.LogError(
-                    "检查 ES 索引失败: Index={Index}, Error={Error}",
-                    indexName,
-                    existsResponse.DebugInformation);
-                throw new Exception($"检查 ES 索引失败: {existsResponse.DebugInformation}");
-            }
 
+            // NEST 7.x：索引不存在时 HEAD 返回 404，IsValid=false 且 Exists=false。
+            // 只有 Exists=true 才确认索引存在；其余情况统一走创建分支，
+            // 连接级故障会在 CreateAsync 处抛出带详细信息的异常。
             if (existsResponse.Exists)
             {
                 _logger.LogInformation("ES 索引已存在: {Index}", indexName);
@@ -130,7 +122,7 @@ namespace FlowableWrapper.Infrastructure.ElasticSearch
                 indexName,
                 c => c.Map<TDocument>(m => m.AutoMap()));
 
-            if (!createResponse.IsValid)
+            if (!createResponse.IsValid && !IsIndexAlreadyExists(createResponse.ServerError))
             {
                 _logger.LogError(
                     "创建 ES 索引失败: Index={Index}, Error={Error}",
@@ -141,6 +133,13 @@ namespace FlowableWrapper.Infrastructure.ElasticSearch
 
             _logger.LogInformation("ES 索引创建成功: {Index}", indexName);
         }
+
+        /// <summary>并发初始化时 ES 返回 resource_already_exists_exception，视为创建成功。</summary>
+        private static bool IsIndexAlreadyExists(Elasticsearch.Net.ServerError error) =>
+            string.Equals(
+                error?.Error?.Type,
+                "resource_already_exists_exception",
+                StringComparison.OrdinalIgnoreCase);
 
         // ═══════════════════════════════════════════════════════════
         // 流程元数据
