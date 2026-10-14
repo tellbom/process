@@ -31,30 +31,50 @@ namespace FlowableWrapper.Infrastructure.Flowable
                 parts.Add($"finished={query.Finished.Value.ToString().ToLower()}");
             if (!string.IsNullOrWhiteSpace(query.TaskDefinitionKey))
                 parts.Add($"taskDefinitionKey={Uri.EscapeDataString(query.TaskDefinitionKey)}");
-            parts.Add("size=200");
-
+            const int pageSize = 200;
+            parts.Add($"size={pageSize}");
+            parts.Add("sort=taskInstanceId");
+            parts.Add("order=asc");
             var qs = string.Join("&", parts);
-            var result = await _http.GetAsync<FlowableHistoricTaskListResponse>(
-                $"history/historic-task-instances?{qs}");
-
-            return result?.Data?.Select(r => new FlowableHistoricTask
+            var tasks = new List<FlowableHistoricTask>();
+            var start = 0;
+            while (true)
             {
-                Id = r.Id,
-                Name = r.Name,
-                ProcessInstanceId = r.ProcessInstanceId,
-                TaskDefinitionKey = r.TaskDefinitionKey,
-                Assignee = r.Assignee,
-                StartTime = r.StartTime,
-                EndTime = r.EndTime,
-                DurationInMillis = r.DurationInMillis,
-                DeleteReason = r.DeleteReason
-            }).ToList() ?? new List<FlowableHistoricTask>();
+                var result = await _http.GetAsync<FlowableHistoricTaskListResponse>(
+                    $"history/historic-task-instances?{qs}&start={start}");
+                if (result?.Data == null)
+                    throw new InvalidOperationException("Flowable 历史任务响应缺少 data");
+
+                tasks.AddRange(result.Data.Select(r => new FlowableHistoricTask
+                {
+                    Id = r.Id,
+                    Name = r.Name,
+                    ProcessInstanceId = r.ProcessInstanceId,
+                    TaskDefinitionKey = r.TaskDefinitionKey,
+                    Assignee = r.Assignee,
+                    StartTime = r.StartTime,
+                    EndTime = r.EndTime,
+                    DurationInMillis = r.DurationInMillis,
+                    DeleteReason = r.DeleteReason
+                }));
+
+                start += result.Data.Count;
+                if (result.Total.HasValue)
+                {
+                    if (start >= result.Total.Value) return tasks;
+                    if (result.Data.Count == 0)
+                        throw new InvalidOperationException("Flowable 历史任务分页提前结束");
+                }
+                else if (result.Data.Count < pageSize) return tasks;
+            }
         }
 
         private class FlowableHistoricTaskListResponse
         {
             [JsonPropertyName("data")]
             public List<FlowableHistoricTaskResponse> Data { get; set; }
+            [JsonPropertyName("total")]
+            public int? Total { get; set; }
         }
 
         private class FlowableHistoricTaskResponse

@@ -168,6 +168,7 @@ builder.Services.AddHttpClient("ProcessNotificationAuth", (sp, client) =>
 
 // Phase 9 — 查询
 builder.Services.AddScoped<ProcessQueryAppService>();
+builder.Services.AddScoped<ProcessApprovalDetailsAppService>();
 builder.Services.AddScoped<ProcessNotificationService>();
 
 // Phase 10 — 流程图渲染

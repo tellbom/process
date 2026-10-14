@@ -58,6 +58,7 @@ namespace FlowableWrapper.Api.Controllers
         /// </summary>
         [AllowAnonymous]
         [HttpGet("{businessId}/audit-history")]
+        [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
         public async Task<ActionResult<ApiResult<List<AuditRecordDto>>>> GetAuditHistory(
             string businessId)
         {

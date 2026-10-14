@@ -130,8 +130,8 @@ namespace FlowableWrapper.Application.Services
                 throw new BusinessException("businessId 不能为空");
 
             var metadata = await GetMetadataByBusinessIdAsync(request.BusinessId);
-            var records = await _esService.QueryAuditRecordsByBusinessIdAsync(
-                request.BusinessId);
+            var records = await _esService.QueryAuditRecordsByProcessInstanceIdAsync(
+                metadata.ProcessInstanceId);
 
             return records
                 .Where(record => string.Equals(

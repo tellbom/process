@@ -487,6 +487,51 @@ Pending task responses retain the execution contract and additionally include bu
 
 **GET** `/api/processes/{businessId}/audit-history`
 
+此接口匿名可访问，无需 `Authorization`。按 `businessId` 选择最新审批轮次，再按该轮次的 `processInstanceId` 读取全部审计记录。返回结构仍为 `{ success, data, message }`，`data` 是原有审批历史数组。查询失败会返回错误，不返回伪装成正常结果的空数组。
+
+### 4.3.1 业务系统审签详情（按流程实例）
+
+**GET** `/api/processes/instances/{processInstanceId}/approval-details`
+
+匿名只读，无需用户 JWT。`processInstanceId` 使用启动响应或流程回调中的流程实例 ID，不能传 `businessId`。同一业务重新发起后，旧实例 ID 仍查询旧轮次，避免完成回调到达后误取新一轮数据。
+
+```bash
+curl "http://localhost:5012/api/processes/instances/{processInstanceId}/approval-details"
+```
+
+接口适用于已有内网网关或网络 ACL 限制访问的业务后端。应用层不会校验调用方所属业务系统；流程 ID 是数据定位键，不是访问凭据。仅此接口和原 `audit-history` 无需用户 JWT，其他流程查询及执行接口继续遵循现有认证策略。
+
+返回 `{ success: true, data: {...}, message: null }`，`data` 字段如下：
+
+| 字段 | 含义与来源 |
+|---|---|
+| `processInstanceId` / `businessId` / `businessType` / `businessTitle` | 固定实例的流程和业务标识、标题 |
+| `processDefinitionKey` / `requestId` / `approvalRound` | 流程定义、启动请求标识、审批轮次 |
+| `status` | 流程中心元数据状态：running / completed / terminated / callback_failed；不从最后一条操作推断结论 |
+| `createdBy` / `createdTime` / `completedTime` | 发起人工号、发起时间、元数据完成时间 |
+| `durationSeconds` | completedTime - createdTime 的秒数；未记录完成时间时为 null |
+| `tasks[]` | Flowable 历史任务，包括已结束和仍在执行的任务 |
+| `auditHistory[]` | 此实例的完整审批操作记录，按 operatedAt、auditId 升序排列 |
+
+`tasks[]` 包含 `taskId`、`taskDefinitionKey`、`taskName`、`assignee`（处理人工号）、`status`、`startTime`、`endTime`、`durationSeconds`、`deleteReason`。任务状态含义为：
+
+- `active`：Flowable 未记录结束时间，endTime 和 durationSeconds 为 null。
+- `completed`：Flowable 记录正常结束，表示该任务已执行结束，不等同于整条业务审批通过。
+- `cancelled`：Flowable 记录了取消/删除原因，如驳回时撤销的任务。
+
+`auditHistory[]` 包含 `auditId`、`taskId`、`taskDefinitionKey`、`nodeSemantic`、`pageCode`、`action`（approve / reject / reassign）、`operatorId`、`operatedAt`、`comment`、`rejectReason`、`rejectCode`、`rejectTargetNodeKey`、`slotSelections[]`。其中 slotSelections 是当次选人记录，包含 slotKey、label 和 users（工号数组）。
+
+以 `taskId` 关联两组数据，分别读取实际任务状态和操作人工号、点击时间、意见。现有 approve 审计在 Flowable 完成调用之前写入，失败重试可能留下多条操作记录；审计写入失败也可能导致任务有历史而没有意见。故不能仅凭 action=approve 认定执行成功，接口不会补造时间、意见或人员姓名。若任务历史已清理，审计仍保留在 auditHistory 中。任务耗时是任务创建至结束的经过时间，不是人员实际工作时长。人员姓名由业务系统用工号映射，时间使用 ISO 格式，秒数保留毫秒精度。
+
+接口会分页读取 ES 和 Flowable，避免原有 200 条限制。任一数据源调用失败时返回错误，不返回部分成功结果。流程回调地址、回调 headers、认证信息和原始流程变量不会输出。
+
+| HTTP 状态 | 含义 |
+|---|---|
+| 200 | 查询成功；不存在审计记录时 auditHistory 可以为空 |
+| 404 / `PROCESS_INSTANCE_NOT_FOUND` | 实例元数据不存在 |
+| 502 / `FLOWABLE_ERROR` | Flowable 历史 API 调用失败 |
+| 500 / `INTERNAL_ERROR` | ES 或其他依赖查询失败 |
+
 ### 4.4 流程状态（轻量）
 
 **GET** `/api/processes/{businessId}/status`

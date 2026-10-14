@@ -26,21 +26,33 @@ namespace FlowableWrapper.Infrastructure.ElasticSearch
         public ElasticSearchServiceImpl(
             IOptions<ElasticSearchOptions> options,
             ILogger<ElasticSearchServiceImpl> logger)
+            : this(CreateClient(options.Value), options, logger)
         {
+        }
+
+        public ElasticSearchServiceImpl(
+            IElasticClient client,
+            IOptions<ElasticSearchOptions> options,
+            ILogger<ElasticSearchServiceImpl> logger)
+        {
+            _client = client;
             _options = options.Value;
             _logger = logger;
+        }
 
-            var uri = new Uri(_options.Uri);
+        private static IElasticClient CreateClient(ElasticSearchOptions options)
+        {
+            var uri = new Uri(options.Uri);
             var settings = new ConnectionSettings(uri)
-                .DefaultIndex(_options.IndexName)
+                .DefaultIndex(options.IndexName)
                 .DefaultMappingFor<ProcessMetadataDocument>(
                     m => m.IdProperty(p => p.ProcessInstanceId));
 
-            if (!string.IsNullOrWhiteSpace(_options.Username)
-                && !string.IsNullOrWhiteSpace(_options.Password))
-                settings.BasicAuthentication(_options.Username, _options.Password);
+            if (!string.IsNullOrWhiteSpace(options.Username)
+                && !string.IsNullOrWhiteSpace(options.Password))
+                settings.BasicAuthentication(options.Username, options.Password);
 
-            _client = new ElasticClient(settings);
+            return new ElasticClient(settings);
         }
 
         public async Task InitializeIndexesAsync()
@@ -173,7 +185,10 @@ namespace FlowableWrapper.Infrastructure.ElasticSearch
             var response = await _client.GetAsync<ProcessMetadataDocument>(
                 processInstanceId, g => g.Index(_options.IndexName));
 
-            if (!response.IsValid || !response.Found) return null;
+            if (response.ApiCall?.HttpStatusCode == 404) return null;
+            if (!response.IsValid)
+                throw new Exception($"查询 ES 流程元数据失败: {response.DebugInformation}");
+            if (!response.Found) return null;
             return response.Source;
         }
 
@@ -358,6 +373,36 @@ namespace FlowableWrapper.Infrastructure.ElasticSearch
 
             if (!response.IsValid) return new List<ProcessAuditRecord>();
             return response.Documents.ToList();
+        }
+
+        public async Task<List<ProcessAuditRecord>> QueryAuditRecordsByProcessInstanceIdAsync(
+            string processInstanceId)
+        {
+            const int pageSize = 200;
+            var records = new List<ProcessAuditRecord>();
+            object[]? searchAfter = null;
+            while (true)
+            {
+                var response = await _client.SearchAsync<ProcessAuditRecord>(s =>
+                {
+                    var request = s.Index(_options.AuditIndexName)
+                        .Query(q => q.Term(t => t
+                            .Field("processInstanceId.keyword").Value(processInstanceId)))
+                        .Sort(sort => sort.Ascending(record => record.OperatedAt)
+                            .Ascending("id.keyword"))
+                        .Size(pageSize);
+                    return searchAfter == null ? request : request.SearchAfter(searchAfter);
+                });
+
+                if (!response.IsValid || response.TimedOut || response.Shards?.Failed > 0)
+                    throw new Exception($"查询 ES 实例审计记录失败: {response.DebugInformation}");
+
+                records.AddRange(response.Documents);
+                if (response.Hits.Count < pageSize) return records;
+                searchAfter = response.Hits.Last().Sorts?.ToArray();
+                if (searchAfter == null || searchAfter.Length == 0)
+                    throw new Exception("查询 ES 实例审计记录失败: 缺少分页游标");
+            }
         }
 
         // ═══════════════════════════════════════════════════════════

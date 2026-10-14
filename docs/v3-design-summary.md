@@ -96,7 +96,7 @@ Flowable 自身数据库（ACT_* 表）是执行状态与历史任务的唯一�
 
 ## 6. API 契约总览
 
-**统一约定**：业务接口 HTTP 一律 200，`{ success, message, data }` / `{ success:false, message, errorCode }` 区分成败；认证统一 `Authorization: Bearer {jwt}`（按 `Jwt:UseridClaim`，默认 claim `userid`，fallback `sub/employee_id/uid`）。README 早期章节的 `X-User-Id` 仅为历史说明，**不是当前认证入口**。例外：`/api/admin/failed-deliveries*` 使用真实 HTTP 状态码（见 §9）。
+**统一约定**：成功响应通常为 HTTP 200、`{ success, message, data }`；异常由全局过滤器返回 HTTP 400/404/409/502/500 和 `{ code, message }`。认证使用 `Authorization: Bearer {jwt}`（按 `Jwt:UseridClaim`，默认 claim `userid`，fallback `sub/employee_id/uid`）；`audit-history` 与 `approval-details` 是供业务系统调用的匿名只读例外，需由内网访问边界限制调用方。README 早期章节的 `X-User-Id` 仅为历史说明，**不是当前认证入口**。`/api/admin/failed-deliveries*` 状态码见 §9。
 
 | 能力 | 方法 + 路径 | 要点 |
 |---|---|---|
@@ -109,7 +109,8 @@ Flowable 自身数据库（ACT_* 表）是执行状态与历史任务的唯一�
 | 转派 | POST `/api/tasks/reassign` | 受当前节点 `canReassign` 控制；只作用于当前 Task |
 | 流程进度 | GET `/api/processes/{businessId}/progress` | currentNodes + auditHistory + 推荐人矩阵 |
 | 流程图渲染 | GET `/api/processes/{businessId}/flow-render` | bpmnXml + nodes/edges + activeTaskRenders + completedRecords |
-| 审批历史 | GET `/api/processes/{businessId}/audit-history` | — |
+| 审批历史 | GET `/api/processes/{businessId}/audit-history` | 匿名只读；最新轮次的全部审计记录 |
+| 业务审签详情 | GET `/api/processes/instances/{processInstanceId}/approval-details` | 匿名只读；固定轮次、流程摘要、实际任务状态/耗时和完整操作意见，见 README §4.3.1 |
 | 流程状态 | GET `/api/processes/{businessId}/status` | 轻量 |
 | 流程列表 | GET `/api/processes` | businessType/status 过滤 + 分页 |
 | Flowable 回调入口 | POST `/api/callback/flowable` | 由 BPMN 末尾 ServiceTask 调用，非业务系统直调 |

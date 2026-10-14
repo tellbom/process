@@ -52,6 +52,9 @@ namespace FlowableWrapper.Domain.Services
         /// </summary>
         Task<List<ProcessAuditRecord>> QueryAuditRecordsByBusinessIdAsync(string businessId);
 
+        /// <summary>按流程实例查询全部审计记录（时间正序），查询失败时抛出异常。</summary>
+        Task<List<ProcessAuditRecord>> QueryAuditRecordsByProcessInstanceIdAsync(string processInstanceId);
+
         // ── 流程列表查询 ──────────────────────────────────────────
         /// <summary>
         /// 分页查询流程列表
