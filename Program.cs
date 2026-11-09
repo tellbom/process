@@ -205,10 +205,13 @@ builder.Services.AddScoped<ProcessLifecycleAppService>();
 
 // Phase 7 — BPMN 部署
 builder.Services.AddScoped<BpmnDeploymentAppService>();
+builder.Services.AddScoped<WorkflowWorkbenchAppService>();
+builder.Services.AddScoped<WorkflowNextStepAppService>();
 
 // Phase 8 — 回调
 // 1. 注册 ProcessCallbackAppService
 builder.Services.AddScoped<ProcessCallbackAppService>();
+builder.Services.AddScoped<FailedDeliveryAppService>();
 builder.Services.AddScoped<WorkflowMigrationAppService>();
 
 // 2. 注册具名 HttpClient（用于回调业务系统）
@@ -253,6 +256,7 @@ builder.Services.AddHttpClient("ProcessNotificationAuth", (sp, client) =>
 
 // Phase 9 — 查询
 builder.Services.AddScoped<ProcessQueryAppService>();
+builder.Services.AddScoped<ProcessOperationsAppService>();
 builder.Services.AddScoped<ProcessNotificationService>();
 
 // Phase 10 — 流程图渲染

@@ -95,7 +95,7 @@ namespace FlowableWrapper.Application.Services
 
             // Step 1: 解析 XML
             XDocument doc;
-            try { doc = XDocument.Parse(bpmnXml); }
+            try { doc = WorkflowArtifactCompiler.Parse(bpmnXml); }
             catch (Exception ex)
             {
                 throw new BusinessException($"BPMN XML 格式错误: {ex.Message}");
@@ -108,6 +108,20 @@ namespace FlowableWrapper.Application.Services
 
             var processDefinitionName = doc.Descendants(BpmnNs + "process")
                 .FirstOrDefault()?.Attribute("name")?.Value;
+
+            var artifact = WorkflowArtifactCompiler.Compile(new WorkflowArtifactRequest
+            {
+                BpmnXml = bpmnXml,
+                SlotConfigJson = slotConfigJson
+            });
+            if (!artifact.Valid)
+                throw new BusinessException(
+                    "流程文件校验失败：" + string.Join("；", artifact.Issues
+                        .Where(x => x.Severity == "error").Select(x => $"[{x.ElementId}] {x.Message}")),
+                    "WORKFLOW_ARTIFACT_INVALID");
+            bpmnXml = artifact.BpmnXml;
+            slotConfigJson = artifact.SlotConfigJson;
+            doc = WorkflowArtifactCompiler.Parse(bpmnXml);
 
             _logger.LogInformation(
                 "开始部署 BPMN: {FileName}, Key={Key}", fileName, processDefinitionKey);
@@ -470,7 +484,14 @@ namespace FlowableWrapper.Application.Services
             if (string.IsNullOrWhiteSpace(processDefinitionKey))
                 throw new BusinessException("processDefinitionKey 不能为空");
 
-            var map = await _esService.GetNodeSemanticMapAsync(processDefinitionKey);
+            Dictionary<string, NodeSemanticInfo> map;
+            var definition = await _repositoryService.GetLatestProcessDefinitionByKeyAsync(processDefinitionKey);
+            var xml = definition == null ? null : await _repositoryService.GetBpmnXmlByDefinitionIdAsync(definition.Id);
+            if (!string.IsNullOrWhiteSpace(xml)
+                && WorkflowArtifactCompiler.ReadEmbeddedConfiguration(WorkflowArtifactCompiler.Parse(xml)) != null)
+                map = ReadArtifactNodeMap(xml);
+            else
+                map = await _esService.GetNodeSemanticMapAsync(processDefinitionKey);
 
             return map.Values.Select(n => new ProcessDefinitionNodeDto
             {
@@ -489,6 +510,30 @@ namespace FlowableWrapper.Application.Services
                 AssigneeMode = n.AssigneeMode,
                 CallbackUrl = n.CallbackUrl
             }).ToList();
+        }
+
+        /// <summary>只读前置检查：与启动门禁核对同一个最新定义和 DM 配置，不创建实例或幂等记录。</summary>
+        public async Task<ProcessDefinitionStartabilityDto> GetStartabilityAsync(string processDefinitionKey)
+        {
+            if (string.IsNullOrWhiteSpace(processDefinitionKey))
+                throw new BusinessException("processDefinitionKey 不能为空");
+            var latest = await _repositoryService.GetLatestProcessDefinitionByKeyAsync(processDefinitionKey);
+            if (latest == null)
+                throw new BusinessException($"流程定义 [{processDefinitionKey}] 不存在", "PROCESS_DEFINITION_NOT_FOUND");
+            var config = _dm8Options.Enabled
+                ? await _reliabilityStore.GetDefinitionConfigAsync(processDefinitionKey, latest.Version)
+                : null;
+            if (config == null || !string.Equals(config.ProcessDefinitionId, latest.Id, StringComparison.Ordinal))
+                throw new BusinessException(
+                    $"流程定义 [{processDefinitionKey}] 版本 [{latest.Version}] 尚未完成 ACTIVE 门禁，禁止创建制度或文件版本",
+                    "PROCESS_DEFINITION_NOT_ACTIVE");
+            return new ProcessDefinitionStartabilityDto
+            {
+                ProcessDefinitionKey = processDefinitionKey,
+                ProcessDefinitionId = latest.Id,
+                Version = latest.Version,
+                CanStart = true
+            };
         }
 
         public async Task<BpmnDeploymentStatusResponse> GetDeploymentStatusAsync(
@@ -572,6 +617,16 @@ namespace FlowableWrapper.Application.Services
         // ═══════════════════════════════════════════════════════════
         // 私有：XML 解析
         // ═══════════════════════════════════════════════════════════
+
+        internal Dictionary<string, NodeSemanticInfo> ReadArtifactNodeMap(string bpmnXml)
+        {
+            var doc = WorkflowArtifactCompiler.Parse(bpmnXml);
+            var map = ParseNodeSemantics(doc);
+            var config = ParseSlotConfig(WorkflowArtifactCompiler.ReadEmbeddedConfiguration(doc));
+            ValidateSlotConfig(config, (string?)doc.Root?.Element(BpmnNs + "process")?.Attribute("id") ?? "");
+            MergeSlotConfig(map, config);
+            return map;
+        }
 
         private Dictionary<string, NodeSemanticInfo> ParseNodeSemantics(XDocument doc)
         {

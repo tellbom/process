@@ -99,14 +99,17 @@ X-Callback-Event-Id: <DM8 事件 ID>
 直接进入死信。
 
 ```text
-GET  /api/admin/callback-events/metrics
-GET  /api/admin/callback-events?status=dead_letter
-GET  /api/admin/callback-events/{eventId}
-POST /api/admin/callback-events/{eventId}/retry
+GET  /api/admin/failed-deliveries/metrics
+GET  /api/admin/failed-deliveries?status=dead_letter
+GET  /api/admin/failed-deliveries/{deliveryId}
+POST /api/admin/failed-deliveries/{deliveryId}/retry
+POST /api/admin/failed-deliveries/{deliveryId}/cancel
 ```
 
-人工重试只允许死信事件，并记录操作幂等动作。告警至少覆盖 pending、
-retry_waiting、dead_letter、最老 pending 年龄和租约丢失次数。
+人工重试和人工取消只允许死信事件，并记录操作幂等动作。重试将事件恢复为
+`pending`，取消将事件标记为 `cancelled`；两者都不修改 Flowable 流程实例。
+取消不是物理删除，Worker 不领取 `cancelled`。告警至少覆盖 pending、
+retry_waiting、dead_letter、cancelled、最老 pending 年龄和租约丢失次数。
 
 ## 故障裁决
 

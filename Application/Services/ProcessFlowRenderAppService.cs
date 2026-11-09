@@ -64,13 +64,17 @@ namespace FlowableWrapper.Application.Services
         /// <summary>
         /// 获取流程图渲染数据
         /// </summary>
-        public async Task<ProcessFlowRenderDto> GetFlowRenderAsync(string businessId)
+        public async Task<ProcessFlowRenderDto> GetFlowRenderAsync(string businessId, string? processInstanceId = null)
         {
             if (string.IsNullOrWhiteSpace(businessId))
                 throw new BusinessException("businessId 不能为空");
 
             // ── 查流程元数据（兼容所有状态）──────────────────────
-            var metadata = await GetMetadataAnyStatusAsync(businessId);
+            var metadata = string.IsNullOrWhiteSpace(processInstanceId)
+                ? await GetMetadataAnyStatusAsync(businessId)
+                : await _esService.GetProcessMetadataAsync(processInstanceId);
+            if (metadata == null || !string.Equals(metadata.BusinessId, businessId, StringComparison.OrdinalIgnoreCase))
+                throw new BusinessException("流程实例不存在或与业务 ID 不匹配", "PROCESS_INSTANCE_NOT_FOUND");
 
             // ── 并行获取所需数据 ───────────────────────────────────
             var activeTasksTask = _taskService.QueryTasksAsync(new FlowableTaskQuery
@@ -78,7 +82,7 @@ namespace FlowableWrapper.Application.Services
                 ProcessInstanceId = metadata.ProcessInstanceId
             });
 
-            var auditRecordsTask = _esService.QueryAuditRecordsByBusinessIdAsync(businessId);
+            var auditRecordsTask = _esService.QueryAuditRecordsByBusinessIdAsync(businessId, metadata.ProcessInstanceId);
 
             var historicTasksTask = _historyService.QueryHistoricTasksAsync(
                 new FlowableHistoricTaskQuery
@@ -99,7 +103,7 @@ namespace FlowableWrapper.Application.Services
             var historicTasks = historicTasksTask.Result;
 
             // ── 获取 BPMN XML ──────────────────────────────────────
-            var bpmnXml = await GetBpmnXmlAsync(metadata.ProcessDefinitionKey);
+            var bpmnXml = await GetBpmnXmlAsync(metadata.ProcessDefinitionKey, metadata.ProcessDefinitionVersion);
             if (string.IsNullOrWhiteSpace(bpmnXml))
             {
                 _logger.LogWarning(
@@ -139,7 +143,7 @@ namespace FlowableWrapper.Application.Services
             var activeTaskRenders = await BuildActiveTaskRendersAsync(activeTasks);
 
             // ── 构建 completedRecords 渲染数据 ─────────────────────
-            var completedRecords = BuildCompletedRecords(auditRecords, historicTasks);
+            var completedRecords = CompletedRecordRenderBuilder.Build(auditRecords, historicTasks);
 
             // ── 构建 rejectHistory ─────────────────────────────────
             var rejectHistory = BuildRejectHistory(auditRecords, nodes);
@@ -417,79 +421,6 @@ namespace FlowableWrapper.Application.Services
         }
 
         // ═══════════════════════════════════════════════════════════
-        // 已完成审批记录
-        // ═══════════════════════════════════════════════════════════
-
-        private List<CompletedRecordRenderDto> BuildCompletedRecords(
-            List<ProcessAuditRecord> auditRecords,
-            List<FlowableHistoricTask> historicTasks)
-        {
-            // 以审计记录为主，补充历史任务的时间信息
-            var historicMap = historicTasks
-                .GroupBy(h => h.TaskDefinitionKey)
-                .ToDictionary(g => g.Key, g => g.ToList());
-
-            var result = new List<CompletedRecordRenderDto>();
-            int round = 1;
-            string lastNodeId = null;
-
-            foreach (var record in auditRecords.OrderBy(r => r.OperatedAt))
-            {
-                // 同一节点第二次出现（驳回后重走）轮次递增
-                if (record.TaskDefinitionKey == lastNodeId)
-                    round++;
-                else
-                    round = 1;
-                lastNodeId = record.TaskDefinitionKey;
-
-                // 从历史任务找时间
-                DateTime startTime = record.OperatedAt;
-                DateTime endTime = record.OperatedAt;
-                long duration = 0;
-
-                if (historicMap.TryGetValue(record.TaskDefinitionKey, out var hList))
-                {
-                    var matched = hList.FirstOrDefault(h =>
-                        h.Assignee == record.OperatorId && h.EndTime.HasValue);
-                    if (matched != null)
-                    {
-                        startTime = matched.StartTime;
-                        endTime = matched.EndTime!.Value;
-                        duration = matched.DurationInMillis.HasValue
-                            ? matched.DurationInMillis.Value / 1000
-                            : (long)(endTime - startTime).TotalSeconds;
-                    }
-                }
-
-                // 推断 outcome
-                string outcome;
-                if (record.Action == "reject")
-                    outcome = "rejected_return";
-                else if (record.Action == "reassign")
-                    outcome = "reassigned";
-                else
-                    outcome = "approved";
-
-                result.Add(new CompletedRecordRenderDto
-                {
-                    TaskId = record.TaskId,
-                    NodeId = record.TaskDefinitionKey,
-                    NodeName = record.NodeSemantic ?? record.TaskDefinitionKey,
-                    OperatorId = record.OperatorId,
-                    StartTime = startTime,
-                    EndTime = endTime,
-                    DurationSeconds = duration,
-                    Outcome = outcome,
-                    RejectReason = record.RejectReason,
-                    Comment = record.Comment,
-                    Round = round
-                });
-            }
-
-            return result;
-        }
-
-        // ═══════════════════════════════════════════════════════════
         // 驳回轨迹
         // ═══════════════════════════════════════════════════════════
 
@@ -627,12 +558,13 @@ namespace FlowableWrapper.Application.Services
             return meta;
         }
 
-        private async Task<string> GetBpmnXmlAsync(string processDefinitionKey)
+        private async Task<string> GetBpmnXmlAsync(string processDefinitionKey, int? version)
         {
             try
             {
-                var definition = await _repositoryService
-                    .GetLatestProcessDefinitionByKeyAsync(processDefinitionKey);
+                var definition = version.HasValue
+                    ? await _repositoryService.GetProcessDefinitionByKeyAndVersionAsync(processDefinitionKey, version.Value)
+                    : await _repositoryService.GetLatestProcessDefinitionByKeyAsync(processDefinitionKey);
 
                 if (definition == null)
                 {

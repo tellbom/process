@@ -64,6 +64,13 @@ namespace FlowableWrapper.HttpApi.Controllers
             return Ok(new { message = "部署删除成功" });
         }
 
+        [HttpGet("{processDefinitionKey}/startability")]
+        public Task<ProcessDefinitionStartabilityDto> GetStartability(string processDefinitionKey)
+        {
+            Response.Headers.CacheControl = "no-store";
+            return _bpmnService.GetStartabilityAsync(processDefinitionKey);
+        }
+
         [HttpGet("deployments/status")]
         public Task<BpmnDeploymentStatusResponse> GetDeploymentStatus(
             [FromQuery] string processDefinitionKey,

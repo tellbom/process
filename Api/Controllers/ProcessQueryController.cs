@@ -39,9 +39,9 @@ namespace FlowableWrapper.Api.Controllers
         /// </summary>
         [HttpGet("{businessId}/progress")]
         public async Task<ActionResult<ApiResult<ProcessProgressDto>>> GetProgress(
-            string businessId)
+            string businessId, [FromQuery] string? processInstanceId = null)
         {
-            var result = await _queryService.GetProcessProgressAsync(businessId);
+            var result = await _queryService.GetProcessProgressAsync(businessId, processInstanceId);
             return Ok(ApiResult<ProcessProgressDto>.Ok(result));
         }
 
@@ -55,10 +55,10 @@ namespace FlowableWrapper.Api.Controllers
         /// </summary>
         [HttpGet("{businessId}/audit-history")]
         public async Task<ActionResult<ApiResult<List<AuditRecordDto>>>> GetAuditHistory(
-            string businessId)
+            string businessId, [FromQuery] string? processInstanceId = null)
         {
             var result = await _queryService.GetAuditHistoryAsync(
-                new AuditHistoryRequest { BusinessId = businessId });
+                new AuditHistoryRequest { BusinessId = businessId, ProcessInstanceId = processInstanceId });
             return Ok(ApiResult<List<AuditRecordDto>>.Ok(result));
         }
 

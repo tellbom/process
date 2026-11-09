@@ -63,7 +63,7 @@ namespace FlowableWrapper.Infrastructure.Flowable
                 Name = def.Name,
                 Version = def.Version,
                 DeploymentId = def.DeploymentId,
-                ResourceName = def.ResourceName
+                ResourceName = ReadResourceName(def)
             };
         }
 
@@ -73,6 +73,32 @@ namespace FlowableWrapper.Infrastructure.Flowable
                 $"repository/deployments/{deploymentId}?cascade={cascade.ToString().ToLower()}");
         }
 
+        public async Task<(List<FlowableProcessDefinition> Items, int Total)> QueryLatestProcessDefinitionsAsync(
+            string? keyword, int start, int size)
+        {
+            var path = $"repository/process-definitions?latest=true&sort=key&order=asc&start={start}&size={size}";
+            if (!string.IsNullOrWhiteSpace(keyword)) path += "&nameLike=" + Uri.EscapeDataString("%" + keyword.Trim() + "%");
+            var response = await _http.GetAsync<FlowableProcessDefinitionListResponse>(path);
+            if (response?.Data == null) throw new InvalidOperationException("Flowable 流程定义查询缺少 data。");
+            return (response.Data.Select(x => new FlowableProcessDefinition
+            {
+                Id = x.Id, Key = x.Key, Name = x.Name, Version = x.Version,
+                DeploymentId = x.DeploymentId, ResourceName = ReadResourceName(x)
+            }).ToList(), response.Total);
+        }
+
+        public async Task<FlowableProcessDefinition> GetProcessDefinitionByKeyAndVersionAsync(string key, int version)
+        {
+            var result = await _http.GetAsync<FlowableProcessDefinitionListResponse>(
+                $"repository/process-definitions?key={Uri.EscapeDataString(key)}&version={version}&size=1");
+            var def = result?.Data?.FirstOrDefault();
+            return def == null ? null : new FlowableProcessDefinition
+            {
+                Id = def.Id, Key = def.Key, Name = def.Name, Version = def.Version,
+                DeploymentId = def.DeploymentId, ResourceName = ReadResourceName(def)
+            };
+        }
+
         public async Task<string> GetBpmnXmlByDefinitionIdAsync(string processDefinitionId)
         {
             try
@@ -80,13 +106,22 @@ namespace FlowableWrapper.Infrastructure.Flowable
                 return await _http.GetStringAsync(
                     $"repository/process-definitions/{processDefinitionId}/resourcedata");
             }
-            catch (Exception ex)
+            catch (FlowableApiException ex) when (ex.StatusCode == 404)
             {
                 _logger.LogWarning(ex,
                     "获取 BPMN XML 失败: {ProcessDefinitionId}", processDefinitionId);
 
                 return null;
             }
+        }
+
+        private static string ReadResourceName(FlowableProcessDefinitionResponse definition)
+        {
+            if (!string.IsNullOrWhiteSpace(definition.ResourceName)) return definition.ResourceName;
+            if (!Uri.TryCreate(definition.Resource, UriKind.Absolute, out var resource)) return "";
+            const string marker = "/resources/";
+            var index = resource.AbsolutePath.LastIndexOf(marker, StringComparison.Ordinal);
+            return index < 0 ? "" : Uri.UnescapeDataString(resource.AbsolutePath[(index + marker.Length)..]);
         }
 
         // ── Flowable REST 响应 DTO ──────────────────────────────
@@ -99,6 +134,7 @@ namespace FlowableWrapper.Infrastructure.Flowable
 
         private class FlowableProcessDefinitionListResponse
         {
+            [JsonPropertyName("total")] public int Total { get; set; }
             [JsonPropertyName("data")]
             public FlowableProcessDefinitionResponse[] Data { get; set; }
         }
@@ -111,6 +147,7 @@ namespace FlowableWrapper.Infrastructure.Flowable
             [JsonPropertyName("version")] public int Version { get; set; }
             [JsonPropertyName("deploymentId")] public string DeploymentId { get; set; }
             [JsonPropertyName("resourceName")] public string ResourceName { get; set; }
+            [JsonPropertyName("resource")] public string Resource { get; set; }
         }
     }
 }

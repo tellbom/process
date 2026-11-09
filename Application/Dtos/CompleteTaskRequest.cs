@@ -89,6 +89,7 @@ namespace FlowableWrapper.Application.Dtos
     /// </summary>
     public class ReassignTaskRequest
     {
+        public string? ProcessInstanceId { get; set; }
         [Required(ErrorMessage = "businessId 不能为空")]
         public string BusinessId { get; set; }
 
@@ -119,6 +120,8 @@ namespace FlowableWrapper.Application.Dtos
     {
         [Required(ErrorMessage = "businessId 不能为空")]
         public string BusinessId { get; set; }
+        /// <summary>列表操作时传入所选轮次，防止历史记录误终止最新一轮。</summary>
+        public string? ProcessInstanceId { get; set; }
 
         [Required(ErrorMessage = "reason 不能为空")]
         public string Reason { get; set; }

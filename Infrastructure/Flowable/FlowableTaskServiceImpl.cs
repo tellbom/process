@@ -26,7 +26,7 @@ namespace FlowableWrapper.Infrastructure.Flowable
         {
             var result = await _http.GetAsync<FlowableTaskResponse>(
                 $"runtime/tasks/{taskId}");
-            return MapTask(result);
+            return result == null ? null : MapTask(result);
         }
 
         public async Task<List<FlowableTask>> QueryTasksAsync(FlowableTaskQuery query)

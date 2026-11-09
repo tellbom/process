@@ -19,6 +19,8 @@ namespace FlowableWrapper.Application.Dtos
     public class GetPendingTasksRequest
     {
         public string? EmployeeId   { get; set; }
+        public string? TaskId { get; set; }
+        public string? BusinessId { get; set; }
         /// <summary>
         /// 按业务类型过滤。查询参数可重复传递，例如：
         /// businessType=type_a&amp;businessType=type_b。多个值按 OR 匹配。

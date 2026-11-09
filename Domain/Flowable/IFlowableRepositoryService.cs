@@ -19,6 +19,11 @@ namespace FlowableWrapper.Domain.Flowable
         /// </summary>
         Task<FlowableProcessDefinition> GetLatestProcessDefinitionByKeyAsync(
             string processDefinitionKey);
+        Task<FlowableProcessDefinition> GetProcessDefinitionByKeyAndVersionAsync(
+            string processDefinitionKey, int version);
+
+        Task<(List<FlowableProcessDefinition> Items, int Total)> QueryLatestProcessDefinitionsAsync(
+            string? keyword, int start, int size);
 
         /// <summary>
         /// 删除部署（cascade=true 同时删除流程实例）

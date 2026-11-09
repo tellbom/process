@@ -96,7 +96,8 @@ namespace FlowableWrapper.Application.Services
             var callbackUrl = await ResolveNodeCallbackUrlAsync(
                 taskDefinitionKey,
                 metadata?.ProcessDefinitionKey ?? request.ProcessDefinitionKey,
-                metadata?.Callback?.Url);
+                metadata?.Callback?.Url,
+                metadata?.ProcessDefinitionVersion);
 
             if (string.IsNullOrWhiteSpace(callbackUrl))
             {
@@ -208,7 +209,8 @@ namespace FlowableWrapper.Application.Services
             var callbackUrl = await ResolveNodeCallbackUrlAsync(
                 taskDefinitionKey,
                 metadata.ProcessDefinitionKey,
-                metadata.Callback?.Url);
+                metadata.Callback?.Url,
+                metadata.ProcessDefinitionVersion);
 
             if (string.IsNullOrWhiteSpace(callbackUrl))
             {
@@ -276,7 +278,8 @@ namespace FlowableWrapper.Application.Services
             var callbackUrl = await ResolveNodeCallbackUrlAsync(
                 rejectNodeKey,
                 metadata.ProcessDefinitionKey,
-                metadata.Callback?.Url);
+                metadata.Callback?.Url,
+                metadata.ProcessDefinitionVersion);
 
             if (string.IsNullOrWhiteSpace(callbackUrl))
             {
@@ -290,7 +293,7 @@ namespace FlowableWrapper.Application.Services
             try
             {
                 var semanticMap = await _slotConfigProvider
-                    .GetNodeSemanticMapAsync(metadata.ProcessDefinitionKey);
+                    .GetNodeSemanticMapAsync(metadata.ProcessDefinitionKey, metadata.ProcessDefinitionVersion);
                 if (semanticMap.TryGetValue(rejectNodeKey, out var nodeInfo))
                     nodeSemantic = nodeInfo?.NodeSemantic ?? string.Empty;
             }
@@ -513,7 +516,7 @@ namespace FlowableWrapper.Application.Services
             try
             {
                 var auditRecords = await _esService
-                    .QueryAuditRecordsByBusinessIdAsync(businessId);
+                    .QueryAuditRecordsByBusinessIdAsync(businessId, processInstanceId);
 
                 var record = auditRecords?
                     .Where(r => string.Equals(
@@ -567,14 +570,15 @@ namespace FlowableWrapper.Application.Services
         private async Task<string?> ResolveNodeCallbackUrlAsync(
             string taskDefinitionKey,
             string? processDefinitionKey,
-            string? processCallbackUrl)
+            string? processCallbackUrl,
+            int? processDefinitionVersion = null)
         {
             if (!string.IsNullOrWhiteSpace(processDefinitionKey))
             {
                 try
                 {
                     var semanticMap = await _slotConfigProvider
-                        .GetNodeSemanticMapAsync(processDefinitionKey);
+                        .GetNodeSemanticMapAsync(processDefinitionKey, processDefinitionVersion);
 
                     if (semanticMap != null
                         && semanticMap.TryGetValue(taskDefinitionKey, out var nodeInfo))
@@ -599,6 +603,13 @@ namespace FlowableWrapper.Application.Services
                 }
                 catch (Exception ex)
                 {
+                    if (processDefinitionVersion.HasValue)
+                    {
+                        _logger.LogWarning(ex,
+                            "读取实例绑定的节点回调配置失败，本次不猜测回调目标。NodeKey={NodeKey}, DefinitionVersion={Version}",
+                            taskDefinitionKey, processDefinitionVersion);
+                        return null;
+                    }
                     _logger.LogWarning(ex,
                         "读取节点级回调 URL 失败，将降级到流程级 URL: NodeKey={NodeKey}",
                         taskDefinitionKey);

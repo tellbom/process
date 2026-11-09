@@ -13,6 +13,9 @@ namespace FlowableWrapper.Application.Dtos
         public string ProcessInstanceId    { get; set; }
         public string BusinessId           { get; set; }
         public string BusinessType         { get; set; }
+        public string BusinessTitle        { get; set; }
+        public int ApprovalRound           { get; set; }
+        public int? ProcessDefinitionVersion { get; set; }
         public string ProcessDefinitionKey { get; set; }
         public string Status               { get; set; }
         public string CreatedBy            { get; set; }
@@ -30,6 +33,8 @@ namespace FlowableWrapper.Application.Dtos
         public int Total     { get; set; }
         public int PageIndex { get; set; }
         public int PageSize  { get; set; }
+        public bool HasMore { get; set; }
+        public string? NextCursor { get; set; }
     }
 
     /// <summary>
@@ -42,5 +47,6 @@ namespace FlowableWrapper.Application.Dtos
         /// </summary>
         [Required(ErrorMessage = "businessId 不能为空")]
         public string BusinessId { get; set; }
+        public string? ProcessInstanceId { get; set; }
     }
 }

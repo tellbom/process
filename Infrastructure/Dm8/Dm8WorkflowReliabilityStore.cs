@@ -556,6 +556,7 @@ WHERE BUSINESS_ID = :business_id
             string? businessId,
             string? processInstanceId,
             string? status,
+            string? callbackType,
             int start,
             int size,
             CancellationToken cancellationToken = default)
@@ -569,6 +570,8 @@ WHERE BUSINESS_ID = :business_id
             conditions.Add("PROCESS_INSTANCE_ID = :process_instance_id");
         if (!string.IsNullOrWhiteSpace(status))
             conditions.Add("STATUS = :status");
+        if (!string.IsNullOrWhiteSpace(callbackType))
+            conditions.Add("CALLBACK_TYPE = :callback_type");
         var where = conditions.Count == 0
             ? string.Empty
             : "WHERE " + string.Join(" AND ", conditions);
@@ -579,7 +582,7 @@ WHERE BUSINESS_ID = :business_id
         Configure(count);
         count.CommandText = $"SELECT COUNT(*) FROM {_callbackTable} {where}";
         AddCallbackQueryParameters(
-            count, businessId, processInstanceId, status);
+            count, businessId, processInstanceId, status, callbackType);
         var total = Convert.ToInt32(
             await count.ExecuteScalarAsync(cancellationToken));
 
@@ -596,7 +599,7 @@ FROM {_callbackTable}
 ORDER BY CREATED_AT DESC
 OFFSET {start} ROWS FETCH NEXT {size} ROWS ONLY";
         AddCallbackQueryParameters(
-            query, businessId, processInstanceId, status);
+            query, businessId, processInstanceId, status, callbackType);
         var items = new List<WorkflowCallbackEvent>();
         await using var reader = await query.ExecuteReaderAsync(cancellationToken);
         while (await reader.ReadAsync(cancellationToken))
@@ -747,6 +750,7 @@ SELECT
     SUM(CASE WHEN STATUS = 'retry_waiting' THEN 1 ELSE 0 END),
     SUM(CASE WHEN STATUS = 'succeeded' THEN 1 ELSE 0 END),
     SUM(CASE WHEN STATUS = 'dead_letter' THEN 1 ELSE 0 END),
+    SUM(CASE WHEN STATUS = 'cancelled' THEN 1 ELSE 0 END),
     MIN(CASE
         WHEN STATUS IN ('pending', 'retry_waiting') THEN CREATED_AT
         ELSE NULL
@@ -764,8 +768,9 @@ FROM {_callbackTable}";
             RetryWaiting = reader.IsDBNull(2) ? 0 : Convert.ToInt64(reader.GetValue(2)),
             Succeeded = reader.IsDBNull(3) ? 0 : Convert.ToInt64(reader.GetValue(3)),
             DeadLetter = reader.IsDBNull(4) ? 0 : Convert.ToInt64(reader.GetValue(4)),
+            Cancelled = reader.IsDBNull(5) ? 0 : Convert.ToInt64(reader.GetValue(5)),
             OldestPendingCreatedAt =
-                reader.IsDBNull(5) ? null : reader.GetDateTime(5)
+                reader.IsDBNull(6) ? null : reader.GetDateTime(6)
         };
     }
 
@@ -936,6 +941,35 @@ WHERE EVENT_ID = :event_id
         if (retried)
             await DeleteLeaseAsync(eventId, null, cancellationToken);
         return retried;
+    }
+
+    public async Task<bool> CancelDeadLetterAsync(
+        string eventId,
+        CancellationToken cancellationToken = default)
+    {
+        bool cancelled;
+        await using (var connection = CreateConnection())
+        {
+            await connection.OpenAsync(cancellationToken);
+            await using var command = connection.CreateCommand();
+            Configure(command);
+            command.CommandText = $@"
+UPDATE {_callbackTable}
+SET STATUS = '{CallbackEventStatus.Cancelled}',
+    NEXT_ATTEMPT_AT = NULL,
+    LEASE_OWNER = NULL,
+    LEASE_UNTIL = NULL,
+    COMPLETED_AT = CURRENT_TIMESTAMP,
+    UPDATED_AT = CURRENT_TIMESTAMP,
+    ROW_VERSION = ROW_VERSION + 1
+WHERE EVENT_ID = :event_id
+  AND STATUS = '{CallbackEventStatus.DeadLetter}'";
+            AddParameter(command, "event_id", eventId);
+            cancelled = await command.ExecuteNonQueryAsync(cancellationToken) == 1;
+        }
+        if (cancelled)
+            await DeleteLeaseAsync(eventId, null, cancellationToken);
+        return cancelled;
     }
 
     public async Task<WorkflowBusinessInstance?> GetBusinessByBusinessIdAsync(
@@ -1132,7 +1166,8 @@ WHERE EVENT_ID = :event_id
         DbCommand command,
         string? businessId,
         string? processInstanceId,
-        string? status)
+        string? status,
+        string? callbackType)
     {
         if (!string.IsNullOrWhiteSpace(businessId))
             AddParameter(command, "business_id", businessId);
@@ -1140,6 +1175,8 @@ WHERE EVENT_ID = :event_id
             AddParameter(command, "process_instance_id", processInstanceId);
         if (!string.IsNullOrWhiteSpace(status))
             AddParameter(command, "status", status);
+        if (!string.IsNullOrWhiteSpace(callbackType))
+            AddParameter(command, "callback_type", callbackType);
     }
 
     private static void AddParameter(

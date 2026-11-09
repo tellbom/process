@@ -297,7 +297,7 @@ public sealed class CallbackInboxWorker : BackgroundService
                         await store.MarkBusinessCallbackStateAsync(
                             callbackEvent.ProcessInstanceId,
                             "succeeded",
-                            flowCompleted: true,
+                            flowCompleted: false,
                             cancellationToken: cancellationToken);
                     }
                     succeeded = true;
@@ -516,7 +516,7 @@ public sealed class CallbackInboxWorker : BackgroundService
                 decision.Status == CallbackEventStatus.DeadLetter
                     ? "dead_letter"
                     : "retry_waiting",
-                flowCompleted: true,
+                flowCompleted: false,
                 cancellationToken: cancellationToken);
         }
     }

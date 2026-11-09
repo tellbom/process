@@ -120,6 +120,14 @@ namespace FlowableWrapper.Application.Dtos
         public List<NodeSemanticSummary> Nodes { get; set; } = new();
     }
 
+    public class ProcessDefinitionStartabilityDto
+    {
+        public string ProcessDefinitionKey { get; set; }
+        public string ProcessDefinitionId { get; set; }
+        public int Version { get; set; }
+        public bool CanStart { get; set; }
+    }
+
     public class BpmnDeploymentStatusResponse
     {
         public string ProcessDefinitionKey { get; set; }

@@ -45,6 +45,7 @@ namespace FlowableWrapper.Application.Services
         private readonly ProcessNotificationService _notificationService;
         private readonly IWorkflowReliabilityStore _reliabilityStore;
         private readonly Dm8Options _dm8Options;
+        private readonly WorkflowNextStepAppService? _nextStep;
 
         public TaskExecutionAppService(
             IFlowableRuntimeService runtimeService,
@@ -57,7 +58,8 @@ namespace FlowableWrapper.Application.Services
             ProcessCallbackAppService callbackService,
             ProcessNotificationService notificationService,
             IWorkflowReliabilityStore reliabilityStore,
-            IOptions<Dm8Options> dm8Options)
+            IOptions<Dm8Options> dm8Options,
+            WorkflowNextStepAppService? nextStep = null)
         {
             _runtimeService  = runtimeService;
             _taskService     = taskService;
@@ -70,6 +72,7 @@ namespace FlowableWrapper.Application.Services
             _notificationService = notificationService;
             _reliabilityStore = reliabilityStore;
             _dm8Options = dm8Options.Value;
+            _nextStep = nextStep;
         }
 
         // ═══════════════════════════════════════════════════════════
@@ -221,9 +224,36 @@ namespace FlowableWrapper.Application.Services
                 throw new BusinessException("无法确定当前登录用户，请先完成认证");
 
             var start = checked((request.PageIndex - 1) * request.PageSize);
-            var taskPage = await _taskService.QueryTaskPageAsync(new FlowableTaskQuery
+            string? processInstanceId = null;
+            if (!string.IsNullOrWhiteSpace(request.BusinessId))
+            {
+                processInstanceId = _dm8Options.Enabled
+                    ? (await _reliabilityStore.GetBusinessByBusinessIdAsync(request.BusinessId.Trim()))?.ProcessInstanceId
+                    : (await _esService.GetProcessMetadataByBusinessIdAsync(request.BusinessId.Trim()))?.ProcessInstanceId;
+                if (string.IsNullOrWhiteSpace(processInstanceId))
+                    return new PendingTaskPageResult { PageIndex = request.PageIndex, PageSize = request.PageSize };
+            }
+
+            FlowableTaskPage taskPage;
+            if (!string.IsNullOrWhiteSpace(request.TaskId))
+            {
+                FlowableTask? task = null;
+                try { task = await _taskService.GetTaskAsync(request.TaskId.Trim()); }
+                catch (FlowableWrapper.Infrastructure.Flowable.FlowableApiException ex) when (ex.StatusCode == 404) { }
+                var allowed = task != null && (string.Equals(task.Assignee, employeeId, StringComparison.OrdinalIgnoreCase)
+                    || (string.IsNullOrWhiteSpace(task.Assignee) && (await _taskService.GetCandidateUsersAsync(task.Id))
+                        .Contains(employeeId, StringComparer.OrdinalIgnoreCase)));
+                var matches = allowed && (processInstanceId == null || task!.ProcessInstanceId == processInstanceId);
+                taskPage = new FlowableTaskPage
+                {
+                    Items = matches && start == 0 ? new List<FlowableTask> { task! } : new List<FlowableTask>(),
+                    Total = matches ? 1 : 0, Start = start, Size = matches && start == 0 ? 1 : 0
+                };
+            }
+            else taskPage = await _taskService.QueryTaskPageAsync(new FlowableTaskQuery
             {
                 InvolvedUser = employeeId,
+                ProcessInstanceId = processInstanceId,
                 Start = start,
                 Size = request.PageSize,
                 Sort = "createTime",
@@ -447,7 +477,7 @@ namespace FlowableWrapper.Application.Services
                 });
             }
 
-            var hasBusinessFilter = businessTypes.Count > 0;
+            var hasBusinessFilter = businessTypes.Count > 0 || result.Count != taskPage.Items.Count;
 
             return new PendingTaskPageResult
             {
@@ -514,6 +544,9 @@ namespace FlowableWrapper.Application.Services
                 throw new BusinessException("newAssignees 不能为空");
 
             var metadata = await GetExecutionMetadataAsync(request.BusinessId);
+            if (!string.IsNullOrWhiteSpace(request.ProcessInstanceId)
+                && !string.Equals(request.ProcessInstanceId, metadata.ProcessInstanceId, StringComparison.Ordinal))
+                throw new BusinessException("流程轮次已变化，请刷新后重新操作", "PROCESS_INSTANCE_CHANGED");
 
             List<FlowableTask> tasksToReassign;
 
@@ -798,8 +831,24 @@ namespace FlowableWrapper.Application.Services
                     currentTask.TaskDefinitionKey,
                     metadata.ProcessDefinitionVersion);
 
+                var selections = request.NextSlotSelections;
+                var conditionVariables = request.BusinessVariables;
+                if (_nextStep != null)
+                {
+                    var (preview, mergedVariables) = await _nextStep.ResolveAsync(currentTask, request.BusinessVariables, slotDefs);
+                    if (preview.Resolved)
+                    {
+                        var declared = slotDefs.Select(x => x.SlotKey).ToHashSet(StringComparer.OrdinalIgnoreCase);
+                        var active = preview.Slots.Select(x => x.SlotKey).ToHashSet(StringComparer.OrdinalIgnoreCase);
+                        // 已声明但不在本次路径上的选人不写入；未知 slotKey 仍交由转换器拒绝。
+                        selections = selections.Where(x => !declared.Contains(x.SlotKey) || active.Contains(x.SlotKey)).ToList();
+                        slotDefs = preview.Slots;
+                        conditionVariables = mergedVariables;
+                    }
+                }
+
                 var (hasOutOfRange, _, _) = EvaluateRecommendedRange(
-                    request.NextSlotSelections,
+                    selections,
                     slotDefs,
                     metadata.RecommendedAssigneesSnapshot);
                 if (hasOutOfRange == true)
@@ -810,9 +859,9 @@ namespace FlowableWrapper.Application.Services
                 }
 
                 var conversionResult = _slotConverter.Convert(
-                    request.NextSlotSelections,
+                    selections,
                     slotDefs,
-                    request.BusinessVariables);
+                    conditionVariables);
 
                 foreach (var kv in conversionResult.Variables)
                     variables[kv.Key] = kv.Value;

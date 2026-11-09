@@ -1,0 +1,281 @@
+using System.Collections.Generic;
+using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using System.Threading.Tasks;
+using FlowableWrapper.Domain.Flowable;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+
+namespace FlowableWrapper.Infrastructure.Flowable
+{
+    /// <summary>
+    /// Flowable运行时服务实现
+    /// </summary>
+    public class FlowableRuntimeServiceImpl : IFlowableRuntimeService
+    {
+        private readonly HttpClient _httpClient;
+        private readonly ILogger<FlowableRuntimeServiceImpl> _logger;
+        private readonly string _baseUrl;
+
+        public FlowableRuntimeServiceImpl(
+            HttpClient httpClient,
+            IOptions<FlowableOptions> options,
+            ILogger<FlowableRuntimeServiceImpl> logger)
+        {
+            _httpClient = httpClient;
+            _logger = logger;
+            _baseUrl = options.Value.BaseUrl.TrimEnd('/');
+
+            var credentials = Convert.ToBase64String(
+                Encoding.ASCII.GetBytes(
+                    $"{options.Value.Username}:{options.Value.Password}"));
+            _httpClient.DefaultRequestHeaders.Authorization =
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Basic", credentials);
+        }
+
+        public async Task<FlowableProcessInstance> StartProcessInstanceByKeyAsync(
+            string processDefinitionKey,
+            string businessKey,
+            Dictionary<string, object> variables)
+        {
+            var url = $"{_baseUrl}/runtime/process-instances";
+
+            var request = new
+            {
+                processDefinitionKey,
+                businessKey,
+                variables = BuildVariableList(variables)
+            };
+
+            var response = await _httpClient.PostAsJsonAsync(url, request);
+            await EnsureSuccessAsync(response, "runtime/process-instances");
+
+            var result = await response.Content.ReadFromJsonAsync<JsonElement>();
+
+            return new FlowableProcessInstance
+            {
+                Id = result.GetProperty("id").GetString(),
+                ProcessDefinitionId = result.TryGetProperty("processDefinitionId", out var pdId)
+                    ? pdId.GetString() : null,
+                // Flowable REST 的启动流程响应不含顶层 processDefinitionKey 字段
+                // 优先读 processDefinitionKey；若无，从 processDefinitionId（key:version:uuid）中解析
+                ProcessDefinitionKey = result.TryGetProperty("processDefinitionKey", out var pdKey)
+                    ? pdKey.GetString()
+                    : ParseKeyFromDefinitionId(
+                        result.TryGetProperty("processDefinitionId", out var pdId2)
+                            ? pdId2.GetString() : null),
+                BusinessKey = result.TryGetProperty("businessKey", out var bk)
+                    ? bk.GetString() : null,
+                IsEnded = result.TryGetProperty("ended", out var ended) && ended.GetBoolean()
+            };
+        }
+
+        public async Task<FlowableProcessInstance> GetProcessInstanceAsync(
+            string processInstanceId)
+        {
+            var url = $"{_baseUrl}/runtime/process-instances/{processInstanceId}";
+            var response = await _httpClient.GetAsync(url);
+            await EnsureSuccessAsync(response, $"runtime/process-instances/{processInstanceId}");
+
+            var result2 = await response.Content.ReadFromJsonAsync<JsonElement>();
+
+            return new FlowableProcessInstance
+            {
+                Id = result2.GetProperty("id").GetString(),
+                ProcessDefinitionId = result2.TryGetProperty("processDefinitionId", out var pdId3)
+                    ? pdId3.GetString() : null,
+                ProcessDefinitionKey = result2.TryGetProperty("processDefinitionKey", out var pdKey2)
+                    ? pdKey2.GetString()
+                    : ParseKeyFromDefinitionId(
+                        result2.TryGetProperty("processDefinitionId", out var pdId4)
+                            ? pdId4.GetString() : null),
+                BusinessKey = result2.TryGetProperty("businessKey", out var bk2)
+                    ? bk2.GetString() : null,
+                IsEnded = result2.TryGetProperty("ended", out var ended2) && ended2.GetBoolean()
+            };
+        }
+
+        public async Task DeleteProcessInstanceAsync(
+            string processInstanceId,
+            string deleteReason)
+        {
+            var url = $"{_baseUrl}/runtime/process-instances/{processInstanceId}";
+            if (!string.IsNullOrWhiteSpace(deleteReason))
+                url += $"?deleteReason={Uri.EscapeDataString(deleteReason)}";
+
+            var response = await _httpClient.DeleteAsync(url);
+            await EnsureSuccessAsync(response,
+                $"runtime/process-instances/{processInstanceId}");
+        }
+
+        /// <summary>
+        /// 强制迁移流程节点（驳回跳转）
+        /// POST /runtime/process-instances/{id}/change-state
+        /// </summary>
+        public async Task ChangeActivityStateAsync(
+            string processInstanceId,
+            List<string> cancelActivityIds,
+            string startActivityId)
+        {
+            var url = $"{_baseUrl}/runtime/process-instances/{processInstanceId}/change-state";
+
+            var body = new
+            {
+                cancelActivityIds = cancelActivityIds.ToArray(),
+                startActivityIds = new[] { startActivityId }
+            };
+
+            var response = await _httpClient.PostAsJsonAsync(url, body);
+            await EnsureSuccessAsync(response,
+                $"runtime/process-instances/{processInstanceId}/change-state");
+
+            _logger.LogInformation(
+                "节点跳转成功: ProcessInstanceId={ProcessInstanceId}, " +
+                "取消=[{CancelNodes}] → 启动={StartNode}",
+                processInstanceId,
+                string.Join("、", cancelActivityIds),
+                startActivityId);
+        }
+
+        // ── 私有辅助 ──────────────────────────────────────────────
+
+        /// <summary>
+        /// 构建 Flowable variables 数组
+        ///
+        /// 修复：ASP.NET Core 从 JSON 请求体反序列化 Dictionary&lt;string,object&gt; 时，
+        /// 所有值都是 JsonElement 类型，不是 int/bool/string 等基元类型。
+        /// 必须拆包后正确推断 Flowable 变量类型，否则 Flowable 报
+        /// "Converter can only convert strings"
+        /// </summary>
+        private static List<object> BuildVariableList(Dictionary<string, object> variables)
+        {
+            var list = new List<object>();
+            if (variables == null) return list;
+
+            foreach (var kv in variables)
+            {
+                var (type, value) = ResolveVariable(kv.Value);
+                list.Add(new { name = kv.Key, value, type });
+            }
+
+            return list;
+        }
+
+        private static (string? type, object? value) ResolveVariable(object raw)
+        {
+            if (raw is JsonElement je)
+            {
+                return je.ValueKind switch
+                {
+                    JsonValueKind.True or
+                    JsonValueKind.False => ("boolean", (object)je.GetBoolean()),
+                    JsonValueKind.Number when je.TryGetInt64(out var l) => ("integer", (object)l),
+                    JsonValueKind.Number when je.TryGetDouble(out var d) => ("double", (object)d),
+                    JsonValueKind.String => ("string", (object)(je.GetString() ?? "")),
+                    JsonValueKind.Array or
+                    JsonValueKind.Object => ("json", (object)je),
+                    _ => ("string", (object)je.ToString())
+                };
+            }
+
+            return raw switch
+            {
+                bool b => ("boolean", (object)b),
+                int i => ("integer", (object)(long)i),
+                long l => ("integer", (object)l),
+                double d => ("double", (object)d),
+                float f => ("double", (object)(double)f),
+                decimal dec => ("double", (object)(double)dec),
+                System.Collections.IList => ("json", raw),
+                string s => ("string", (object)s),
+                _ => ("string", (object)(raw?.ToString() ?? ""))
+            };
+        }
+
+        private static async Task EnsureSuccessAsync(
+            HttpResponseMessage response,
+            string path)
+        {
+            if (response.IsSuccessStatusCode) return;
+            var body = await response.Content.ReadAsStringAsync();
+            throw new FlowableApiException(
+                $"Flowable API 调用失败: {(int)response.StatusCode} {path} — {body}", (int)response.StatusCode);
+        }
+
+        /// <summary>
+        /// 从 processDefinitionId（格式：key:version:uuid）中解析出 key
+        /// Flowable REST 启动流程响应不含顶层 processDefinitionKey 字段，需从 ID 中提取
+        /// 示例：personnel_selection_collection:1:abc123 → personnel_selection_collection
+        /// </summary>
+        private static string ParseKeyFromDefinitionId(string processDefinitionId)
+        {
+            if (string.IsNullOrWhiteSpace(processDefinitionId)) return null;
+            var colonIndex = processDefinitionId.IndexOf(':');
+            return colonIndex > 0
+                ? processDefinitionId.Substring(0, colonIndex)
+                : processDefinitionId;
+        }
+
+        /// <summary>
+        /// 读取流程实例的所有变量
+        /// GET /runtime/process-instances/{id}/variables
+        ///
+        /// Flowable 返回格式（数组）：
+        ///   [{ "name": "nrOfInstances", "value": 3, "type": "integer" }, ...]
+        ///
+        /// 多实例节点执行时 Flowable 自动写入 nrOfInstances /
+        /// nrOfCompletedInstances / nrOfActiveInstances，由此读取。
+        /// 若流程已结束或网络失败，返回空字典（调用方捕获异常后降级）。
+        /// </summary>
+        public async Task<Dictionary<string, object>> GetProcessVariablesAsync(
+            string processInstanceId)
+        {
+            var url = $"{_baseUrl}/runtime/process-instances/{processInstanceId}/variables";
+            var response = await _httpClient.GetAsync(url);
+
+            // 404 = 流程已结束，变量不存在，视为空字典
+            if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+                return new Dictionary<string, object>();
+
+            await EnsureSuccessAsync(response,
+                $"runtime/process-instances/{processInstanceId}/variables");
+
+            var array = await response.Content
+                .ReadFromJsonAsync<JsonElement>();
+
+            var result = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
+
+            if (array.ValueKind != JsonValueKind.Array)
+                return result;
+
+            foreach (var item in array.EnumerateArray())
+            {
+                if (!item.TryGetProperty("name", out var nameProp)) continue;
+                var name = nameProp.GetString();
+                if (string.IsNullOrWhiteSpace(name)) continue;
+
+                object value = null;
+                if (item.TryGetProperty("value", out var valueProp))
+                {
+                    value = valueProp.ValueKind switch
+                    {
+                        JsonValueKind.True    => (object)true,
+                        JsonValueKind.False   => (object)false,
+                        JsonValueKind.Number when valueProp.TryGetInt64(out var l)
+                                              => (object)l,
+                        JsonValueKind.Number when valueProp.TryGetDouble(out var d)
+                                              => (object)d,
+                        JsonValueKind.String  => (object)(valueProp.GetString() ?? ""),
+                        JsonValueKind.Null    => null,
+                        _                     => (object)valueProp.GetRawText()
+                    };
+                }
+
+                result[name] = value;
+            }
+
+            return result;
+        }
+    }
+}

@@ -6,6 +6,7 @@ using Nest;
 using FlowableWrapper.Application.Dtos;
 using FlowableWrapper.Domain.ElasticSearch;
 using FlowableWrapper.Domain.Services;
+using FlowableWrapper.Application.Services;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -331,6 +332,14 @@ namespace FlowableWrapper.Infrastructure.ElasticSearch
                 processDefinitionKey,
                 g => g.Index(_options.SemanticIndexName));
 
+            // 历史 Flowable 定义未必登记过节点语义；ES 文档不存在也会使 NEST IsValid=false。
+            // 仅接受标准的文档未找到，索引缺失、鉴权和连接错误仍需暴露。
+            if (response.ApiCall?.HttpStatusCode == 404 && !response.Found && response.ServerError == null
+                && response.Id == processDefinitionKey && !string.IsNullOrWhiteSpace(response.Index))
+            {
+                _logger.LogWarning("未找到节点语义配置: {Key}", processDefinitionKey);
+                return new Dictionary<string, NodeSemanticInfo>();
+            }
             if (!response.IsValid)
                 throw new InvalidOperationException(
                     $"ES semantic query failed: {response.DebugInformation}");
@@ -364,19 +373,30 @@ namespace FlowableWrapper.Infrastructure.ElasticSearch
         }
 
         public async Task<List<ProcessAuditRecord>> QueryAuditRecordsByBusinessIdAsync(
-            string businessId)
+            string businessId, string? processInstanceId = null)
         {
-            var response = await _client.SearchAsync<ProcessAuditRecord>(s => s
-                .Index(_options.AuditIndexName)
-                .Query(q => q
-                    .Term(t => t.Field("businessId.keyword").Value(businessId)))
-                .Sort(so => so.Ascending(f => f.OperatedAt))
-                .Size(200));
-
-            if (!response.IsValid)
-                throw new InvalidOperationException(
-                    $"ES audit query failed: {response.DebugInformation}");
-            return response.Documents.ToList();
+            var records = new List<ProcessAuditRecord>();
+            object[]? after = null;
+            while (true)
+            {
+                var response = await _client.SearchAsync<ProcessAuditRecord>(s => s
+                    .Index(_options.AuditIndexName)
+                    .Query(q => q.Bool(b => b.Filter(
+                        f => f.Term(t => t.Field("businessId.keyword").Value(businessId)),
+                        f => string.IsNullOrWhiteSpace(processInstanceId) ? null
+                            : f.Term(t => t.Field("processInstanceId.keyword").Value(processInstanceId)))))
+                    .Sort(so => so.Ascending(f => f.OperatedAt).Ascending("id.keyword"))
+                    .SearchAfter(after)
+                    .Size(200));
+                if (!response.IsValid || response.TimedOut || response.Shards?.Failed > 0)
+                    throw new InvalidOperationException($"ES audit query failed: {response.DebugInformation}");
+                records.AddRange(response.Documents);
+                if (response.Hits.Count < 200) return records;
+                var next = response.Hits.Last().Sorts?.ToArray();
+                if (next == null || next.Length != 2 || (after != null && next.SequenceEqual(after)))
+                    throw new InvalidOperationException("ES audit pagination did not advance.");
+                after = next;
+            }
         }
 
         // ═══════════════════════════════════════════════════════════
@@ -391,9 +411,11 @@ namespace FlowableWrapper.Infrastructure.ElasticSearch
 
             var response = await _client.SearchAsync<ProcessMetadataDocument>(s => s
                 .Index(_options.IndexName)
-                .From(from)
+                .From(request.UseCursor ? 0 : from)
                 .Size(size)
-                .Sort(so => so.Descending(f => f.CreatedTime))
+                .TrackTotalHits(true)
+                .SearchAfter(request.UseCursor ? ProcessListCursor.Decode(request.Cursor) : null)
+                .Sort(so => so.Descending(f => f.CreatedTime).Ascending("processInstanceId.keyword"))
                 .Query(q => q
                     .Bool(b =>
                     {

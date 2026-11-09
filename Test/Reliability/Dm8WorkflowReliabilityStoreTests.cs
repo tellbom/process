@@ -371,6 +371,118 @@ public class Dm8WorkflowReliabilityStoreTests
         var retried = await store.GetCallbackByEventIdAsync(inserted.EventId);
         Assert.Equal(CallbackEventStatus.Pending, retried!.Status);
         Assert.Equal(0, retried.AttemptCount);
+
+        var leasedAfterRetry = await store.LeaseCallbacksAsync(
+            $"worker-after-retry:{suffix}",
+            100,
+            TimeSpan.FromMinutes(1));
+        Assert.Contains(
+            leasedAfterRetry,
+            item => item.EventId == inserted.EventId);
+    }
+
+    [Dm8Fact]
+    public async Task Cancelled_dead_letter_is_retained_and_never_leased_again()
+    {
+        await DeleteLeasableTestCallbacksAsync();
+        var store = CreateStore();
+        var suffix = Guid.NewGuid().ToString("N");
+        var inserted = await store.EnqueueCallbackAsync(new EnqueueCallbackCommand
+        {
+            EventId = Guid.NewGuid().ToString("N"),
+            IdempotencyKey = $"cancel:{suffix}",
+            BusinessId = $"business:{suffix}",
+            ProcessInstanceId = $"process:{suffix}",
+            CallbackActivityId = "node_callback",
+            CallbackType = "node_completed",
+            Payload = "{}"
+        });
+        var workerId = $"worker:{suffix}";
+        var leased = await store.LeaseCallbacksAsync(
+            workerId,
+            100,
+            TimeSpan.FromMinutes(1));
+        Assert.Contains(leased, item => item.EventId == inserted.EventId);
+        await store.MarkCallbackFailedAsync(
+            inserted.EventId,
+            workerId,
+            new CallbackRetryDecision(CallbackEventStatus.DeadLetter, null),
+            500,
+            "retained failure evidence");
+
+        Assert.True(await store.CancelDeadLetterAsync(inserted.EventId));
+        var cancelled = await store.GetCallbackByEventIdAsync(inserted.EventId);
+        Assert.NotNull(cancelled);
+        Assert.Equal(CallbackEventStatus.Cancelled, cancelled!.Status);
+        Assert.Equal("retained failure evidence", cancelled.LastError);
+        Assert.Equal(1, cancelled.AttemptCount);
+
+        var leasedAfterCancel = await store.LeaseCallbacksAsync(
+            $"worker-after-cancel:{suffix}",
+            100,
+            TimeSpan.FromMinutes(1));
+        Assert.DoesNotContain(
+            leasedAfterCancel,
+            item => item.EventId == inserted.EventId);
+    }
+
+    [Dm8Fact]
+    public async Task Callback_cancellation_does_not_change_completed_flow_state()
+    {
+        await DeleteLeasableTestCallbacksAsync();
+        var store = CreateStore();
+        var suffix = Guid.NewGuid().ToString("N");
+        var businessId = $"business:{suffix}";
+        var requestId = $"request:{suffix}";
+        var processInstanceId = $"process:{suffix}";
+        await store.ReserveBusinessAsync(new ReserveBusinessCommand
+        {
+            BusinessId = businessId,
+            RequestId = requestId,
+            BusinessType = "test",
+            ProcessDefinitionKey = "test_process"
+        });
+        await store.BindStartedProcessAsync(
+            businessId,
+            requestId,
+            processInstanceId,
+            1);
+        await store.MarkBusinessFlowStateAsync(businessId, "completed");
+
+        var inserted = await store.EnqueueCallbackAsync(new EnqueueCallbackCommand
+        {
+            EventId = Guid.NewGuid().ToString("N"),
+            IdempotencyKey = $"lifecycle:{suffix}",
+            BusinessId = businessId,
+            ProcessInstanceId = processInstanceId,
+            CallbackActivityId = "process_end",
+            CallbackType = "process_completed",
+            Payload = "{}",
+            CompleteBusinessFlow = false
+        });
+        var workerId = $"worker:{suffix}";
+        var leased = await store.LeaseCallbacksAsync(
+            workerId,
+            100,
+            TimeSpan.FromMinutes(1));
+        Assert.Contains(leased, item => item.EventId == inserted.EventId);
+        await store.MarkCallbackFailedAsync(
+            inserted.EventId,
+            workerId,
+            new CallbackRetryDecision(CallbackEventStatus.DeadLetter, null),
+            500,
+            "failure");
+        Assert.True(await store.CancelDeadLetterAsync(inserted.EventId));
+        await store.MarkBusinessCallbackStateAsync(
+            processInstanceId,
+            CallbackEventStatus.Cancelled,
+            flowCompleted: false);
+
+        var business = await store.GetBusinessByProcessInstanceAsync(
+            processInstanceId);
+        Assert.NotNull(business);
+        Assert.Equal("completed", business!.FlowState);
+        Assert.Equal(CallbackEventStatus.Cancelled, business.CallbackState);
     }
 
     private static Dm8WorkflowReliabilityStore CreateStore()
@@ -391,6 +503,10 @@ public class Dm8WorkflowReliabilityStoreTests
         await using var command = connection.CreateCommand();
         command.CommandText = @"
 DELETE FROM FLOW_RELIABILITY.WORKFLOW_CALLBACK_EVENT
+WHERE BUSINESS_ID LIKE 'business:%'";
+        await command.ExecuteNonQueryAsync();
+        command.CommandText = @"
+DELETE FROM FLOW_RELIABILITY.WORKFLOW_BUSINESS_INSTANCE
 WHERE BUSINESS_ID LIKE 'business:%'";
         await command.ExecuteNonQueryAsync();
     }

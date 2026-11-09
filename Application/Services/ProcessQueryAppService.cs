@@ -73,7 +73,7 @@ namespace FlowableWrapper.Application.Services
         ///
         /// 流程已结束时 currentNodes 为空列表，不报错
         /// </summary>
-        public async Task<ProcessProgressDto> GetProcessProgressAsync(string businessId)
+        public async Task<ProcessProgressDto> GetProcessProgressAsync(string businessId, string? processInstanceId = null)
         {
             if (string.IsNullOrWhiteSpace(businessId))
                 throw new BusinessException("businessId 不能为空");
@@ -81,7 +81,7 @@ namespace FlowableWrapper.Application.Services
             _logger.LogInformation("查询流程进度: BusinessId={BusinessId}", businessId);
 
             // ── 查 ES 元数据 ───────────────────────────────────────
-            var metadata = await GetMetadataByBusinessIdAsync(businessId);
+            var metadata = await GetMetadataAsync(businessId, processInstanceId);
 
             // ── 并行查：当前任务（Flowable）+ 审计记录（ES）────────
             var currentTasksTask = _taskService.QueryTasksAsync(new FlowableTaskQuery
@@ -89,7 +89,7 @@ namespace FlowableWrapper.Application.Services
                 ProcessInstanceId = metadata.ProcessInstanceId
             });
 
-            var auditRecordsTask = _esService.QueryAuditRecordsByBusinessIdAsync(businessId);
+            var auditRecordsTask = _esService.QueryAuditRecordsByBusinessIdAsync(businessId, metadata.ProcessInstanceId);
 
             await Task.WhenAll(currentTasksTask, auditRecordsTask);
 
@@ -138,9 +138,9 @@ namespace FlowableWrapper.Application.Services
             if (string.IsNullOrWhiteSpace(request.BusinessId))
                 throw new BusinessException("businessId 不能为空");
 
-            var metadata = await GetMetadataByBusinessIdAsync(request.BusinessId);
+            var metadata = await GetMetadataAsync(request.BusinessId, request.ProcessInstanceId);
             var records = await _esService.QueryAuditRecordsByBusinessIdAsync(
-                request.BusinessId);
+                request.BusinessId, metadata.ProcessInstanceId);
 
             return records
                 .Where(record => string.Equals(
@@ -178,6 +178,9 @@ namespace FlowableWrapper.Application.Services
                     ProcessInstanceId = m.ProcessInstanceId,
                     BusinessId = m.BusinessId,
                     BusinessType = m.BusinessType,
+                    BusinessTitle = m.BusinessTitle,
+                    ApprovalRound = m.ApprovalRound,
+                    ProcessDefinitionVersion = m.ProcessDefinitionVersion,
                     ProcessDefinitionKey = m.ProcessDefinitionKey,
                     Status = m.Status,
                     CreatedBy = m.CreatedBy,
@@ -186,7 +189,10 @@ namespace FlowableWrapper.Application.Services
                 }).ToList(),
                 Total = total,
                 PageIndex = request.PageIndex,
-                PageSize = request.PageSize
+                PageSize = request.PageSize,
+                HasMore = items.Count == request.PageSize && (long)request.PageIndex * request.PageSize < total,
+                NextCursor = items.Count == request.PageSize
+                    ? ProcessListCursor.Encode(items.Last()) : null
             };
         }
 
@@ -328,6 +334,16 @@ namespace FlowableWrapper.Application.Services
         /// 查流程元数据，流程处于任意状态都能查到
         /// GetProcessMetadataByBusinessIdAsync 只查 running，此处兼容所有状态
         /// </summary>
+        private async Task<ProcessMetadataDocument> GetMetadataAsync(string businessId, string? processInstanceId)
+        {
+            if (string.IsNullOrWhiteSpace(processInstanceId))
+                return await GetMetadataByBusinessIdAsync(businessId);
+            var metadata = await _esService.GetProcessMetadataAsync(processInstanceId);
+            if (metadata == null || !string.Equals(metadata.BusinessId, businessId, StringComparison.OrdinalIgnoreCase))
+                throw new BusinessException("流程实例不存在或与业务 ID 不匹配", "PROCESS_INSTANCE_NOT_FOUND");
+            return metadata;
+        }
+
         private async Task<ProcessMetadataDocument> GetMetadataByBusinessIdAsync(
             string businessId)
         {
@@ -504,6 +520,7 @@ namespace FlowableWrapper.Application.Services
         {
             return new AuditRecordDto
             {
+                TaskId = record.TaskId,
                 TaskDefinitionKey = record.TaskDefinitionKey,
                 NodeSemantic = record.NodeSemantic,
                 PageCode = record.PageCode,

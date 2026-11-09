@@ -157,7 +157,7 @@ namespace FlowableWrapper.Application.Slots
         /// 注意：businessVariables 中的值可能是 JsonElement（来自 HTTP 请求体反序列化），
         ///       需主动解包后再做比较，不能直接依赖 ToString()
         /// </summary>
-        private bool EvaluateCondition(
+        internal bool EvaluateCondition(
             string condition,
             Dictionary<string, object> variables)
         {

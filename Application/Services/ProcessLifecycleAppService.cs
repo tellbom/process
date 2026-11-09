@@ -350,7 +350,8 @@ namespace FlowableWrapper.Application.Services
                 var variables = BuildStartVariables(
                     request,
                     processDefinitionKey,
-                    initConversionResult.Variables);
+                    initConversionResult.Variables,
+                    createdBy);
 
                 // 5. 调用 Flowable 启动流程
                 FlowableProcessInstance processInstance;
@@ -606,6 +607,11 @@ namespace FlowableWrapper.Application.Services
 
             var processInstanceId =
                 binding?.ProcessInstanceId ?? metadata!.ProcessInstanceId;
+            if (!string.IsNullOrWhiteSpace(request.ProcessInstanceId)
+                && !string.Equals(request.ProcessInstanceId, processInstanceId, StringComparison.Ordinal))
+                throw new BusinessException("流程轮次已变化，请刷新后重新操作", "PROCESS_INSTANCE_CHANGED");
+            if (!await ProcessOperationsAppService.GetActiveAsync(_runtimeService, processInstanceId))
+                throw new BusinessException("该轮流程已结束或不存在，不能收回", "PROCESS_NOT_ACTIVE");
             WorkflowTaskAction? action = null;
             if (_dm8Options.Enabled)
             {
@@ -835,7 +841,8 @@ namespace FlowableWrapper.Application.Services
         private Dictionary<string, object> BuildStartVariables(
             StartProcessRequest request,
             string processDefinitionKey,
-            Dictionary<string, object> slotVariables)
+            Dictionary<string, object> slotVariables,
+            string createdBy)
         {
             // 从业务变量开始（最低优先级）
             var variables = new Dictionary<string, object>(
@@ -858,6 +865,7 @@ namespace FlowableWrapper.Application.Services
 
             variables["businessId"]           = request.BusinessId;
             variables["processDefinitionKey"] = processDefinitionKey;
+            variables["starterAssignee"]      = createdBy;
 
             _logger.LogDebug(
                 "启动变量构建完成: BusinessId={BusinessId}, 变量Keys=[{Keys}]",

@@ -54,6 +54,7 @@ public sealed class CallbackQueueSnapshot
     public long RetryWaiting { get; init; }
     public long Succeeded { get; init; }
     public long DeadLetter { get; init; }
+    public long Cancelled { get; init; }
     public DateTime? OldestPendingCreatedAt { get; init; }
 
     public double OldestPendingAgeSeconds(DateTime now)
@@ -226,6 +227,7 @@ public interface IWorkflowReliabilityStore
             string? businessId,
             string? processInstanceId,
             string? status,
+            string? callbackType,
             int start,
             int size,
             CancellationToken cancellationToken = default);
@@ -260,6 +262,10 @@ public interface IWorkflowReliabilityStore
         CancellationToken cancellationToken = default);
 
     Task<bool> RetryDeadLetterAsync(
+        string eventId,
+        CancellationToken cancellationToken = default);
+
+    Task<bool> CancelDeadLetterAsync(
         string eventId,
         CancellationToken cancellationToken = default);
 }

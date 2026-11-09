@@ -39,9 +39,9 @@ namespace FlowableWrapper.Api.Controllers
         /// </summary>
         [HttpGet("{businessId}/flow-render")]
         public async Task<ActionResult<ApiResult<ProcessFlowRenderDto>>> GetFlowRender(
-            string businessId)
+            string businessId, [FromQuery] string? processInstanceId = null)
         {
-            var result = await _renderService.GetFlowRenderAsync(businessId);
+            var result = await _renderService.GetFlowRenderAsync(businessId, processInstanceId);
             return Ok(ApiResult<ProcessFlowRenderDto>.Ok(result));
         }
     }

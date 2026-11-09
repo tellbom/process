@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xmlns:flowable="http://flowable.org/bpmn"
+             xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+             xmlns:omgdc="http://www.omg.org/spec/DD/20100524/DC"
+             xmlns:omgdi="http://www.omg.org/spec/DD/20100524/DI"
+             typeLanguage="http://www.w3.org/2001/XMLSchema"
+             expressionLanguage="http://www.w3.org/1999/XPath"
+             targetNamespace="http://www.flowable.org/processdef">
+
+  <!--
+    流程：问题线索分办审批（CaseFlow 独立流程，不与其他业务共享 BPMN/roleKey）
+    ProcessDefinitionKey : caseflow_clue
+    BusinessType         : caseflow_clue
+
+    路径：分办人提交 -> 审核人审核 -> 纪检部门负责人审批 -> 公司纪委书记批示 -> 公司纪委领导批示 -> 框架回调
+
+    选人模式（链式，参考 problem_zero / standard_policy_*）：
+    每个节点的 slots 只配置下一节点的审批人，处理人由上一节点完成时的
+    nextSlotSelections 写入对应变量；starterAssignee 由流程中心启动时注入
+    （= 当前登录的分办人）。
+    节点增删/分支：改本文件与 caseflow_clue.slot.json 后重新部署。
+  -->
+  <process id="caseflow_clue" name="问题线索分办审批" isExecutable="true">
+
+    <startEvent id="start_event" name="开始"/>
+
+    <sequenceFlow id="flow_start_to_ut_starter" sourceRef="start_event" targetRef="ut_starter"/>
+
+    <userTask id="ut_starter" name="分办人提交" flowable:assignee="${starterAssignee}">
+      <documentation>
+        处理人: 启动时由业务系统传入 starterAssignee（= 当前登录的问题线索分办人）
+        操作: 确认《问题线索分办单》，选择审核人
+        slots: 选择审核人（写入 reviewApproverAssigneeList）
+      </documentation>
+      <extensionElements>
+        <flowable:field name="nodeSemantic" stringValue="CASEFLOW_CLUE_STARTER_SUBMIT"/>
+        <flowable:field name="pageCode" stringValue="http://192.168.124.5:1660/preview/clue"/>
+        <flowable:field name="isConvergencePoint" stringValue="false"/>
+      </extensionElements>
+    </userTask>
+
+    <userTask id="ut_review" name="审核人审核" flowable:assignee="${assignee.asText()}">
+      <documentation>
+        处理人: 上一节点完成时通过 reviewApproverAssigneeList 指定，节点并行或签
+        操作: 审核问题线索分办单（管理关系 / 分办方式 / 处置方式）
+        slots: 选择纪检部门负责人（写入 disciplineHeadAssigneeList）
+      </documentation>
+      <extensionElements>
+        <flowable:field name="nodeSemantic" stringValue="CASEFLOW_CLUE_REVIEW"/>
+        <flowable:field name="pageCode" stringValue="http://192.168.124.5:1660/preview/clue"/>
+        <flowable:field name="isConvergencePoint" stringValue="false"/>
+      </extensionElements>
+      <multiInstanceLoopCharacteristics isSequential="false"
+                                        flowable:collection="${reviewApproverAssigneeList}"
+                                        flowable:elementVariable="assignee">
+        <completionCondition>${nrOfCompletedInstances &gt;= 1}</completionCondition>
+      </multiInstanceLoopCharacteristics>
+    </userTask>
+
+    <userTask id="ut_discipline_head" name="纪检部门负责人审批" flowable:assignee="${assignee.asText()}">
+      <documentation>
+        处理人: 上一节点完成时通过 disciplineHeadAssigneeList 指定，节点并行或签
+        操作: 填写纪检部门负责人意见
+        slots: 选择公司纪委书记（写入 secretaryAssigneeList）
+      </documentation>
+      <extensionElements>
+        <flowable:field name="nodeSemantic" stringValue="CASEFLOW_CLUE_DISCIPLINE_HEAD"/>
+        <flowable:field name="pageCode" stringValue="http://192.168.124.5:1660/preview/clue"/>
+        <flowable:field name="isConvergencePoint" stringValue="false"/>
+      </extensionElements>
+      <multiInstanceLoopCharacteristics isSequential="false"
+                                        flowable:collection="${disciplineHeadAssigneeList}"
+                                        flowable:elementVariable="assignee">
+        <completionCondition>${nrOfCompletedInstances &gt;= 1}</completionCondition>
+      </multiInstanceLoopCharacteristics>
+    </userTask>
+
+    <userTask id="ut_secretary" name="公司纪委书记批示" flowable:assignee="${assignee.asText()}">
+      <documentation>
+        处理人: 上一节点完成时通过 secretaryAssigneeList 指定，节点并行或签
+        操作: 填写公司纪委书记批示
+        slots: 选择公司纪委领导（写入 disciplineLeaderAssigneeList）
+      </documentation>
+      <extensionElements>
+        <flowable:field name="nodeSemantic" stringValue="CASEFLOW_CLUE_SECRETARY"/>
+        <flowable:field name="pageCode" stringValue="http://192.168.124.5:1660/preview/clue"/>
+        <flowable:field name="isConvergencePoint" stringValue="false"/>
+      </extensionElements>
+      <multiInstanceLoopCharacteristics isSequential="false"
+                                        flowable:collection="${secretaryAssigneeList}"
+                                        flowable:elementVariable="assignee">
+        <completionCondition>${nrOfCompletedInstances &gt;= 1}</completionCondition>
+      </multiInstanceLoopCharacteristics>
+    </userTask>
+
+    <userTask id="ut_discipline_leader" name="公司纪委领导批示" flowable:assignee="${assignee.asText()}">
+      <documentation>
+        处理人: 上一节点完成时通过 disciplineLeaderAssigneeList 指定，节点并行或签
+        操作: 填写公司纪委领导批示并完成审批
+        slots: 无（后续为框架回调）
+      </documentation>
+      <extensionElements>
+        <flowable:field name="nodeSemantic" stringValue="CASEFLOW_CLUE_DISCIPLINE_LEADER"/>
+        <flowable:field name="pageCode" stringValue="http://192.168.124.5:1660/preview/clue"/>
+        <flowable:field name="isConvergencePoint" stringValue="true"/>
+      </extensionElements>
+      <multiInstanceLoopCharacteristics isSequential="false"
+                                        flowable:collection="${disciplineLeaderAssigneeList}"
+                                        flowable:elementVariable="assignee">
+        <completionCondition>${nrOfCompletedInstances &gt;= 1}</completionCondition>
+      </multiInstanceLoopCharacteristics>
+    </userTask>
+
+    <serviceTask id="st_callback" name="框架回调业务系统" flowable:async="true" flowable:type="http">
+      <documentation>框架标准回调节点，引擎 POST frameworkCallbackUrl。</documentation>
+      <extensionElements>
+        <flowable:failedJobRetryTimeCycle>R5/PT10M</flowable:failedJobRetryTimeCycle>
+        <flowable:field name="failStatusCodes"><flowable:string>4XX,5XX</flowable:string></flowable:field>
+        <flowable:field name="ignoreException"><flowable:string>false</flowable:string></flowable:field>
+        <flowable:field name="requestMethod"><flowable:string>POST</flowable:string></flowable:field>
+        <flowable:field name="requestUrl"><flowable:expression>${frameworkCallbackUrl}</flowable:expression></flowable:field>
+        <flowable:field name="requestHeaders"><flowable:string>Content-Type: application/json</flowable:string></flowable:field>
+        <flowable:field name="requestBody">
+          <flowable:expression>{"processInstanceId":"${execution.processInstanceId}","businessId":"${businessId}","processDefinitionKey":"${processDefinitionKey}","callbackActivityId":"st_callback","callbackType":"PROCESS_COMPLETED"}</flowable:expression>
+        </flowable:field>
+        <flowable:field name="saveResponseParameters"><flowable:string>false</flowable:string></flowable:field>
+      </extensionElements>
+    </serviceTask>
+
+    <sequenceFlow id="flow_st_callback_to_end" sourceRef="st_callback" targetRef="end_event"/>
+    <endEvent id="end_event" name="结束"/>
+    <sequenceFlow id="flow_ut_starter_to_ut_review" sourceRef="ut_starter" targetRef="ut_review"/>
+    <sequenceFlow id="flow_ut_review_to_ut_discipline_head" sourceRef="ut_review" targetRef="ut_discipline_head"/>
+    <sequenceFlow id="flow_ut_discipline_head_to_ut_secretary" sourceRef="ut_discipline_head" targetRef="ut_secretary"/>
+    <sequenceFlow id="flow_ut_secretary_to_ut_discipline_leader" sourceRef="ut_secretary" targetRef="ut_discipline_leader"/>
+    <sequenceFlow id="flow_ut_discipline_leader_to_st_callback" sourceRef="ut_discipline_leader" targetRef="st_callback"/>
+
+  </process>
+
+  <bpmndi:BPMNDiagram id="BPMNDiagram_caseflow_clue">
+    <bpmndi:BPMNPlane id="BPMNPlane_caseflow_clue" bpmnElement="caseflow_clue"/>
+  </bpmndi:BPMNDiagram>
+</definitions>

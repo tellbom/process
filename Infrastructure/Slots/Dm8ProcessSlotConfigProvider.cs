@@ -1,6 +1,8 @@
 using System.Collections.Concurrent;
 using System.Text.Json;
 using FlowableWrapper.Application.Slots;
+using FlowableWrapper.Application.Services;
+using FlowableWrapper.Domain.Flowable;
 using FlowableWrapper.Configuration;
 using FlowableWrapper.Domain.ElasticSearch;
 using FlowableWrapper.Domain.Reliability;
@@ -27,17 +29,23 @@ public sealed class Dm8ProcessSlotConfigProvider : IProcessSlotConfigProvider
     private readonly IElasticSearchService _esService;
     private readonly Dm8Options _options;
     private readonly ILogger<Dm8ProcessSlotConfigProvider> _logger;
+    private readonly IFlowableRepositoryService? _repository;
+    private readonly BpmnDeploymentAppService? _artifacts;
 
     public Dm8ProcessSlotConfigProvider(
         IWorkflowReliabilityStore store,
         IElasticSearchService esService,
         IOptions<Dm8Options> options,
-        ILogger<Dm8ProcessSlotConfigProvider> logger)
+        ILogger<Dm8ProcessSlotConfigProvider> logger,
+        IFlowableRepositoryService? repository = null,
+        BpmnDeploymentAppService? artifacts = null)
     {
         _store = store;
         _esService = esService;
         _options = options.Value;
         _logger = logger;
+        _repository = repository;
+        _artifacts = artifacts;
     }
 
     public async Task<List<SlotDefinition>> GetSlotsForNodeAsync(
@@ -56,6 +64,15 @@ public sealed class Dm8ProcessSlotConfigProvider : IProcessSlotConfigProvider
         string processDefinitionKey,
         int? processDefinitionVersion = null)
     {
+        if (!processDefinitionVersion.HasValue && _repository != null)
+        {
+            var latest = await _repository.GetLatestProcessDefinitionByKeyAsync(processDefinitionKey);
+            if (latest == null) throw new InvalidOperationException($"Flowable definition not found: {processDefinitionKey}.");
+            var xml = await _repository.GetBpmnXmlByDefinitionIdAsync(latest.Id);
+            if (string.IsNullOrWhiteSpace(xml)) throw new InvalidOperationException($"Flowable BPMN resource missing: {latest.Id}.");
+            if (WorkflowArtifactCompiler.ReadEmbeddedConfiguration(WorkflowArtifactCompiler.Parse(xml)) != null)
+                return _artifacts!.ReadArtifactNodeMap(xml);
+        }
         if (_options.Enabled && processDefinitionVersion.HasValue)
         {
             var cacheKey = $"{processDefinitionKey}:{processDefinitionVersion.Value}";
@@ -93,6 +110,15 @@ public sealed class Dm8ProcessSlotConfigProvider : IProcessSlotConfigProvider
         string processDefinitionKey,
         int processDefinitionVersion)
     {
+        if (_repository != null && _artifacts != null)
+        {
+            var definition = await _repository.GetProcessDefinitionByKeyAndVersionAsync(processDefinitionKey, processDefinitionVersion);
+            if (definition == null) throw new InvalidOperationException($"Flowable definition not found: {processDefinitionKey} v{processDefinitionVersion}.");
+            var xml = await _repository.GetBpmnXmlByDefinitionIdAsync(definition.Id);
+            if (string.IsNullOrWhiteSpace(xml)) throw new InvalidOperationException($"Flowable BPMN resource missing: {definition.Id}.");
+            if (WorkflowArtifactCompiler.ReadEmbeddedConfiguration(WorkflowArtifactCompiler.Parse(xml)) != null)
+                return _artifacts.ReadArtifactNodeMap(xml);
+        }
         var config = await _store.GetDefinitionConfigAsync(
             processDefinitionKey,
             processDefinitionVersion);

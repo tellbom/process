@@ -119,5 +119,8 @@ namespace FlowableWrapper.Application.Dtos
         public DateTime? CreatedTimeTo { get; set; }
         public int PageIndex { get; set; } = 1;
         public int PageSize { get; set; } = 20;
+        /// <summary>游标分页用于全部流程，避免 Elasticsearch 的深分页窗口限制。</summary>
+        public bool UseCursor { get; set; }
+        public string? Cursor { get; set; }
     }
 }

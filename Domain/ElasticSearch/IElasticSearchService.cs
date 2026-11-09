@@ -50,7 +50,7 @@ namespace FlowableWrapper.Domain.Services
         /// <summary>
         /// 按业务 ID 查询审计记录（按时间正序）
         /// </summary>
-        Task<List<ProcessAuditRecord>> QueryAuditRecordsByBusinessIdAsync(string businessId);
+        Task<List<ProcessAuditRecord>> QueryAuditRecordsByBusinessIdAsync(string businessId, string? processInstanceId = null);
 
         // ── 流程列表查询 ──────────────────────────────────────────
         /// <summary>
