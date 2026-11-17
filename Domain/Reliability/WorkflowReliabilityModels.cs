@@ -141,6 +141,10 @@ public sealed class PrepareTaskActionCommand
 
 public interface IWorkflowReliabilityStore
 {
+    Task<(IReadOnlyList<WorkflowBusinessInstance> Items, int Total)> QueryBusinessesAsync(
+        WorkflowBusinessQuery query,
+        CancellationToken cancellationToken = default);
+
     Task<BusinessReservation> ReserveBusinessAsync(
         ReserveBusinessCommand command,
         CancellationToken cancellationToken = default);

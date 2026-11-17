@@ -25,11 +25,22 @@ public sealed class WorkflowBranchVariable
     public string Name { get; set; } = "";
     public string Type { get; set; } = "json";
     public bool Missing { get; set; }
+    public bool ReadOnly { get; set; }
+    public object? Value { get; set; }
+    public List<WorkflowBranchOption> Options { get; set; } = new();
+}
+
+public sealed class WorkflowBranchOption
+{
+    public object? Value { get; set; }
+    public string Label { get; set; } = "";
+    public List<string> TargetNames { get; set; } = new();
 }
 
 public sealed class WorkflowNextNode
 {
     public string Id { get; set; } = "";
     public string Name { get; set; } = "";
+    public string NodeType { get; set; } = "userTask";
     public List<string> AssigneeVariables { get; set; } = new();
 }

@@ -9,7 +9,10 @@ using FlowableWrapper.Domain.Abstractions;
 using FlowableWrapper.Domain.ElasticSearch;
 using FlowableWrapper.Domain.Flowable;
 using FlowableWrapper.Domain.Services;
+using FlowableWrapper.Domain.Reliability;
+using FlowableWrapper.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace FlowableWrapper.Application.Services
 {
@@ -40,6 +43,8 @@ namespace FlowableWrapper.Application.Services
         private readonly IFlowableRepositoryService _repositoryService;
         private readonly IProcessSlotConfigProvider _slotConfigProvider;
         private readonly ILogger<ProcessFlowRenderAppService> _logger;
+        private readonly IWorkflowReliabilityStore _reliabilityStore;
+        private readonly Dm8Options _dm8Options;
 
         public ProcessFlowRenderAppService(
             IElasticSearchService esService,
@@ -47,7 +52,9 @@ namespace FlowableWrapper.Application.Services
             IFlowableHistoryService historyService,
             IFlowableRepositoryService repositoryService,
             IProcessSlotConfigProvider slotConfigProvider,
-            ILogger<ProcessFlowRenderAppService> logger)
+            ILogger<ProcessFlowRenderAppService> logger,
+            IWorkflowReliabilityStore reliabilityStore,
+            IOptions<Dm8Options> dm8Options)
         {
             _esService = esService;
             _taskService = taskService;
@@ -55,6 +62,8 @@ namespace FlowableWrapper.Application.Services
             _repositoryService = repositoryService;
             _slotConfigProvider = slotConfigProvider;
             _logger = logger;
+            _reliabilityStore = reliabilityStore;
+            _dm8Options = dm8Options.Value;
         }
 
         // ═══════════════════════════════════════════════════════════
@@ -70,11 +79,26 @@ namespace FlowableWrapper.Application.Services
                 throw new BusinessException("businessId 不能为空");
 
             // ── 查流程元数据（兼容所有状态）──────────────────────
-            var metadata = string.IsNullOrWhiteSpace(processInstanceId)
-                ? await GetMetadataAnyStatusAsync(businessId)
-                : await _esService.GetProcessMetadataAsync(processInstanceId);
-            if (metadata == null || !string.Equals(metadata.BusinessId, businessId, StringComparison.OrdinalIgnoreCase))
-                throw new BusinessException("流程实例不存在或与业务 ID 不匹配", "PROCESS_INSTANCE_NOT_FOUND");
+            ProcessMetadataDocument metadata;
+            if (_dm8Options.Enabled)
+            {
+                var binding = string.IsNullOrWhiteSpace(processInstanceId)
+                    ? await _reliabilityStore.GetBusinessByBusinessIdAsync(businessId)
+                    : await _reliabilityStore.GetBusinessByProcessInstanceAsync(processInstanceId);
+                if (binding == null || string.IsNullOrWhiteSpace(binding.ProcessInstanceId)
+                    || !string.Equals(binding.BusinessId, businessId, StringComparison.OrdinalIgnoreCase))
+                    throw new BusinessException("流程实例缺少 DM8 绑定", "PROCESS_BINDING_NOT_FOUND");
+                var projection = await _esService.GetProcessMetadataAsync(binding.ProcessInstanceId);
+                metadata = ProcessQueryAppService.MapBinding(binding, projection);
+            }
+            else
+            {
+                metadata = string.IsNullOrWhiteSpace(processInstanceId)
+                    ? await GetMetadataAnyStatusAsync(businessId)
+                    : await _esService.GetProcessMetadataAsync(processInstanceId);
+                if (metadata == null || !string.Equals(metadata.BusinessId, businessId, StringComparison.OrdinalIgnoreCase))
+                    throw new BusinessException("流程实例不存在或与业务 ID 不匹配", "PROCESS_INSTANCE_NOT_FOUND");
+            }
 
             // ── 并行获取所需数据 ───────────────────────────────────
             var activeTasksTask = _taskService.QueryTasksAsync(new FlowableTaskQuery

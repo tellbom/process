@@ -1,0 +1,32 @@
+﻿[
+    {
+        "Scenario":  "solved",
+        "Status":  "completed",
+        "CurrentNodes":  0,
+        "Audit":  "ut01_starter_submit\u003eut02_team_leader_confirm\u003eut03_quality_group_confirm",
+        "NodeCallbacks":  "ut01_starter_submit\u003eut02_team_leader_confirm\u003eut03_quality_group_confirm",
+        "ProcessCallbacks":  1,
+        "ExpectedMatch":  true,
+        "TotalCallbacks":  4
+    },
+    {
+        "Scenario":  "special",
+        "Status":  "completed",
+        "CurrentNodes":  0,
+        "Audit":  "ut01_starter_submit\u003eut02_team_leader_confirm\u003eut03_quality_group_confirm\u003eut04_responsible_confirm\u003eut05_counterpart_leader_review\u003eut06_discoverer_confirm",
+        "NodeCallbacks":  "ut01_starter_submit\u003eut02_team_leader_confirm\u003eut03_quality_group_confirm\u003eut04_responsible_confirm\u003eut05_counterpart_leader_review\u003eut06_discoverer_confirm",
+        "ProcessCallbacks":  1,
+        "ExpectedMatch":  true,
+        "TotalCallbacks":  7
+    },
+    {
+        "Scenario":  "nonspecial",
+        "Status":  "completed",
+        "CurrentNodes":  0,
+        "Audit":  "ut01_starter_submit\u003eut02_team_leader_confirm\u003eut03_quality_group_confirm\u003eut04_responsible_confirm\u003eut06_discoverer_confirm",
+        "NodeCallbacks":  "ut01_starter_submit\u003eut02_team_leader_confirm\u003eut03_quality_group_confirm\u003eut04_responsible_confirm\u003eut06_discoverer_confirm",
+        "ProcessCallbacks":  1,
+        "ExpectedMatch":  true,
+        "TotalCallbacks":  6
+    }
+]

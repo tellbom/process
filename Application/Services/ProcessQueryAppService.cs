@@ -26,7 +26,7 @@ namespace FlowableWrapper.Application.Services
     ///
     /// 数据来源分离原则：
     ///   status / createdBy / createdTime / completedTime
-    ///     → ES ProcessMetadataDocument（流程中心元数据）
+    ///     → DM8 流程绑定（启用 DM8 时）；否则为 ES ProcessMetadataDocument
     ///   当前活动节点 / assignee / candidateUsers
     ///     → Flowable TaskService 实时查询（执行态真相，不缓存）
     ///   历史审批记录 / 操作人 / 审批意见
@@ -168,6 +168,26 @@ namespace FlowableWrapper.Application.Services
             if (request.PageSize > 100) request.PageSize = 100;
             if (request.PageSize < 1) request.PageSize = 20;
             if (request.PageIndex < 1) request.PageIndex = 1;
+
+            if (_dm8Options.Enabled)
+            {
+                var cursor = request.UseCursor ? WorkflowBusinessListCursor.Decode(request.Cursor) : (null, (string?)null);
+                var (bindings, count) = await _reliabilityStore.QueryBusinessesAsync(new WorkflowBusinessQuery
+                {
+                    BusinessId = request.BusinessId, BusinessType = request.BusinessType,
+                    FlowState = request.Status, CreatedBy = request.CreatedBy,
+                    CreatedTimeFrom = request.CreatedTimeFrom, CreatedTimeTo = request.CreatedTimeTo,
+                    Start = request.UseCursor ? 0 : checked((request.PageIndex - 1) * request.PageSize),
+                    Size = request.PageSize, AfterCreatedAt = cursor.Item1, AfterProcessInstanceId = cursor.Item2
+                });
+                return new ProcessListResult
+                {
+                    Items = bindings.Select(binding => MapListItem(MapBinding(binding))).ToList(),
+                    Total = count, PageIndex = request.PageIndex, PageSize = request.PageSize,
+                    HasMore = bindings.Count == request.PageSize && (request.UseCursor || (long)request.PageIndex * request.PageSize < count),
+                    NextCursor = bindings.Count == request.PageSize ? WorkflowBusinessListCursor.Encode(bindings.Last()) : null
+                };
+            }
 
             var (items, total) = await _esService.QueryProcessListAsync(request);
 
@@ -338,6 +358,13 @@ namespace FlowableWrapper.Application.Services
         {
             if (string.IsNullOrWhiteSpace(processInstanceId))
                 return await GetMetadataByBusinessIdAsync(businessId);
+            if (_dm8Options.Enabled)
+            {
+                var binding = await _reliabilityStore.GetBusinessByProcessInstanceAsync(processInstanceId);
+                if (binding == null || !string.Equals(binding.BusinessId, businessId, StringComparison.OrdinalIgnoreCase))
+                    throw new BusinessException("流程实例缺少 DM8 绑定", "PROCESS_BINDING_NOT_FOUND");
+                return MapBinding(binding, await _esService.GetProcessMetadataAsync(processInstanceId));
+            }
             var metadata = await _esService.GetProcessMetadataAsync(processInstanceId);
             if (metadata == null || !string.Equals(metadata.BusinessId, businessId, StringComparison.OrdinalIgnoreCase))
                 throw new BusinessException("流程实例不存在或与业务 ID 不匹配", "PROCESS_INSTANCE_NOT_FOUND");
@@ -361,7 +388,7 @@ namespace FlowableWrapper.Application.Services
                 try
                 {
                     projection = await _esService
-                        .GetProcessMetadataByBusinessIdAsync(businessId);
+                        .GetProcessMetadataAsync(binding.ProcessInstanceId);
                 }
                 catch (Exception ex)
                 {
@@ -370,28 +397,7 @@ namespace FlowableWrapper.Application.Services
                         "ES projection unavailable; query uses DM8 binding. BusinessId={BusinessId}",
                         businessId);
                 }
-                projection ??= new ProcessMetadataDocument
-                {
-                    Id = binding.ProcessInstanceId,
-                    ProcessInstanceId = binding.ProcessInstanceId,
-                    BusinessId = binding.BusinessId,
-                    RequestId = binding.RequestId,
-                    ApprovalRound = binding.ApprovalRound,
-                    BusinessType = binding.BusinessType,
-                    CreatedTime = binding.CreatedAt,
-                    CompletedTime = binding.CompletedAt,
-                    NodeSemanticMap =
-                        new Dictionary<string, NodeSemanticInfo>(),
-                    RecommendedAssigneesSnapshot =
-                        new Dictionary<string, List<string>>()
-                };
-                projection.ProcessInstanceId = binding.ProcessInstanceId;
-                projection.ProcessDefinitionKey =
-                    binding.ProcessDefinitionKey;
-                projection.ProcessDefinitionVersion =
-                    binding.ProcessDefinitionVersion;
-                projection.Status = binding.FlowState;
-                return projection;
+                return MapBinding(binding, projection);
             }
 
             // 先查 running（最常见场景）
@@ -410,6 +416,34 @@ namespace FlowableWrapper.Application.Services
 
             return metadata;
         }
+
+        internal static ProcessMetadataDocument MapBinding(WorkflowBusinessInstance binding, ProcessMetadataDocument? projection = null)
+        {
+            projection ??= new ProcessMetadataDocument();
+            projection.Id = binding.ProcessInstanceId;
+            projection.ProcessInstanceId = binding.ProcessInstanceId;
+            projection.BusinessId = binding.BusinessId;
+            projection.RequestId = binding.RequestId;
+            projection.ApprovalRound = binding.ApprovalRound;
+            projection.BusinessType = binding.BusinessType;
+            projection.BusinessTitle = binding.BusinessTitle;
+            projection.CreatedBy = binding.CreatedBy;
+            projection.CreatedTime = binding.CreatedAt;
+            projection.CompletedTime = binding.CompletedAt;
+            projection.ProcessDefinitionKey = binding.ProcessDefinitionKey;
+            projection.ProcessDefinitionVersion = binding.ProcessDefinitionVersion;
+            projection.Status = binding.FlowState;
+            return projection;
+        }
+
+        private static ProcessListItemDto MapListItem(ProcessMetadataDocument metadata) => new()
+        {
+            ProcessInstanceId = metadata.ProcessInstanceId, BusinessId = metadata.BusinessId,
+            BusinessType = metadata.BusinessType, BusinessTitle = metadata.BusinessTitle,
+            ApprovalRound = metadata.ApprovalRound, ProcessDefinitionKey = metadata.ProcessDefinitionKey,
+            ProcessDefinitionVersion = metadata.ProcessDefinitionVersion, Status = metadata.Status,
+            CreatedBy = metadata.CreatedBy, CreatedTime = metadata.CreatedTime, CompletedTime = metadata.CompletedTime
+        };
 
         /// <summary>
         /// 构建当前节点列表

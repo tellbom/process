@@ -1,0 +1,199 @@
+{
+  "schema": "REPRO_STATUS_6F42A819",
+  "results": {
+    "deployment": {
+      "deploymentRequestId": "repro_status_6f42a819:auto-11f5cb74c91cf9e4",
+      "businessVersion": "auto-11f5cb74c91cf9e4",
+      "bpmnSha256": "DC3EBB11D27F6CD2FC311CB0EA4B103E1671277F22071E257F1DF467C692458F",
+      "deploymentStatus": "ACTIVE",
+      "reused": true,
+      "deploymentId": "00495ebe-ddea-11f1-a33f-0242c0a81003",
+      "processDefinitionKey": "repro_status_6f42a819",
+      "processDefinitionName": "Isolated status reproduction",
+      "version": 1,
+      "deploymentTime": "2026-11-11T16:08:43.8740934Z",
+      "nodeSemanticCount": 2,
+      "nodes": [
+        {
+          "taskDefinitionKey": "review",
+          "nodeSemantic": null,
+          "pageCode": null,
+          "isStarterNode": true,
+          "isConvergencePoint": false,
+          "canReject": false,
+          "canReassign": false,
+          "isRejectTarget": false,
+          "rejectCode": null,
+          "slotCount": 1,
+          "rejectOptionCount": 0,
+          "roleKey": "starter",
+          "assigneeMode": "single",
+          "callbackUrl": null
+        },
+        {
+          "taskDefinitionKey": "nextReview",
+          "nodeSemantic": null,
+          "pageCode": null,
+          "isStarterNode": false,
+          "isConvergencePoint": false,
+          "canReject": false,
+          "canReassign": false,
+          "isRejectTarget": false,
+          "rejectCode": null,
+          "slotCount": 0,
+          "rejectOptionCount": 0,
+          "roleKey": "reviewer",
+          "assigneeMode": "single",
+          "callbackUrl": null
+        }
+      ]
+    },
+    "baseline-finish-preview": {
+      "resolved": false,
+      "manualConfigurationRequired": false,
+      "message": "请先填写分支变量，再确定下一步处理人。",
+      "variables": [
+        {
+          "name": "CONTINUE_REVIEW",
+          "type": "boolean",
+          "missing": true
+        }
+      ],
+      "nextNodes": [],
+      "slots": [],
+      "flowIds": []
+    },
+    "baseline-finish": {
+      "status": "completed",
+      "list": "running",
+      "completedFilterTotal": 0,
+      "runningFilterTotal": 1,
+      "progress": "running",
+      "flowRender": "running",
+      "instanceId": "0168d881-ddea-11f1-a33f-0242c0a81003",
+      "callbackReceived": true
+    },
+    "fixed-existing-record": {
+      "status": "completed",
+      "list": "completed",
+      "completedFilterTotal": 1,
+      "runningFilterTotal": 0,
+      "progress": "completed",
+      "flowRender": "completed",
+      "instanceId": "0168d881-ddea-11f1-a33f-0242c0a81003",
+      "callbackReceived": true
+    },
+    "fixed-finish-preview": {
+      "resolved": false,
+      "manualConfigurationRequired": false,
+      "message": "请先填写分支变量，再确定下一步处理人。",
+      "variables": [
+        {
+          "name": "CONTINUE_REVIEW",
+          "type": "boolean",
+          "missing": true,
+          "readOnly": false,
+          "value": null,
+          "options": [
+            {
+              "value": true,
+              "label": "Continue review",
+              "targetNames": [
+                "Next reviewer"
+              ]
+            },
+            {
+              "value": false,
+              "label": "Finish directly",
+              "targetNames": [
+                "结束流程"
+              ]
+            }
+          ]
+        }
+      ],
+      "nextNodes": [],
+      "slots": [],
+      "flowIds": []
+    },
+    "fixed-finish": {
+      "status": "completed",
+      "list": "completed",
+      "completedFilterTotal": 1,
+      "runningFilterTotal": 0,
+      "progress": "completed",
+      "flowRender": "completed",
+      "instanceId": "313cf4d5-ddea-11f1-a33f-0242c0a81003",
+      "callbackReceived": true
+    },
+    "fixed-continue-preview": {
+      "resolved": false,
+      "manualConfigurationRequired": false,
+      "message": "请先填写分支变量，再确定下一步处理人。",
+      "variables": [
+        {
+          "name": "CONTINUE_REVIEW",
+          "type": "boolean",
+          "missing": true,
+          "readOnly": false,
+          "value": null,
+          "options": [
+            {
+              "value": true,
+              "label": "Continue review",
+              "targetNames": [
+                "Next reviewer"
+              ]
+            },
+            {
+              "value": false,
+              "label": "Finish directly",
+              "targetNames": [
+                "结束流程"
+              ]
+            }
+          ]
+        }
+      ],
+      "nextNodes": [],
+      "slots": [],
+      "flowIds": []
+    },
+    "fixed-continue": {
+      "status": "completed",
+      "list": "completed",
+      "completedFilterTotal": 1,
+      "runningFilterTotal": 0,
+      "progress": "completed",
+      "flowRender": "completed",
+      "instanceId": "32d2fe49-ddea-11f1-a33f-0242c0a81003",
+      "callbackReceived": true
+    }
+  },
+  "callbacks": [
+    {
+      "businessId": "repro_status_6f42a819-baseline-finish",
+      "processInstanceId": "0168d881-ddea-11f1-a33f-0242c0a81003",
+      "processDefinitionKey": "repro_status_6f42a819",
+      "businessType": "repro_status_6f42a819",
+      "status": "completed",
+      "completedTime": "2026-11-11T16:08:44.791569Z"
+    },
+    {
+      "businessId": "repro_status_6f42a819-fixed-finish",
+      "processInstanceId": "313cf4d5-ddea-11f1-a33f-0242c0a81003",
+      "processDefinitionKey": "repro_status_6f42a819",
+      "businessType": "repro_status_6f42a819",
+      "status": "completed",
+      "completedTime": "2026-11-11T16:08:54.1106559Z"
+    },
+    {
+      "businessId": "repro_status_6f42a819-fixed-continue",
+      "processInstanceId": "32d2fe49-ddea-11f1-a33f-0242c0a81003",
+      "processDefinitionKey": "repro_status_6f42a819",
+      "businessType": "repro_status_6f42a819",
+      "status": "completed",
+      "completedTime": "2026-11-11T16:08:56.5105323Z"
+    }
+  ]
+}

@@ -173,7 +173,15 @@ public static class WorkflowArtifactCompiler
         // 保留 JSON 中未被当前版本识别的扩展字段及 callbackUrl 的缺省/显式空值语义。
         using (var jsonDoc = JsonDocument.Parse(configJson)) result.SlotConfigJson = JsonSerializer.Serialize(jsonDoc.RootElement, Json).Replace("\r\n", "\n");
         var ext = process.Element(Bpmn + "extensionElements");
-        if (ext == null) { ext = new XElement(Bpmn + "extensionElements"); process.AddFirst(ext); }
+        if (ext == null)
+        {
+            ext = new XElement(Bpmn + "extensionElements");
+            // BPMN XSD requires documentation* before extensionElements; inserting
+            // extensionElements as the first child makes Flowable reject the file.
+            var documentation = process.Elements(Bpmn + "documentation").LastOrDefault();
+            if (documentation != null) documentation.AddAfterSelf(ext);
+            else process.AddFirst(ext);
+        }
         ext.Elements(Configuration + "nodeConfigurations").Remove();
         ext.Add(new XElement(Configuration + "nodeConfigurations", result.SlotConfigJson));
         doc.Root!.SetAttributeValue(XNamespace.Xmlns + "pc", Configuration.NamespaceName);

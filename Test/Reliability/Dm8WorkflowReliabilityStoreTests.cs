@@ -490,7 +490,7 @@ public class Dm8WorkflowReliabilityStoreTests
         {
             ConnectionString = Environment.GetEnvironmentVariable(
                 "FLOW_DM8_TEST_CONNECTION_STRING")!,
-            Schema = "FLOW_RELIABILITY",
+            Schema = string.Empty,
             CommandTimeoutSeconds = 30
         }));
 
@@ -502,11 +502,11 @@ public class Dm8WorkflowReliabilityStoreTests
         await connection.OpenAsync();
         await using var command = connection.CreateCommand();
         command.CommandText = @"
-DELETE FROM FLOW_RELIABILITY.WORKFLOW_CALLBACK_EVENT
+DELETE FROM WORKFLOW_CALLBACK_EVENT
 WHERE BUSINESS_ID LIKE 'business:%'";
         await command.ExecuteNonQueryAsync();
         command.CommandText = @"
-DELETE FROM FLOW_RELIABILITY.WORKFLOW_BUSINESS_INSTANCE
+DELETE FROM WORKFLOW_BUSINESS_INSTANCE
 WHERE BUSINESS_ID LIKE 'business:%'";
         await command.ExecuteNonQueryAsync();
     }

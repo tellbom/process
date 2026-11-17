@@ -40,6 +40,54 @@ public class WorkflowNextStepTests
     }
 
     [Fact]
+    public void EndBranchIsOfferedBeforeSelectionEvenWhenItHasNoPeopleSlot()
+    {
+        var xml = Xml.Replace("<userTask id=\"no\" name=\"正式审批\" flowable:assignee=\"${noUser}\"/>", "<endEvent id=\"no\" name=\"无需继续审批\"/>");
+        var slots = Slots().Take(1).ToList();
+        var missing = WorkflowNextStepResolver.Resolve(xml, "current", new(), slots);
+        Assert.False(missing.Resolved);
+        var choices = Assert.Single(missing.Variables).Options;
+        Assert.Equal(2, choices.Count);
+        Assert.Contains("结束流程", choices.Single(x => Equals(x.Value, false)).TargetNames);
+        Assert.Empty(missing.Slots);
+
+        var ended = WorkflowNextStepResolver.Resolve(xml, "current", new() { ["IS_TEST"] = false }, slots);
+        Assert.True(ended.Resolved);
+        Assert.Equal("endEvent", Assert.Single(ended.NextNodes).NodeType);
+        Assert.Contains("结束流程", ended.Message);
+        Assert.Empty(ended.Slots);
+        var converted = new SlotVariableConverter(NullLogger<SlotVariableConverter>.Instance).Convert(new(), ended.Slots);
+        Assert.Empty(converted.Variables);
+
+        var continues = WorkflowNextStepResolver.Resolve(xml, "current", new() { ["IS_TEST"] = true }, slots);
+        Assert.Equal("choose_yes", Assert.Single(continues.Slots).SlotKey);
+    }
+
+    [Fact]
+    public void BothEndBranchesAndBooleanDefaultRemainSelectableWithoutAnySlots()
+    {
+        var xml = Xml.Replace("<userTask id=\"yes\" name=\"测试审批\" flowable:assignee=\"${yesUser}\"/>", "<endEvent id=\"yes\"/>")
+            .Replace("<userTask id=\"no\" name=\"正式审批\" flowable:assignee=\"${noUser}\"/>", "<endEvent id=\"no\"/>")
+            .Replace("<exclusiveGateway id=\"gateway\"/>", "<exclusiveGateway id=\"gateway\" default=\"falseFlow\"/>")
+            .Replace("<conditionExpression>${IS_TEST == false}</conditionExpression>", "");
+        var result = WorkflowNextStepResolver.Resolve(xml, "current", new(), new());
+        Assert.Equal(2, Assert.Single(result.Variables).Options.Count);
+        result = WorkflowNextStepResolver.Resolve(xml, "current", new() { ["IS_TEST"] = false }, new());
+        Assert.True(result.Resolved);
+        Assert.Equal("no", Assert.Single(result.NextNodes).Id);
+        Assert.Empty(result.Slots);
+    }
+
+    [Fact]
+    public void StringBranchValuesKeepTheirTypeAndReservedApprovalFlagIsReadOnly()
+    {
+        var result = WorkflowNextStepResolver.Resolve(Xml.Replace("IS_TEST == true", "IS_TEST == 'false'").Replace("IS_TEST == false", "IS_TEST == 'true'"), "current", new(), Slots());
+        Assert.Equal("false", Assert.Single(result.Variables).Options[0].Value);
+        result = WorkflowNextStepResolver.Resolve(Xml.Replace("IS_TEST", "isApproved"), "current", new() { ["isApproved"] = true }, Slots());
+        Assert.True(Assert.Single(result.Variables).ReadOnly);
+    }
+
+    [Fact]
     public void MissingBranchVariableDoesNotAskForBothPeopleOrChooseDefault()
     {
         var result = WorkflowNextStepResolver.Resolve(Xml.Replace("<exclusiveGateway id=\"gateway\"/>", "<exclusiveGateway id=\"gateway\" default=\"falseFlow\"/>"), "current", new(), Slots());

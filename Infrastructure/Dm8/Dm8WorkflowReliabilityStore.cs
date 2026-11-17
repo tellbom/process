@@ -19,12 +19,12 @@ public sealed class Dm8WorkflowReliabilityStore : IWorkflowReliabilityStore
     public Dm8WorkflowReliabilityStore(IOptions<Dm8Options> options)
     {
         _options = options.Value;
-        var schema = ValidateIdentifier(_options.Schema);
-        _callbackTable = $"{schema}.WORKFLOW_CALLBACK_EVENT";
-        _businessTable = $"{schema}.WORKFLOW_BUSINESS_INSTANCE";
-        _leaseTable = $"{schema}.WORKFLOW_CALLBACK_LEASE";
-        _definitionTable = $"{schema}.WORKFLOW_DEFINITION_CONFIG";
-        _actionTable = $"{schema}.WORKFLOW_TASK_ACTION";
+        var schema = BuildSchemaPrefix(_options.Schema);
+        _callbackTable = $"{schema}WORKFLOW_CALLBACK_EVENT";
+        _businessTable = $"{schema}WORKFLOW_BUSINESS_INSTANCE";
+        _leaseTable = $"{schema}WORKFLOW_CALLBACK_LEASE";
+        _definitionTable = $"{schema}WORKFLOW_DEFINITION_CONFIG";
+        _actionTable = $"{schema}WORKFLOW_TASK_ACTION";
     }
 
     public async Task<BusinessReservation> ReserveBusinessAsync(
@@ -261,6 +261,64 @@ WHERE PROCESS_INSTANCE_ID IN ({string.Join(",", parameters)})";
                 result[instance.ProcessInstanceId] = instance;
         }
         return result;
+    }
+
+    public async Task<(IReadOnlyList<WorkflowBusinessInstance> Items, int Total)> QueryBusinessesAsync(
+        WorkflowBusinessQuery query,
+        CancellationToken cancellationToken = default)
+    {
+        await using var connection = CreateConnection();
+        await connection.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        Configure(command);
+        var filters = new List<string> { "PROCESS_INSTANCE_ID IS NOT NULL" };
+        void Equal(string column, string name, string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value)) return;
+            filters.Add($"{column} = :{name}");
+            AddParameter(command, name, value);
+        }
+        Equal("BUSINESS_ID", "business_id", query.BusinessId);
+        Equal("BUSINESS_TYPE", "business_type", query.BusinessType);
+        Equal("FLOW_STATE", "flow_state", query.FlowState);
+        Equal("CREATED_BY", "created_by", query.CreatedBy);
+        if (query.CreatedTimeFrom.HasValue)
+        {
+            filters.Add("CREATED_AT >= :created_from");
+            AddParameter(command, "created_from", query.CreatedTimeFrom.Value, DbType.DateTime);
+        }
+        if (query.CreatedTimeTo.HasValue)
+        {
+            filters.Add("CREATED_AT <= :created_to");
+            AddParameter(command, "created_to", query.CreatedTimeTo.Value, DbType.DateTime);
+        }
+        var where = string.Join(" AND ", filters);
+        command.CommandText = $"SELECT COUNT(*) FROM {_businessTable} WHERE {where}";
+        var total = Convert.ToInt32(await command.ExecuteScalarAsync(cancellationToken));
+        if (query.AfterCreatedAt.HasValue)
+        {
+            where += " AND (CREATED_AT < :after_time OR (CREATED_AT = :after_time AND PROCESS_INSTANCE_ID > :after_id))";
+            AddParameter(command, "after_time", query.AfterCreatedAt.Value, DbType.DateTime);
+            AddParameter(command, "after_id", query.AfterProcessInstanceId);
+        }
+        AddParameter(command, "page_start", Math.Max(0, query.Start));
+        AddParameter(command, "page_size", Math.Clamp(query.Size, 1, 100));
+        command.CommandText = $@"
+SELECT ID, BUSINESS_ID, REQUEST_ID, APPROVAL_ROUND,
+       BUSINESS_TYPE, BUSINESS_TITLE, CREATED_BY, PROCESS_INSTANCE_ID,
+       PROCESS_DEFINITION_KEY, PROCESS_DEFINITION_VERSION, FLOW_STATE,
+       CALLBACK_STATE, CALLBACK_CONFIG_SNAPSHOT,
+       RECOMMENDED_ASSIGNEES_SNAPSHOT, NODE_DESCRIPTIONS_SNAPSHOT,
+       ROW_VERSION, DATA_VERSION,
+       CREATED_AT, UPDATED_AT, COMPLETED_AT
+FROM {_businessTable}
+WHERE {where}
+ORDER BY CREATED_AT DESC, PROCESS_INSTANCE_ID ASC
+OFFSET :page_start ROWS FETCH NEXT :page_size ROWS ONLY";
+        var items = new List<WorkflowBusinessInstance>();
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken)) items.Add(ReadBusiness(reader));
+        return (items, total);
     }
 
     public async Task SaveDefinitionConfigAsync(
@@ -1251,6 +1309,11 @@ WHERE EVENT_ID = :event_id
 
     private static DateTime? GetNullableDateTime(DbDataReader reader, int ordinal)
         => reader.IsDBNull(ordinal) ? null : reader.GetDateTime(ordinal);
+
+    private static string BuildSchemaPrefix(string? schema)
+        => string.IsNullOrWhiteSpace(schema)
+            ? string.Empty
+            : $"{ValidateIdentifier(schema)}.";
 
     private static string ValidateIdentifier(string identifier)
     {

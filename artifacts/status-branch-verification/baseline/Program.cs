@@ -1,0 +1,360 @@
+using FlowableWrapper.Api.Filters;
+using FlowableWrapper.Application.Services;
+using FlowableWrapper.Application.Slots;
+using FlowableWrapper.Configuration;
+using FlowableWrapper.Domain.Abstractions;
+using FlowableWrapper.Domain.ElasticSearch;
+using FlowableWrapper.Domain.Flowable;
+using FlowableWrapper.Domain.Reliability;
+using FlowableWrapper.Domain.Services;
+using FlowableWrapper.Infrastructure.CurrentUser;
+using FlowableWrapper.Infrastructure.ElasticSearch;
+using FlowableWrapper.Infrastructure.Dm8;
+using FlowableWrapper.Infrastructure.Flowable;
+using FlowableWrapper.Infrastructure.Security;
+using FlowableWrapper.Infrastructure.Slots;
+using FlowableWrapper.Infrastructure.Readiness;
+using FlowableWrapper.Infrastructure.Reliability;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
+using process.Domain.DistributedLock;
+using process.Infrastructure.DistributedLock;
+using StackExchange.Redis;
+
+var builder = WebApplication.CreateBuilder(args);
+
+var runtimeTuning = builder.Configuration
+    .GetSection(RuntimeTuningOptions.SectionName)
+    .Get<RuntimeTuningOptions>() ?? new RuntimeTuningOptions();
+ThreadPool.GetMinThreads(
+    out var currentMinWorkerThreads,
+    out var currentMinIoCompletionThreads);
+if (!ThreadPool.SetMinThreads(
+        Math.Max(currentMinWorkerThreads, runtimeTuning.MinWorkerThreads),
+        Math.Max(currentMinIoCompletionThreads, runtimeTuning.MinIoCompletionThreads)))
+{
+    throw new InvalidOperationException(
+        "Failed to configure the CLR thread-pool minimum threads.");
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 配置绑定（IOptions<T> 模式）
+// ═══════════════════════════════════════════════════════════════
+builder.Services.Configure<ElasticSearchOptions>(
+    builder.Configuration.GetSection("ElasticSearch"));
+
+builder.Services.Configure<FlowableOptions>(
+    builder.Configuration.GetSection("Flowable"));
+
+builder.Services.Configure<BusinessTypeProcessMapping>(
+    builder.Configuration.GetSection("BusinessTypeProcessMapping"));
+
+builder.Services.Configure<RedisOptions>(
+    builder.Configuration.GetSection("Redis"));
+
+builder.Services.Configure<JwtOptions>(
+    builder.Configuration.GetSection(JwtOptions.SectionName));
+
+builder.Services.Configure<ProcessNotificationOptions>(
+    builder.Configuration.GetSection(ProcessNotificationOptions.SectionName));
+builder.Services.Configure<Dm8Options>(
+    builder.Configuration.GetSection(Dm8Options.SectionName));
+builder.Services.Configure<CallbackWorkerOptions>(
+    builder.Configuration.GetSection(CallbackWorkerOptions.SectionName));
+builder.Services.Configure<ReadinessOptions>(
+    builder.Configuration.GetSection(ReadinessOptions.SectionName));
+builder.Services.Configure<RuntimeTuningOptions>(
+    builder.Configuration.GetSection(RuntimeTuningOptions.SectionName));
+builder.Services.Configure<OperationConcurrencyOptions>(
+    builder.Configuration.GetSection(OperationConcurrencyOptions.SectionName));
+
+var jwtSection = builder.Configuration.GetSection(JwtOptions.SectionName);
+var jwtMode = jwtSection["Mode"] ?? "Oidc";
+var authBuilder = builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme);
+
+if (string.Equals(jwtMode, "TrustedJwt", StringComparison.OrdinalIgnoreCase))
+{
+    authBuilder.AddScheme<AuthenticationSchemeOptions, TrustedJwtAuthenticationHandler>(
+        JwtBearerDefaults.AuthenticationScheme, _ => { });
+}
+else
+{
+    authBuilder.AddJwtBearer(options =>
+    {
+        options.Authority = jwtSection["Authority"];
+        options.RequireHttpsMetadata = bool.Parse(jwtSection["RequireHttpsMetadata"] ?? "true");
+        options.MapInboundClaims = false;
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateAudience = false
+        };
+    });
+}
+
+builder.Services.AddAuthorization(options =>
+{
+    var authenticatedUserPolicy = new AuthorizationPolicyBuilder(JwtBearerDefaults.AuthenticationScheme)
+        .RequireAuthenticatedUser()
+        .Build();
+
+    options.DefaultPolicy = authenticatedUserPolicy;
+    options.FallbackPolicy = authenticatedUserPolicy;
+});
+
+builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
+{
+    var options = sp.GetRequiredService<IOptions<RedisOptions>>().Value;
+    var configuration = ConfigurationOptions.Parse(options.ConnectionString);
+    configuration.AbortOnConnectFail = false;
+    configuration.ConnectRetry = 1;
+    configuration.ConnectTimeout = Math.Clamp(
+        options.ConnectTimeoutMilliseconds,
+        1000,
+        30000);
+    configuration.SyncTimeout = Math.Clamp(
+        options.SyncTimeoutMilliseconds,
+        1000,
+        30000);
+    configuration.AsyncTimeout = Math.Clamp(
+        options.AsyncTimeoutMilliseconds,
+        1000,
+        30000);
+    return ConnectionMultiplexer.Connect(configuration);
+});
+
+// ═══════════════════════════════════════════════════════════════
+// 基础设施：当前用户
+// ═══════════════════════════════════════════════════════════════
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ICurrentUser, HttpContextCurrentUser>();
+
+// ═══════════════════════════════════════════════════════════════
+// 基础设施：Flowable HTTP 客户端
+// ═══════════════════════════════════════════════════════════════
+// 使用 IHttpClientFactory 管理 HttpClient 生命周期
+builder.Services.AddHttpClient<FlowableHttpClient>((sp, client) =>
+{
+    var options = sp.GetRequiredService<IOptions<FlowableOptions>>().Value;
+    client.Timeout = TimeSpan.FromSeconds(
+        Math.Clamp(options.TimeoutSeconds, 1, 300));
+}).ConfigurePrimaryHttpMessageHandler(sp =>
+{
+    var options = sp.GetRequiredService<IOptions<FlowableOptions>>().Value;
+    return new SocketsHttpHandler
+    {
+        MaxConnectionsPerServer = Math.Clamp(
+            options.MaxConnectionsPerServer,
+            1,
+            1000),
+        PooledConnectionLifetime = TimeSpan.FromMinutes(10)
+    };
+});
+
+builder.Services.AddHttpClient<IFlowableRuntimeService, FlowableRuntimeServiceImpl>(
+    (sp, client) =>
+    {
+        var options = sp.GetRequiredService<IOptions<FlowableOptions>>().Value;
+        client.Timeout = TimeSpan.FromSeconds(
+            Math.Clamp(options.TimeoutSeconds, 1, 300));
+    }).ConfigurePrimaryHttpMessageHandler(sp =>
+    {
+        var options = sp.GetRequiredService<IOptions<FlowableOptions>>().Value;
+        return new SocketsHttpHandler
+        {
+            MaxConnectionsPerServer = Math.Clamp(
+                options.MaxConnectionsPerServer,
+                1,
+                1000),
+            PooledConnectionLifetime = TimeSpan.FromMinutes(10)
+        };
+    });
+
+// Flowable 各 Service 实现（Scoped，跟随请求生命周期）
+builder.Services.AddScoped<IFlowableTaskService, FlowableTaskServiceImpl>();
+builder.Services.AddScoped<IFlowableHistoryService, FlowableHistoryServiceImpl>();
+builder.Services.AddScoped<IFlowableRepositoryService, FlowableRepositoryServiceImpl>();
+
+// ═══════════════════════════════════════════════════════════════
+// 基础设施：Elasticsearch
+// ═══════════════════════════════════════════════════════════════
+builder.Services.AddSingleton<IElasticSearchService, ElasticSearchServiceImpl>();
+builder.Services.AddScoped<IWorkflowReliabilityStore, Dm8WorkflowReliabilityStore>();
+builder.Services.AddSingleton<OperationConcurrencyGate>();
+
+// ═══════════════════════════════════════════════════════════════
+// 应用服务（Phase 3-9 逐步注册，此处预留占位注释）
+// ═══════════════════════════════════════════════════════════════
+
+// Phase 3 — Slot 模型
+builder.Services.AddScoped<SlotVariableConverter>();
+builder.Services.AddScoped<IProcessSlotConfigProvider, Dm8ProcessSlotConfigProvider>();
+
+// Phase 3 (Patch Plan V1.2) - assignee contract services
+// AssigneeContractConverter: role contract -> RecommendedAssigneesSnapshot
+builder.Services.AddScoped<AssigneeContractConverter>();
+// LoopAssignmentProjector is deprecated and no longer registered.
+
+// Phase 5 — 任务执行
+builder.Services.AddScoped<TaskExecutionAppService>();
+
+// Phase 6 — 流程生命周期
+builder.Services.AddScoped<ProcessLifecycleAppService>();
+
+// Phase 7 — BPMN 部署
+builder.Services.AddScoped<BpmnDeploymentAppService>();
+builder.Services.AddScoped<WorkflowWorkbenchAppService>();
+builder.Services.AddScoped<WorkflowNextStepAppService>();
+
+// Phase 8 — 回调
+// 1. 注册 ProcessCallbackAppService
+builder.Services.AddScoped<ProcessCallbackAppService>();
+builder.Services.AddScoped<FailedDeliveryAppService>();
+builder.Services.AddScoped<WorkflowMigrationAppService>();
+
+// 2. 注册具名 HttpClient（用于回调业务系统）
+builder.Services.AddHttpClient("BusinessCallback");
+//
+// 说明：
+//   ProcessCallbackAppService 通过 IHttpClientFactory.CreateClient("BusinessCallback")
+//   获取 HttpClient 实例，由 IHttpClientFactory 统一管理连接池
+//   避免直接 new HttpClient() 造成 Socket 耗尽
+//
+// 如果业务系统回调需要公共配置（如基础 URL、超时、重试策略），
+// 可以在此处统一配置，例如：
+//
+builder.Services.AddHttpClient("BusinessCallback", client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(30);
+});
+builder.Services.AddHttpClient("BusinessCallbackWorker", client =>
+{
+    client.Timeout = Timeout.InfiniteTimeSpan;
+});
+builder.Services.AddSingleton<CallbackWorkerTelemetry>();
+builder.Services.AddHostedService<CallbackInboxWorker>();
+builder.Services.AddSingleton<ApplicationReadinessState>();
+builder.Services.AddHostedService<ReadinessWarmupService>();
+
+builder.Services.AddHttpClient("ProcessMessageCenter", (sp, client) =>
+{
+    var options = sp.GetRequiredService<IOptions<ProcessNotificationOptions>>().Value;
+    client.Timeout = TimeSpan.FromSeconds(options.TimeoutSeconds);
+});
+
+builder.Services.AddHttpClient("ProcessNotificationAuth", (sp, client) =>
+{
+    var options = sp.GetRequiredService<IOptions<ProcessNotificationOptions>>().Value;
+    client.Timeout = TimeSpan.FromSeconds(options.TimeoutSeconds);
+});
+//
+// 如果后续引入 Polly 做 HTTP 重试（可选，当前由 Flowable 重试机制兜底），
+// 可以在此处添加：
+// .AddTransientHttpErrorPolicy(p => p.RetryAsync(3));
+
+// Phase 9 — 查询
+builder.Services.AddScoped<ProcessQueryAppService>();
+builder.Services.AddScoped<ProcessOperationsAppService>();
+builder.Services.AddScoped<ProcessNotificationService>();
+
+// Phase 10 — 流程图渲染
+builder.Services.AddScoped<ProcessFlowRenderAppService>();
+
+// 开启redis注册
+builder.Services.AddSingleton<IDistributedLockService, RedisDistributedLockService>();
+
+// ═══════════════════════════════════════════════════════════════
+// MVC + 全局异常过滤器
+// ═══════════════════════════════════════════════════════════════
+builder.Services.AddControllers(options =>
+{
+    options.Filters.Add<GlobalExceptionFilter>();
+});
+
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new() { Title = "流程中心 API", Version = "v1" });
+    // TODO: Phase N Keycloak JWT 接入后在此添加 Bearer 认证配置
+});
+
+// CORS（开发阶段全开，生产环境按需限制）
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(policy =>
+        policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
+});
+
+// ═══════════════════════════════════════════════════════════════
+// 中间件管道
+// ═══════════════════════════════════════════════════════════════
+var app = builder.Build();
+
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
+
+app.UseCors();
+app.UseRouting();
+
+app.Use(async (context, next) =>
+{
+    if (context.Request.Path.StartsWithSegments("/health"))
+    {
+        await next();
+        return;
+    }
+
+    var readiness = context.RequestServices
+        .GetRequiredService<ApplicationReadinessState>()
+        .Snapshot();
+    if (!readiness.Ready)
+    {
+        context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+        await context.Response.WriteAsJsonAsync(new
+        {
+            code = "APPLICATION_NOT_READY",
+            message = "流程中心依赖尚未完成初始化",
+            readiness.Dependencies
+        });
+        return;
+    }
+
+    await next();
+});
+
+app.UseAuthentication();
+app.UseAuthorization();
+
+app.MapControllers();
+
+app.MapGet("/health/live", () => Results.Ok(new
+{
+    status = "healthy"
+})).AllowAnonymous();
+
+app.MapGet("/health/ready", (
+    ApplicationReadinessState readiness) =>
+{
+    var snapshot = readiness.Snapshot();
+    return snapshot.Ready
+        ? Results.Ok(new
+        {
+            status = "ready",
+            snapshot.ReadySince,
+            snapshot.Dependencies
+        })
+        : Results.Json(
+            new
+            {
+                status = "not_ready",
+                snapshot.Dependencies
+            },
+            statusCode: StatusCodes.Status503ServiceUnavailable);
+}).AllowAnonymous();
+
+app.Run();

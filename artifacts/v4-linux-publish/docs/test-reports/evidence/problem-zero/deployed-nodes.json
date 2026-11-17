@@ -1,0 +1,200 @@
+﻿{
+    "value":  [
+                  {
+                      "taskDefinitionKey":  "ut01_starter_submit",
+                      "nodeSemantic":  "PROBLEM_ZERO_STARTER_SUBMIT",
+                      "pageCode":  "ProblemZero/StarterSubmitForm",
+                      "isStarterNode":  true,
+                      "isConvergencePoint":  false,
+                      "canReject":  false,
+                      "rejectOptions":  [
+
+                                        ],
+                      "isRejectTarget":  true,
+                      "rejectCode":  "TO_STARTER",
+                      "slots":  [
+                                    {
+                                        "slotKey":  "team_leader",
+                                        "roleKey":  "problem_zero_team_leader",
+                                        "label":  "发现问题班组负责人",
+                                        "mode":  "multiple",
+                                        "variableName":  "teamLeaderAssigneeList",
+                                        "required":  true,
+                                        "conditionalOn":  null,
+                                        "restrictToRecommended":  true
+                                    }
+                                ],
+                      "roleKey":  "problem_zero_starter",
+                      "assigneeMode":  "single",
+                      "callbackUrl":  "http://192.168.124.5:5012/api/test/node-callback"
+                  },
+                  {
+                      "taskDefinitionKey":  "ut02_team_leader_confirm",
+                      "nodeSemantic":  "PROBLEM_ZERO_TEAM_LEADER_CONFIRM",
+                      "pageCode":  "ProblemZero/TeamLeaderConfirmForm",
+                      "isStarterNode":  false,
+                      "isConvergencePoint":  false,
+                      "canReject":  true,
+                      "rejectOptions":  [
+                                            {
+                                                "rejectCode":  "TO_STARTER",
+                                                "label":  "退回发起人修改",
+                                                "description":  "班组负责人确认不通过，退回问题发起人修改"
+                                            }
+                                        ],
+                      "isRejectTarget":  false,
+                      "rejectCode":  null,
+                      "slots":  [
+                                    {
+                                        "slotKey":  "quality_group",
+                                        "roleKey":  "problem_zero_quality_member",
+                                        "label":  "质控人员组",
+                                        "mode":  "multiple",
+                                        "variableName":  "qualityAssigneeList",
+                                        "required":  true,
+                                        "conditionalOn":  null,
+                                        "restrictToRecommended":  true
+                                    }
+                                ],
+                      "roleKey":  "problem_zero_team_leader",
+                      "assigneeMode":  "multiple",
+                      "callbackUrl":  "http://192.168.124.5:5012/api/test/node-callback"
+                  },
+                  {
+                      "taskDefinitionKey":  "ut03_quality_group_confirm",
+                      "nodeSemantic":  "PROBLEM_ZERO_QUALITY_GROUP_CONFIRM",
+                      "pageCode":  "ProblemZero/QualityGroupConfirmForm",
+                      "isStarterNode":  false,
+                      "isConvergencePoint":  false,
+                      "canReject":  true,
+                      "rejectOptions":  [
+                                            {
+                                                "rejectCode":  "TO_STARTER",
+                                                "label":  "退回发起人修改",
+                                                "description":  "质控确认不通过，退回问题发起人修改"
+                                            }
+                                        ],
+                      "isRejectTarget":  false,
+                      "rejectCode":  null,
+                      "slots":  [
+                                    {
+                                        "slotKey":  "direct_end_when_solved",
+                                        "roleKey":  "problem_zero_quality_member",
+                                        "label":  "已解决，直接结束",
+                                        "mode":  "single",
+                                        "variableName":  "__noopDirectEnd",
+                                        "required":  false,
+                                        "conditionalOn":  "IS_SOLVED==true",
+                                        "restrictToRecommended":  false
+                                    },
+                                    {
+                                        "slotKey":  "responsible_person",
+                                        "roleKey":  "problem_zero_responsible_person",
+                                        "label":  "责任人",
+                                        "mode":  "multiple",
+                                        "variableName":  "responsibleAssigneeList",
+                                        "required":  true,
+                                        "conditionalOn":  "IS_SOLVED==false",
+                                        "restrictToRecommended":  true
+                                    }
+                                ],
+                      "roleKey":  "problem_zero_quality_member",
+                      "assigneeMode":  "multiple",
+                      "callbackUrl":  "http://192.168.124.5:5012/api/test/node-callback"
+                  },
+                  {
+                      "taskDefinitionKey":  "ut04_responsible_confirm",
+                      "nodeSemantic":  "PROBLEM_ZERO_RESPONSIBLE_CONFIRM",
+                      "pageCode":  "ProblemZero/ResponsibleConfirmForm",
+                      "isStarterNode":  false,
+                      "isConvergencePoint":  false,
+                      "canReject":  true,
+                      "rejectOptions":  [
+                                            {
+                                                "rejectCode":  "TO_STARTER",
+                                                "label":  "退回发起人修改",
+                                                "description":  "责任人确认不通过，退回问题发起人修改"
+                                            }
+                                        ],
+                      "isRejectTarget":  false,
+                      "rejectCode":  null,
+                      "slots":  [
+                                    {
+                                        "slotKey":  "counterpart_leader",
+                                        "roleKey":  "problem_zero_counterpart_leader",
+                                        "label":  "对口领导",
+                                        "mode":  "multiple",
+                                        "variableName":  "counterpartLeaderAssigneeList",
+                                        "required":  true,
+                                        "conditionalOn":  "PROBLEM_ATTRIBUTE==true",
+                                        "restrictToRecommended":  true
+                                    },
+                                    {
+                                        "slotKey":  "discoverer_direct",
+                                        "roleKey":  "problem_zero_discoverer",
+                                        "label":  "发现问题人（非专项工作路径）",
+                                        "mode":  "multiple",
+                                        "variableName":  "discovererAssigneeList",
+                                        "required":  true,
+                                        "conditionalOn":  "PROBLEM_ATTRIBUTE==false",
+                                        "restrictToRecommended":  true
+                                    }
+                                ],
+                      "roleKey":  "problem_zero_responsible_person",
+                      "assigneeMode":  "multiple",
+                      "callbackUrl":  "http://192.168.124.5:5012/api/test/node-callback"
+                  },
+                  {
+                      "taskDefinitionKey":  "ut05_counterpart_leader_review",
+                      "nodeSemantic":  "PROBLEM_ZERO_COUNTERPART_LEADER_REVIEW",
+                      "pageCode":  "ProblemZero/CounterpartLeaderReviewForm",
+                      "isStarterNode":  false,
+                      "isConvergencePoint":  false,
+                      "canReject":  true,
+                      "rejectOptions":  [
+                                            {
+                                                "rejectCode":  "TO_STARTER",
+                                                "label":  "退回发起人修改",
+                                                "description":  "对口领导审核不通过，退回问题发起人修改"
+                                            }
+                                        ],
+                      "isRejectTarget":  false,
+                      "rejectCode":  null,
+                      "slots":  [
+                                    {
+                                        "slotKey":  "discoverer_after_counterpart",
+                                        "roleKey":  "problem_zero_discoverer",
+                                        "label":  "发现问题人（专项工作路径）",
+                                        "mode":  "multiple",
+                                        "variableName":  "discovererAssigneeList",
+                                        "required":  true,
+                                        "conditionalOn":  null,
+                                        "restrictToRecommended":  true
+                                    }
+                                ],
+                      "roleKey":  "problem_zero_counterpart_leader",
+                      "assigneeMode":  "multiple",
+                      "callbackUrl":  "http://192.168.124.5:5012/api/test/node-callback"
+                  },
+                  {
+                      "taskDefinitionKey":  "ut06_discoverer_confirm",
+                      "nodeSemantic":  "PROBLEM_ZERO_DISCOVERER_CONFIRM",
+                      "pageCode":  "ProblemZero/DiscovererConfirmForm",
+                      "isStarterNode":  false,
+                      "isConvergencePoint":  true,
+                      "canReject":  false,
+                      "rejectOptions":  [
+
+                                        ],
+                      "isRejectTarget":  false,
+                      "rejectCode":  null,
+                      "slots":  [
+
+                                ],
+                      "roleKey":  "problem_zero_discoverer",
+                      "assigneeMode":  "multiple",
+                      "callbackUrl":  "http://192.168.124.5:5012/api/test/node-callback"
+                  }
+              ],
+    "Count":  6
+}

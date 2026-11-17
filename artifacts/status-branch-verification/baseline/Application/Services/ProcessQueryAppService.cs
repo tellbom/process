@@ -1,0 +1,549 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using FlowableWrapper.Application.Dtos;
+using FlowableWrapper.Application.Slots;
+using FlowableWrapper.Domain.Abstractions;
+using FlowableWrapper.Domain.ElasticSearch;
+using FlowableWrapper.Domain.Flowable;
+using FlowableWrapper.Domain.Reliability;
+using FlowableWrapper.Domain.Services;
+using FlowableWrapper.Configuration;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+
+namespace FlowableWrapper.Application.Services
+{
+    /// <summary>
+    /// 流程查询服务（只读）
+    ///
+    /// 职责：
+    ///   ✔ 查询流程进度（当前节点 + 历史审批记录 + 基本状态）
+    ///   ✔ 查询审批历史
+    ///   ✔ 查询流程列表（分页）
+    ///   ✔ 按 businessId 查单条流程状态
+    ///
+    /// 数据来源分离原则：
+    ///   status / createdBy / createdTime / completedTime
+    ///     → ES ProcessMetadataDocument（流程中心元数据）
+    ///   当前活动节点 / assignee / candidateUsers
+    ///     → Flowable TaskService 实时查询（执行态真相，不缓存）
+    ///   历史审批记录 / 操作人 / 审批意见
+    ///     → ES ProcessAuditRecord（流程中心写入的审计数据）
+    ///
+    /// 此服务严格只读，不调用任何写入操作
+    /// </summary>
+    public class ProcessQueryAppService
+    {
+        private readonly IFlowableTaskService _taskService;
+        private readonly IElasticSearchService _esService;
+        private readonly IProcessSlotConfigProvider _slotConfigProvider;
+        private readonly ILogger<ProcessQueryAppService> _logger;
+        private readonly IWorkflowReliabilityStore _reliabilityStore;
+        private readonly Dm8Options _dm8Options;
+
+        public ProcessQueryAppService(
+            IFlowableTaskService taskService,
+            IElasticSearchService esService,
+            IProcessSlotConfigProvider slotConfigProvider,
+            IWorkflowReliabilityStore reliabilityStore,
+            IOptions<Dm8Options> dm8Options,
+            ILogger<ProcessQueryAppService> logger)
+        {
+            _taskService = taskService;
+            _esService = esService;
+            _slotConfigProvider = slotConfigProvider;
+            _reliabilityStore = reliabilityStore;
+            _dm8Options = dm8Options.Value;
+            _logger = logger;
+        }
+
+        // ═══════════════════════════════════════════════════════════
+        // GetProcessProgressAsync
+        // ═══════════════════════════════════════════════════════════
+
+        /// <summary>
+        /// 查询流程进度
+        ///
+        /// 返回：
+        ///   - 流程基本信息（来自 ES）
+        ///   - 当前活动节点列表（来自 Flowable，实时）
+        ///   - 历史审批记录（来自 ES ProcessAuditRecord）
+        ///
+        /// 流程已结束时 currentNodes 为空列表，不报错
+        /// </summary>
+        public async Task<ProcessProgressDto> GetProcessProgressAsync(string businessId, string? processInstanceId = null)
+        {
+            if (string.IsNullOrWhiteSpace(businessId))
+                throw new BusinessException("businessId 不能为空");
+
+            _logger.LogInformation("查询流程进度: BusinessId={BusinessId}", businessId);
+
+            // ── 查 ES 元数据 ───────────────────────────────────────
+            var metadata = await GetMetadataAsync(businessId, processInstanceId);
+
+            // ── 并行查：当前任务（Flowable）+ 审计记录（ES）────────
+            var currentTasksTask = _taskService.QueryTasksAsync(new FlowableTaskQuery
+            {
+                ProcessInstanceId = metadata.ProcessInstanceId
+            });
+
+            var auditRecordsTask = _esService.QueryAuditRecordsByBusinessIdAsync(businessId, metadata.ProcessInstanceId);
+
+            await Task.WhenAll(currentTasksTask, auditRecordsTask);
+
+            var currentTasks = currentTasksTask.Result;
+            var auditRecords = auditRecordsTask.Result
+                .Where(record => string.Equals(
+                    record.ProcessInstanceId,
+                    metadata.ProcessInstanceId,
+                    StringComparison.Ordinal))
+                .ToList();
+
+            // ── 当前节点：补充 nodeSemantic / pageCode / candidateUsers / 推荐人 ──
+            var currentNodes = await BuildCurrentNodesAsync(
+                currentTasks, metadata.ProcessDefinitionKey, metadata);
+
+            // ── 审批历史：映射为 DTO ───────────────────────────────
+            var auditHistory = auditRecords.Select(MapAuditRecord).ToList();
+
+            return new ProcessProgressDto
+            {
+                BusinessId = metadata.BusinessId,
+                ProcessInstanceId = metadata.ProcessInstanceId,
+                ProcessDefinitionKey = metadata.ProcessDefinitionKey,
+                BusinessType = metadata.BusinessType,
+                Status = metadata.Status,
+                CreatedBy = metadata.CreatedBy,
+                CreatedTime = metadata.CreatedTime,
+                CompletedTime = metadata.CompletedTime,
+                CurrentNodes = currentNodes,
+                AuditHistory = auditHistory
+            };
+        }
+
+        // ═══════════════════════════════════════════════════════════
+        // GetAuditHistoryAsync
+        // ═══════════════════════════════════════════════════════════
+
+        /// <summary>
+        /// 查询审批历史（轻量，不含当前节点信息）
+        /// 适用于只需要历史记录、不需要当前节点的场景
+        /// </summary>
+        public async Task<List<AuditRecordDto>> GetAuditHistoryAsync(
+            AuditHistoryRequest request)
+        {
+            if (request == null) throw new ArgumentNullException(nameof(request));
+            if (string.IsNullOrWhiteSpace(request.BusinessId))
+                throw new BusinessException("businessId 不能为空");
+
+            var metadata = await GetMetadataAsync(request.BusinessId, request.ProcessInstanceId);
+            var records = await _esService.QueryAuditRecordsByBusinessIdAsync(
+                request.BusinessId, metadata.ProcessInstanceId);
+
+            return records
+                .Where(record => string.Equals(
+                    record.ProcessInstanceId,
+                    metadata.ProcessInstanceId,
+                    StringComparison.Ordinal))
+                .Select(MapAuditRecord)
+                .ToList();
+        }
+
+        // ═══════════════════════════════════════════════════════════
+        // GetProcessListAsync
+        // ═══════════════════════════════════════════════════════════
+
+        /// <summary>
+        /// 分页查询流程列表
+        /// 轻量列表，不含当前节点和审批历史
+        /// </summary>
+        public async Task<ProcessListResult> GetProcessListAsync(
+            ProcessListRequest request)
+        {
+            if (request == null) throw new ArgumentNullException(nameof(request));
+
+            // PageSize 上限保护
+            if (request.PageSize > 100) request.PageSize = 100;
+            if (request.PageSize < 1) request.PageSize = 20;
+            if (request.PageIndex < 1) request.PageIndex = 1;
+
+            var (items, total) = await _esService.QueryProcessListAsync(request);
+
+            return new ProcessListResult
+            {
+                Items = items.Select(m => new ProcessListItemDto
+                {
+                    ProcessInstanceId = m.ProcessInstanceId,
+                    BusinessId = m.BusinessId,
+                    BusinessType = m.BusinessType,
+                    BusinessTitle = m.BusinessTitle,
+                    ApprovalRound = m.ApprovalRound,
+                    ProcessDefinitionVersion = m.ProcessDefinitionVersion,
+                    ProcessDefinitionKey = m.ProcessDefinitionKey,
+                    Status = m.Status,
+                    CreatedBy = m.CreatedBy,
+                    CreatedTime = m.CreatedTime,
+                    CompletedTime = m.CompletedTime
+                }).ToList(),
+                Total = total,
+                PageIndex = request.PageIndex,
+                PageSize = request.PageSize,
+                HasMore = items.Count == request.PageSize && (long)request.PageIndex * request.PageSize < total,
+                NextCursor = items.Count == request.PageSize
+                    ? ProcessListCursor.Encode(items.Last()) : null
+            };
+        }
+
+        // ═══════════════════════════════════════════════════════════
+        // GetProcessStatusByBusinessIdAsync
+        // ═══════════════════════════════════════════════════════════
+
+        /// <summary>
+        /// 按 businessId 查单条流程状态（轻量，仅基本信息）
+        /// 业务系统轮询流程状态时使用此接口，避免每次都拉全量进度
+        /// </summary>
+        public async Task<ProcessListItemDto> GetProcessStatusByBusinessIdAsync(
+            string businessId)
+        {
+            if (string.IsNullOrWhiteSpace(businessId))
+                throw new BusinessException("businessId 不能为空");
+
+            if (_dm8Options.Enabled)
+            {
+                var authoritative = await GetMetadataByBusinessIdAsync(businessId);
+                return new ProcessListItemDto
+                {
+                    ProcessInstanceId = authoritative.ProcessInstanceId,
+                    BusinessId = authoritative.BusinessId,
+                    BusinessType = authoritative.BusinessType,
+                    ProcessDefinitionKey =
+                        authoritative.ProcessDefinitionKey,
+                    Status = authoritative.Status,
+                    CreatedBy = authoritative.CreatedBy,
+                    CreatedTime = authoritative.CreatedTime,
+                    CompletedTime = authoritative.CompletedTime
+                };
+            }
+
+            // 优先查 running 状态（GetProcessMetadataByBusinessIdAsync 已过滤 running）
+            var metadata = await _esService.GetProcessMetadataByBusinessIdAsync(businessId);
+
+            if (metadata == null)
+            {
+                // 未找到 running 状态的流程，尝试查所有状态
+                // 通过列表查询，取最近一条
+                var (items, _) = await _esService.QueryProcessListAsync(
+                    new ProcessListRequest
+                    {
+                        BusinessId = businessId,
+                        PageIndex = 1,
+                        PageSize = 1
+                    });
+
+                // 按 businessId 精确匹配
+                metadata = items.FirstOrDefault(m =>
+                    string.Equals(m.BusinessId, businessId,
+                        StringComparison.OrdinalIgnoreCase));
+            }
+
+            if (metadata == null)
+                throw new BusinessException($"未找到 businessId 对应的流程: {businessId}");
+
+            return new ProcessListItemDto
+            {
+                ProcessInstanceId = metadata.ProcessInstanceId,
+                BusinessId = metadata.BusinessId,
+                BusinessType = metadata.BusinessType,
+                ProcessDefinitionKey = metadata.ProcessDefinitionKey,
+                Status = metadata.Status,
+                CreatedBy = metadata.CreatedBy,
+                CreatedTime = metadata.CreatedTime,
+                CompletedTime = metadata.CompletedTime
+            };
+        }
+
+        // ═══════════════════════════════════════════════════════════
+        // IsNodeCompletedAsync
+        // ═══════════════════════════════════════════════════════════
+
+        /// <summary>
+        /// 判断指定节点是否已完成
+        ///
+        /// 判定规则：查询流程实例当前活跃任务列表，
+        ///   若 taskDefinitionKey 不在活跃列表中 → 节点已完成
+        ///   若仍在活跃列表中 → 节点未完成
+        ///
+        /// 适用场景：
+        ///   - 单任务节点：task 完成后从活跃列表消失
+        ///   - 会签（multiInstance）：所有子任务完成后 taskDefinitionKey 从列表消失
+        ///   - 并行网关分支：各分支节点独立判定
+        ///
+        /// 此方法不缓存，每次直接查询 Flowable（Flowable 是唯一真相源）
+        /// 调用方（ProcessCallbackAppService）在触发 on_complete 回调前调用此方法确认节点状态
+        /// </summary>
+        /// <param name="processInstanceId">Flowable 流程实例 ID</param>
+        /// <param name="taskDefinitionKey">BPMN 节点定义 Key</param>
+        /// <returns>true = 节点已完成；false = 节点仍在活跃中</returns>
+        public async Task<bool> IsNodeCompletedAsync(
+            string processInstanceId,
+            string taskDefinitionKey)
+        {
+            if (string.IsNullOrWhiteSpace(processInstanceId))
+                throw new ArgumentException("processInstanceId 不能为空", nameof(processInstanceId));
+            if (string.IsNullOrWhiteSpace(taskDefinitionKey))
+                throw new ArgumentException("taskDefinitionKey 不能为空", nameof(taskDefinitionKey));
+
+            List<FlowableTask> activeTasks;
+            try
+            {
+                activeTasks = await _taskService.QueryTasksAsync(new FlowableTaskQuery
+                {
+                    ProcessInstanceId = processInstanceId
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(
+                    ex,
+                    "IsNodeCompletedAsync 查询活跃任务失败，保守返回 false。" +
+                    "ProcessInstanceId={ProcessInstanceId}, TaskDefinitionKey={TaskDefinitionKey}",
+                    processInstanceId, taskDefinitionKey);
+                return false;
+            }
+
+            var isCompleted = activeTasks == null
+                || !activeTasks.Any(t => string.Equals(
+                    t.TaskDefinitionKey, taskDefinitionKey,
+                    StringComparison.OrdinalIgnoreCase));
+
+            _logger.LogDebug(
+                "IsNodeCompletedAsync: ProcessInstanceId={ProcessInstanceId}, " +
+                "TaskDefinitionKey={TaskDefinitionKey}, IsCompleted={IsCompleted}",
+                processInstanceId, taskDefinitionKey, isCompleted);
+
+            return isCompleted;
+        }
+
+        // ═══════════════════════════════════════════════════════════
+        // 私有辅助方法
+        // ═══════════════════════════════════════════════════════════
+
+        /// <summary>
+        /// 查流程元数据，流程处于任意状态都能查到
+        /// GetProcessMetadataByBusinessIdAsync 只查 running，此处兼容所有状态
+        /// </summary>
+        private async Task<ProcessMetadataDocument> GetMetadataAsync(string businessId, string? processInstanceId)
+        {
+            if (string.IsNullOrWhiteSpace(processInstanceId))
+                return await GetMetadataByBusinessIdAsync(businessId);
+            var metadata = await _esService.GetProcessMetadataAsync(processInstanceId);
+            if (metadata == null || !string.Equals(metadata.BusinessId, businessId, StringComparison.OrdinalIgnoreCase))
+                throw new BusinessException("流程实例不存在或与业务 ID 不匹配", "PROCESS_INSTANCE_NOT_FOUND");
+            return metadata;
+        }
+
+        private async Task<ProcessMetadataDocument> GetMetadataByBusinessIdAsync(
+            string businessId)
+        {
+            if (_dm8Options.Enabled)
+            {
+                var binding = await _reliabilityStore.GetBusinessByBusinessIdAsync(
+                    businessId);
+                if (binding == null
+                    || string.IsNullOrWhiteSpace(binding.ProcessInstanceId))
+                    throw new BusinessException(
+                        $"DM8 中未找到 businessId 对应的流程绑定: {businessId}",
+                        "PROCESS_BINDING_NOT_FOUND");
+
+                ProcessMetadataDocument? projection = null;
+                try
+                {
+                    projection = await _esService
+                        .GetProcessMetadataByBusinessIdAsync(businessId);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(
+                        ex,
+                        "ES projection unavailable; query uses DM8 binding. BusinessId={BusinessId}",
+                        businessId);
+                }
+                projection ??= new ProcessMetadataDocument
+                {
+                    Id = binding.ProcessInstanceId,
+                    ProcessInstanceId = binding.ProcessInstanceId,
+                    BusinessId = binding.BusinessId,
+                    RequestId = binding.RequestId,
+                    ApprovalRound = binding.ApprovalRound,
+                    BusinessType = binding.BusinessType,
+                    CreatedTime = binding.CreatedAt,
+                    CompletedTime = binding.CompletedAt,
+                    NodeSemanticMap =
+                        new Dictionary<string, NodeSemanticInfo>(),
+                    RecommendedAssigneesSnapshot =
+                        new Dictionary<string, List<string>>()
+                };
+                projection.ProcessInstanceId = binding.ProcessInstanceId;
+                projection.ProcessDefinitionKey =
+                    binding.ProcessDefinitionKey;
+                projection.ProcessDefinitionVersion =
+                    binding.ProcessDefinitionVersion;
+                projection.Status = binding.FlowState;
+                return projection;
+            }
+
+            // 先查 running（最常见场景）
+            var metadata = await _esService.GetProcessMetadataByBusinessIdAsync(businessId);
+            if (metadata != null) return metadata;
+
+            // 未找到 running → 流程可能已结束，通过列表查询找到
+            var (items, _) = await _esService.QueryProcessListAsync(
+                new ProcessListRequest { PageIndex = 1, PageSize = 1, BusinessId = businessId, });
+
+            metadata = items.FirstOrDefault(m =>
+                string.Equals(m.BusinessId, businessId, StringComparison.OrdinalIgnoreCase));
+
+            if (metadata == null)
+                throw new BusinessException($"未找到 businessId 对应的流程: {businessId}");
+
+            return metadata;
+        }
+
+        /// <summary>
+        /// 构建当前节点列表
+        /// 对每个活动任务：
+        ///   - 从 ES nodeSemanticMap 补充 nodeSemantic / pageCode
+        ///   - 并行查 Flowable 获取 candidateUsers
+        ///   - 从 metadata.RecommendedAssigneesSnapshot 合并推荐人
+        ///   - 从 slotDef.RestrictToRecommended 合并选人范围限制
+        /// </summary>
+        private async Task<List<CurrentNodeDto>> BuildCurrentNodesAsync(
+            List<FlowableTask> activeTasks,
+            string processDefinitionKey,
+            ProcessMetadataDocument metadata)
+        {
+            if (!activeTasks.Any())
+                return new List<CurrentNodeDto>();
+
+            // 查节点语义（一次查全，缓存用）
+            Dictionary<string, NodeSemanticInfo> semanticMap;
+            try
+            {
+                semanticMap = await _slotConfigProvider
+                    .GetNodeSemanticMapAsync(
+                        processDefinitionKey,
+                        metadata.ProcessDefinitionVersion);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex,
+                    "查询节点语义映射失败，当前节点将缺少语义信息: {Key}",
+                    processDefinitionKey);
+                semanticMap = new Dictionary<string, NodeSemanticInfo>();
+            }
+
+            // 并行查各任务的候选人列表（减少串行 RTT）
+            var candidateTasks = activeTasks.Select(async task =>
+            {
+                List<string> candidates;
+                try
+                {
+                    candidates = await _taskService.GetCandidateUsersAsync(task.Id);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex,
+                        "查询候选人失败: TaskId={TaskId}", task.Id);
+                    candidates = new List<string>();
+                }
+                return (task, candidates);
+            });
+
+            var taskWithCandidates = await Task.WhenAll(candidateTasks);
+
+            // 推荐人快照（来自实例 metadata，启动时固化）
+            var recommendedSnapshot = metadata?.RecommendedAssigneesSnapshot
+                ?? new Dictionary<string, List<string>>();
+
+            return taskWithCandidates.Select(tc =>
+            {
+                var (task, candidates) = tc;
+                semanticMap.TryGetValue(task.TaskDefinitionKey, out var nodeInfo);
+
+                // ── 按 slot 维度组装推荐人与选人范围限制 ──────────
+                // 查询链：nodeInfo.Slots -> slot.RoleKey -> snapshot -> slotRecommendedUsers[slot.SlotKey]
+                // Key 统一为 slotKey，与 PendingTaskDto.SlotRecommendedUsers 对齐
+                var slotRecommendedUsers = new Dictionary<string, List<string>>();
+                var restrictMap = new Dictionary<string, bool>();
+
+                if (nodeInfo?.Slots != null)
+                {
+                    foreach (var slot in nodeInfo.Slots)
+                    {
+                        if (string.IsNullOrWhiteSpace(slot.RoleKey))
+                            throw new BusinessException(
+                                $"节点 [{task.TaskDefinitionKey}] Slot [{slot.SlotKey}] roleKey 不能为空",
+                                "SLOT_ROLE_KEY_REQUIRED");
+
+                        restrictMap[slot.SlotKey] = slot.RestrictToRecommended;
+
+                        if (recommendedSnapshot.TryGetValue(slot.RoleKey, out var slotUsers)
+                            && slotUsers?.Any() == true)
+                        {
+                            slotRecommendedUsers[slot.SlotKey] = slotUsers;
+                        }
+                    }
+                }
+
+                return new CurrentNodeDto
+                {
+                    TaskId            = task.Id,
+                    NodeId            = task.TaskDefinitionKey,
+                    NodeName          = task.Name,
+                    NodeSemantic      = nodeInfo?.NodeSemantic,
+                    PageCode          = nodeInfo?.PageCode,
+                    Assignee          = task.Assignee,
+                    CandidateUsers    = candidates,
+                    CreateTime        = task.CreateTime,
+                    SlotRecommendedUsers  = slotRecommendedUsers,
+                    RestrictToRecommended = restrictMap
+                };
+            }).ToList();
+        }
+
+        /// <summary>
+        /// 将 ProcessAuditRecord 映射为 AuditRecordDto
+        /// </summary>
+        private static AuditRecordDto MapAuditRecord(ProcessAuditRecord record)
+        {
+            return new AuditRecordDto
+            {
+                TaskId = record.TaskId,
+                TaskDefinitionKey = record.TaskDefinitionKey,
+                NodeSemantic = record.NodeSemantic,
+                PageCode = record.PageCode,
+                Action = record.Action,
+                OperatorId = record.OperatorId,
+                Comment = record.Comment,
+                RejectReason = record.RejectReason,
+                RejectCode = record.RejectCode,
+                RejectTargetNodeKey = record.RejectTargetNodeKey,
+                OperatedAt = record.OperatedAt,
+                SlotSelections = record.SlotSelections?.Select(s =>
+                    new SlotSelectionRecordDto
+                    {
+                        SlotKey = s.SlotKey,
+                        Label = s.Label,
+                        Users = s.Users
+                    }).ToList() ?? new List<SlotSelectionRecordDto>(),
+                HasOutOfRecommendedRange = record.HasOutOfRecommendedRange,
+                RecommendedUsersSnapshot = record.RecommendedUsersSnapshot
+                    ?? new Dictionary<string, List<string>>(),
+                RestrictToRecommendedSnapshot = record.RestrictToRecommendedSnapshot
+                    ?? new Dictionary<string, bool>()
+            };
+        }
+    }
+}

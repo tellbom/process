@@ -12,7 +12,7 @@ await using var connection = new DmConnection(connectionString);
 await connection.OpenAsync();
 await using (var check = connection.CreateCommand())
 {
-    check.CommandText = "SELECT COUNT(*) FROM FLOW_RELIABILITY.WORKFLOW_SCHEMA_VERSION WHERE VERSION_NO = :version_no";
+    check.CommandText = "SELECT COUNT(*) FROM WORKFLOW_SCHEMA_VERSION WHERE VERSION_NO = :version_no";
     var parameter = check.CreateParameter();
     parameter.ParameterName = "version_no";
     parameter.Value = version;

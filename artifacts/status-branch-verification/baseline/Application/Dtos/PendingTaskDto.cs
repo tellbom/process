@@ -1,0 +1,187 @@
+using FlowableWrapper.Domain.ElasticSearch;
+using System;
+using System.Collections.Generic;
+
+namespace FlowableWrapper.Application.Dtos
+{
+    // ════════════════════════════════════════════════════════════════
+    // Phase 10 修正：替换 Phase 4 的 PendingTaskDto.cs
+    //
+    // 修正说明：
+    //   保留原始 PageCode，同时新增 PageUrl：
+    //     - PageCode 是 BPMN/slotConfig 中配置的原始页面标识或业务页面 URL
+    //     - PageUrl 是流程中心为 iframe 场景拼好业务上下文后的 URL
+    // ════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// 查询待办任务请求
+    /// </summary>
+    public class GetPendingTasksRequest
+    {
+        public string? EmployeeId   { get; set; }
+        public string? TaskId { get; set; }
+        public string? BusinessId { get; set; }
+        /// <summary>
+        /// 按业务类型过滤。查询参数可重复传递，例如：
+        /// businessType=type_a&amp;businessType=type_b。多个值按 OR 匹配。
+        /// </summary>
+        public List<string>? BusinessType { get; set; }
+        public int PageIndex       { get; set; } = 1;
+        public int PageSize        { get; set; } = 20;
+    }
+
+    /// <summary>
+    /// 待办任务 DTO（修正版）
+    ///
+    /// 设计原则：
+    ///   流程中心告诉前端当前节点、原始页面配置以及可直接 iframe 渲染的 pageUrl。
+    ///   对全自动流程，pageCode 可以是业务系统 URL；流程中心会把 businessId 等上下文拼到 pageUrl。
+    ///
+    /// 不包含：
+    ///   ❌ requiredSlots（流程中心不推断业务系统的表单需要什么）
+    ///   ❌ jumpUrl / jumpType（由 pageUrl 替代）
+    ///   ❌ nextViewComponentPath（由业务表单组件自行处理）
+    /// </summary>
+    public class PendingTaskDto
+    {
+        /// <summary>
+        /// Flowable Task ID
+        /// 并行场景 complete 时传入，用于精确指定完成哪个任务
+        /// 前端从此处取值，complete 请求时放入 CompleteTaskRequest.taskId
+        /// </summary>
+        public string TaskId { get; set; }
+
+        /// <summary>
+        /// 任务名称（来自 BPMN userTask name 属性）
+        /// </summary>
+        public string TaskName { get; set; }
+
+        public string ProcessInstanceId { get; set; }
+        public string ProcessDefinitionKey { get; set; }
+        public int? ProcessDefinitionVersion { get; set; }
+        public string TaskDefinitionKey { get; set; }
+
+        /// <summary>
+        /// 业务 ID
+        /// </summary>
+        public string BusinessId { get; set; }
+
+        /// <summary>
+        /// 业务类型
+        /// </summary>
+        public string BusinessType { get; set; }
+        public string BusinessTitle { get; set; }
+        /// <summary>面向用户展示的业务名称；优先使用业务标题，未提供时回退到业务 ID。</summary>
+        public string BusinessDisplayName { get; set; }
+        public string CreatedBy { get; set; }
+        public DateTime ProcessCreatedTime { get; set; }
+        /// <summary>流程实例状态，例如 running。</summary>
+        public string ProcessStatus { get; set; }
+
+        /// <summary>
+        /// 节点业务语义
+        /// 示例：GROUP_LEADER_CONFIRM / INSPECTION_OFFICE_REVIEW
+        /// 前端可用于：标题展示、权限判断、特殊逻辑分支
+        /// </summary>
+        public string NodeSemantic { get; set; }
+
+        /// <summary>
+        /// Current node role key. Recommendations are keyed by this value.
+        /// </summary>
+        public string RoleKey { get; set; }
+
+        /// <summary>发起人针对本流程实例的当前节点详细说明。</summary>
+        public string NodeDescription { get; set; }
+
+        /// <summary>面向待办列表的操作说明；节点详细说明为空时回退为当前任务名称。</summary>
+        public string ActionDescription { get; set; }
+
+        public string Assignee { get; set; }
+        public string Owner { get; set; }
+        public DateTime? DueDate { get; set; }
+        public bool IsOverdue { get; set; }
+
+        /// <summary>
+        /// 原始页面配置。
+        /// 对组件化流程：可为组件编码，例如 SelectionApproval/IntegrityHeadHandleForm。
+        /// 对 iframe 流程：可为业务系统 URL，例如 https://biz-system/form/approval。
+        /// </summary>
+        public string PageCode { get; set; }
+
+        /// <summary>
+        /// iframe 可直接使用的页面 URL。
+        /// 当 PageCode 是 http/https URL 时，流程中心会追加 businessId、taskId、businessType、nodeId 等上下文参数。
+        /// 当 PageCode 不是 URL 时，此字段为 null，前端继续按组件编码方式处理 PageCode。
+        /// </summary>
+        public string PageUrl { get; set; }
+
+        /// <summary>
+        /// 是否已过不可撤回节点
+        /// true：流程已过收敛点（IsConvergencePoint=true 的节点），不允许撤回
+        /// </summary>
+        public bool IsAfterConvergencePoint { get; set; }
+
+        /// <summary>
+        /// 任务创建时间
+        /// </summary>
+        public DateTime CreateTime { get; set; }
+
+        /// <summary>
+        /// 任务优先级（来自 Flowable 任务优先级）
+        /// </summary>
+        public int Priority { get; set; }
+
+        // 前端可以忽略此字段
+        public List<SlotDefinition> RequiredSlots { get; set; }
+
+        
+        /// <summary>
+        /// 当前节点是否可以被驳回
+        /// </summary>
+        public bool CanReject { get; set; }
+
+        /// <summary>
+        /// 当前节点是否允许转派。只有 true 时前端才展示转派入口。
+        /// </summary>
+        public bool CanReassign { get; set; }
+
+
+        /// <summary>
+        /// 当前节点驳回配置
+        /// </summary>
+        public List<RejectOption> RejectOptions { get; set; }
+
+        /// <summary>
+        /// 当前节点各 slot 的推荐候选人，Key = slotKey，Value = 推荐人员工号列表。
+        /// 来源：RecommendedAssigneesSnapshot[slot.RoleKey]，结果按 slot.SlotKey 索引。
+        /// 前端按 slotKey 读取对应推荐人初始化选人区。
+        /// 无推荐配置或当前节点无 slot 时为空字典。
+        /// </summary>
+        public Dictionary<string, List<string>> SlotRecommendedUsers { get; set; }
+            = new Dictionary<string, List<string>>();
+
+        /// <summary>
+        /// 各 slot 的选人范围限制标志，Key = slotKey。
+        /// true = 仅建议从推荐范围内选人（后端记录越界审计，不强拦截）。
+        /// </summary>
+        public Dictionary<string, bool> RestrictToRecommended { get; set; }
+            = new Dictionary<string, bool>();
+    }
+
+    /// <summary>
+    /// 待办任务分页响应
+    /// </summary>
+    public class PendingTaskPageResult
+    {
+        public List<PendingTaskDto> Items { get; set; } = new();
+        public int Total     { get; set; }
+        /// <summary>
+        /// 无业务类型过滤时，Total 直接来自 Flowable involvedUser 查询并且精确。
+        /// 有业务类型过滤时当前接口采用有界扫描，Total 仅表示已扫描到的匹配数。
+        /// </summary>
+        public bool TotalIsExact { get; set; } = true;
+        public bool HasMore { get; set; }
+        public int PageIndex { get; set; }
+        public int PageSize  { get; set; }
+    }
+}

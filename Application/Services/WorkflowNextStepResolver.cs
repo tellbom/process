@@ -42,6 +42,69 @@ internal static class WorkflowNextStepResolver
         var unresolved = false;
         var visited = new HashSet<string>();
         void Fail(string message, bool manual = false) { unresolved = true; result.ManualConfigurationRequired |= manual; if (string.IsNullOrEmpty(result.Message)) result.Message = message; }
+        WorkflowBranchVariable Variable(string name, string type)
+        {
+            var variable = result.Variables.FirstOrDefault(x => x.Name == name);
+            if (variable != null) return variable;
+            var exists = variables.TryGetValue(name, out var value);
+            variable = new() { Name = name, Type = type, Missing = !exists, Value = Unwrap(value), ReadOnly = name == "isApproved" };
+            result.Variables.Add(variable);
+            return variable;
+        }
+        List<string> TargetNames(XElement edge)
+        {
+            var names = new List<string>();
+            var seen = new HashSet<string>();
+            void Walk(string id)
+            {
+                if (!seen.Add(id) || !nodes.TryGetValue(id, out var node)) return;
+                if (node.Name.LocalName is "userTask" or "endEvent")
+                { names.Add(node.Name.LocalName == "endEvent" ? "结束流程" : (string?)node.Attribute("name") ?? id); return; }
+                foreach (var next in flows.Where(x => (string?)x.Attribute("sourceRef") == id)) Walk((string)next.Attribute("targetRef")!);
+            }
+            Walk((string)edge.Attribute("targetRef")!);
+            return names.Distinct().ToList();
+        }
+        void AddOption(WorkflowBranchVariable variable, object? value, XElement edge)
+        {
+            if (variable.Options.Any(x => Equals(x.Value, value))) return;
+            var field = edge.Element(Bpmn + "extensionElements")?.Elements(Flowable + "field")
+                .FirstOrDefault(x => (string?)x.Attribute("name") == "branchLabel");
+            var label = (string?)edge.Attribute("name") ?? (string?)field?.Attribute("stringValue") ?? field?.Element(Flowable + "string")?.Value;
+            variable.Options.Add(new() { Value = value, Label = label ?? (value is bool boolean ? boolean ? "是" : "否" : Convert.ToString(value, CultureInfo.InvariantCulture) ?? "空值"), TargetNames = TargetNames(edge) });
+        }
+        void DescribeChoices(List<XElement> outgoing, string? defaultId)
+        {
+            var booleanChoices = new List<(WorkflowBranchVariable Variable, bool Value)>();
+            foreach (var edge in outgoing.Where(x => (string?)x.Attribute("id") != defaultId))
+            {
+                var match = Condition.Match(edge.Element(Bpmn + "conditionExpression")?.Value.Trim() ?? "");
+                if (!match.Success) continue;
+                var literal = match.Groups["value"].Value;
+                var op = match.Groups["op"].Value;
+                var type = literal is "true" or "false" || op == "" ? "boolean" : literal.StartsWith("'") || literal.StartsWith('"') ? "string" : literal == "null" ? "json" : "number";
+                var variable = Variable(match.Groups["name"].Value, type);
+                object? value;
+                if (type == "boolean" && (op is "" or "==" or "!="))
+                {
+                    var boolean = op == "" || literal == "true";
+                    if (op == "!=") boolean = !boolean;
+                    if (match.Groups["neg"].Success && op == "") boolean = !boolean;
+                    value = boolean;
+                    booleanChoices.Add((variable, boolean));
+                }
+                else if (op == "==" && !match.Groups["neg"].Success)
+                    value = type == "string" ? literal[1..^1] : literal == "null" ? null : decimal.Parse(literal, CultureInfo.InvariantCulture);
+                else continue;
+                AddOption(variable, value, edge);
+            }
+            // A Boolean condition and its BPMN default cover the two actual exits.
+            var fallback = outgoing.FirstOrDefault(x => (string?)x.Attribute("id") == defaultId);
+            if (fallback != null && booleanChoices.Count == outgoing.Count - 1
+                && booleanChoices.Select(x => x.Variable.Name).Distinct().Count() == 1
+                && booleanChoices.Select(x => x.Value).Distinct().Count() == 1)
+                AddOption(booleanChoices[0].Variable, !booleanChoices[0].Value, fallback);
+        }
         bool? Evaluate(string expression)
         {
             var match = Condition.Match(expression.Trim());
@@ -50,7 +113,7 @@ internal static class WorkflowNextStepResolver
             var literal = match.Groups["value"].Value;
             var type = literal is "true" or "false" || !match.Groups["op"].Success ? "boolean" : literal.StartsWith("'") || literal.StartsWith('"') ? "string" : literal == "null" ? "json" : "number";
             var exists = variables.TryGetValue(name, out var value);
-            if (!result.Variables.Any(x => x.Name == name)) result.Variables.Add(new() { Name = name, Type = type, Missing = !exists });
+            Variable(name, type);
             if (!exists) { Fail("请先填写分支变量，再确定下一步处理人。"); return null; }
             value = Unwrap(value);
             bool matched;
@@ -86,7 +149,7 @@ internal static class WorkflowNextStepResolver
         void Visit(XElement node, bool afterService, bool origin = false)
         {
             var id = (string)node.Attribute("id")!;
-            if (!origin && node.Name == Bpmn + "userTask")
+            if (!origin && (node.Name == Bpmn + "userTask" || node.Name == Bpmn + "endEvent"))
             { if (!result.NextNodes.Any(x => x.Id == id)) result.NextNodes.Add(Target(node)); return; }
             if (!visited.Add(id + ":" + afterService)) return;
             if (node.Name.LocalName is "subProcess" or "callActivity" or "eventBasedGateway")
@@ -96,6 +159,7 @@ internal static class WorkflowNextStepResolver
             var selected = new List<XElement>();
             var defaultId = (string?)node.Attribute("default");
             var exclusive = node.Name == Bpmn + "exclusiveGateway";
+            if (node.Name != Bpmn + "parallelGateway") DescribeChoices(outgoing, defaultId);
             if (outgoing.Any(x => x.Element(Bpmn + "conditionExpression") != null) && afterService)
             { Fail("分支前有服务或脚本节点，变量可能发生变化，请在高级配置中按原契约手动办理。", true); return; }
             foreach (var edge in outgoing.Where(x => (string?)x.Attribute("id") != defaultId))
@@ -123,7 +187,7 @@ internal static class WorkflowNextStepResolver
                 var targets = allTargets.Values.Where(x => x.AssigneeVariables.Contains(slot.VariableName)).ToList();
                 return targets.Count == 0 || targets.Any(target => result.NextNodes.Any(x => x.Id == target.Id));
             }).ToList();
-            result.Message = result.NextNodes.Any() ? "下一步：" + string.Join("、", result.NextNodes.Select(x => x.Name)) : "当前节点之后没有需要办理的人工节点。";
+            result.Message = result.NextNodes.Any() ? "下一步：" + string.Join("、", result.NextNodes.Select(x => x.NodeType == "endEvent" ? "结束流程" : x.Name)) : "当前节点之后没有需要办理的人工节点。";
         }
         else { result.NextNodes.Clear(); result.FlowIds.Clear(); }
         return result;
@@ -131,7 +195,7 @@ internal static class WorkflowNextStepResolver
 
     private static WorkflowNextNode Target(XElement node)
     {
-        var result = new WorkflowNextNode { Id = (string)node.Attribute("id")!, Name = (string?)node.Attribute("name") ?? (string)node.Attribute("id")! };
+        var result = new WorkflowNextNode { Id = (string)node.Attribute("id")!, Name = (string?)node.Attribute("name") ?? (string)node.Attribute("id")!, NodeType = node.Name.LocalName };
         var expressions = new[] { (string?)node.Attribute(Flowable + "assignee"), (string?)node.Element(Bpmn + "multiInstanceLoopCharacteristics")?.Attribute(Flowable + "collection") };
         foreach (var expression in expressions.Where(x => !string.IsNullOrWhiteSpace(x)))
         {

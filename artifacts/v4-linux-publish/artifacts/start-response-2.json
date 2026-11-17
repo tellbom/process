@@ -1,0 +1,14 @@
+﻿{
+    "businessId":  "CODEX_CALLBACK_20260610142656",
+    "response":  {
+                     "success":  true,
+                     "data":  {
+                                  "processInstanceId":  "74cb4843-6495-11f1-85d9-0242ac110013",
+                                  "businessId":  "CODEX_CALLBACK_20260610142656",
+                                  "firstTaskId":  "74cb4855-6495-11f1-85d9-0242ac110013",
+                                  "firstNodeSemantic":  "STARTER_SUBMIT",
+                                  "firstPageCode":  "https://httpbin.org/get?node=starter_submit"
+                              },
+                     "message":  null
+                 }
+}
